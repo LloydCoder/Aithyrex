@@ -114,20 +114,20 @@ class TestShouldInvokeParliament:
 
 # ── ThreatFade oracle vote ─────────────────────────────────────────────────────
 class TestThreatFadeVote:
-    def test_high_z_score_votes_block(self, ensemble):
+    def test_high_z_score_votes_alert_only(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=14.76)
-        assert vote.vote == Vote.BLOCK
-        assert vote.confidence >= 0.9
+        assert vote.vote == Vote.ALERT
+        assert vote.confidence == 0.0
 
     def test_medium_z_score_votes_alert(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=7.0)
         assert vote.vote == Vote.ALERT
 
-    def test_low_z_score_votes_allow(self, ensemble):
+    def test_low_z_score_abstains(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=0.5)
-        assert vote.vote == Vote.ALLOW
+        assert vote.vote == Vote.ABSTAIN
 
-    def test_merlin_quic_z_score_blocks(self, ensemble):
+    def test_high_network_score_does_not_directly_block_ai_text(self, ensemble):
         """Merlin QUIC C2 real-world Z-score must always BLOCK."""
         vote = ensemble._threatfade_vote(z_score=14.76)
         assert vote.vote == Vote.BLOCK
@@ -154,7 +154,7 @@ class TestParliamentVoting:
 
     @pytest.mark.asyncio
     async def test_1_of_3_block_returns_alert(self, ensemble):
-        """Only Claude BLOCK, Grok and ThreatFade ALLOW → ALERT."""
+        """One model BLOCK and another ALLOW yields ALERT; low score abstains."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
