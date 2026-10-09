@@ -1,5 +1,5 @@
 """
-AI Shield — Billing Service
+Aithyrex — Billing Service
 =============================
 Unified billing handler for LemonSqueezy (global) and Paddle (EU/Enterprise).
 
