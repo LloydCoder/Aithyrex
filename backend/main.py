@@ -88,8 +88,8 @@ if settings.APP_ENV == "production":
 
 # ── Routes ────────────────────────────────────────────────────────────
 app.include_router(health.router, tags=["Health"])
-app.include_router(detect.router, prefix="/detect", tags=["Detection"])
-app.include_router(monitor.router, prefix="/monitor", tags=["Monitor"])
-app.include_router(enforce.router, prefix="/enforce", tags=["Enforcement"])
-app.include_router(reports.router, prefix="/reports", tags=["Reports"])
+app.include_router(detect.router, prefix="/api/v1/detect", tags=["Detection"])
+app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["Monitor"])
+app.include_router(enforce.router, prefix="/api/v1/enforce", tags=["Enforcement"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
