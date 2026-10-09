@@ -1,5 +1,5 @@
 """
-AI Shield — C2 Behaviour Detector
+Aithyrex — C2 Behaviour Detector
 ====================================
 Detects C2-style communication patterns in AI agent traffic.
 
@@ -48,9 +48,19 @@ class C2BehaviourDetector:
         text = prompt + (" " + completion if completion else "")
 
         tf_result = await threatfade.detect(text, source="ai_traffic_c2")
-        detected   = tf_result.get("detected", False)
-        z_outlier  = tf_result.get("z_outlier", 0.0)
-        mitre_ttp  = tf_result.get("mitre_ttp", "")
+        detected = tf_result.get("detected", False)
+        z_outlier = tf_result.get("z_outlier", 0.0)
+        mitre_ttp = tf_result.get("mitre_ttp", "")
+        degraded = bool(tf_result.get("degraded") or tf_result.get("fallback"))
+
+        if degraded:
+            return DetectionResult(
+                detector="c2_behaviour",
+                detected=False,
+                severity=Severity.INFO,
+                confidence=0.0,
+                details={"z_outlier": z_outlier, "degraded": True, "reason": "threatfade_unavailable"},
+            )
 
         if not detected:
             return DetectionResult(
@@ -65,13 +75,9 @@ class C2BehaviourDetector:
                 },
             )
 
-        # Z-score thresholds based on ThreatFade baseline (14.76 = Merlin QUIC)
-        if z_outlier >= 12.0:
-            severity, confidence = Severity.CRITICAL, 0.97
-        elif z_outlier >= 7.0:
-            severity, confidence = Severity.HIGH, 0.85
-        else:
-            severity, confidence = Severity.MEDIUM, 0.65
+        # ThreatFade scores are not validated for AI text. Keep this detector advisory-only.
+        severity = Severity.MEDIUM
+        confidence = 0.0
 
         logger.warning(
             "c2_behaviour_detected",
@@ -91,7 +97,8 @@ class C2BehaviourDetector:
                 "score": tf_result.get("score"),
                 "entropy": tf_result.get("entropy"),
                 "rules_matched": tf_result.get("rules_matched"),
-                "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+                "degraded": False,
+                "confidence_calibrated": False,
             },
             mitre_atlas=[mitre_ttp, "T1071.001", "T1095"],
         )
