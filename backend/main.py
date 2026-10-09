@@ -23,18 +23,32 @@ logger = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
+    if settings.APP_ENV.lower() == "production":
+        missing = []
+        if not settings.CLERK_JWT_KEY:
+            missing.append("CLERK_JWT_KEY")
+        if not settings.CLERK_JWT_ISSUER:
+            missing.append("CLERK_JWT_ISSUER")
+        if not settings.CLERK_AUTHORIZED_PARTIES:
+            missing.append("CLERK_AUTHORIZED_PARTIES")
+        if settings.APP_SECRET_KEY == "change-me" or len(settings.APP_SECRET_KEY) < 32:
+            missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
+        if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
+            missing.append("ALLOWED_HOSTS (explicit production hosts required)")
+        if missing:
+            raise RuntimeError("Unsafe production configuration; configure: " + ", ".join(missing))
     logger.info(
-        "ai_shield_starting",
+        "aithyrex_starting",
         version="0.1.0",
         environment=settings.APP_ENV,
     )
     yield
-    logger.info("ai_shield_shutdown")
+    logger.info("aithyrex_shutdown")
 
 
 app = FastAPI(
-    title="AI Shield",
-    description="Runtime Security for LLM and Agentic AI Systems",
+    title="Aithyrex",
+    description="Agentic AI Runtime Security",
     version="0.1.0",
     docs_url="/docs" if settings.APP_ENV == "development" else None,
     redoc_url="/redoc" if settings.APP_ENV == "development" else None,
