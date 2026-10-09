@@ -75,7 +75,7 @@ The `pip-audit -r backend/requirements.txt` step fails before completing the aud
 
 The workflow passes the repository default branch as `base` and `HEAD` as `head`. On this push, both resolve to commit `a552abf4a676de46bb8962d717d05e6b9e50d788`. TruffleHog explicitly exits with: “BASE and HEAD commits are the same. TruffleHog won't scan anything.”
 
-**Interpretation:** this is a scanner invocation/configuration failure, not a confirmed secret finding. Configure push scans to compare the event's before/after SHAs; configure scheduled scans to scan repository history using the action's documented full-scan mode. Pin the action to a reviewed immutable commit SHA and rerun it. If any credential is confirmed exposed, revoke/rotate it and investigate history; do not merely suppress the finding.
+**Interpretation:** this is a scanner invocation/configuration failure, not a confirmed secret finding. The remediation branch changes push/PR scans to compare event SHAs, leaves scheduled-scan inputs empty for the action's full-history mode, and pins TruffleHog to the exact action revision observed in the failed run. **This proposed workflow change is not yet validated by a new CI run.** If any credential is confirmed exposed, revoke/rotate it and investigate history; do not merely suppress the finding.
 
 ### 4.3 CI enforcement gaps
 
