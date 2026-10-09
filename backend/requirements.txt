@@ -33,7 +33,6 @@ scikit-learn==1.5.2
 scapy==2.8.0
 
 # Auth (Clerk)
-clerk-backend-api==1.2.0
 PyJWT[crypto]==2.15.1
 passlib[bcrypt]==1.7.4
 
