@@ -242,3 +242,18 @@ class TestParliamentVoting:
             # Should not raise
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=0.0)
             assert result is not None
+
+
+def test_missing_threatfade_telemetry_abstains(ensemble):
+    vote = ensemble._threatfade_vote(z_score=None)
+    assert vote.vote == Vote.ABSTAIN
+
+
+def test_existing_block_verdict_never_invokes_parliament():
+    verdict = make_verdict(Action.BLOCK, Severity.HIGH)
+    assert should_invoke_parliament(verdict) is False
+
+
+def test_critical_noncredential_verdict_also_bypasses_parliament():
+    verdict = make_verdict(Action.BLOCK, Severity.CRITICAL, detector="c2_behaviour")
+    assert should_invoke_parliament(verdict) is False
