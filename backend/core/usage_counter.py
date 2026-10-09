@@ -51,8 +51,8 @@ class UsageCounterService:
                     decode_responses=True,
                 )
             except Exception as e:
-                logger.warning("redis_unavailable", error=str(e))
-                return None
+                logger.error("redis_unavailable", error_type=type(e).__name__)
+                raise RuntimeError("usage counter unavailable") from e
         return self._redis
 
     def _key(self, tenant_id: str) -> str:
@@ -63,7 +63,7 @@ class UsageCounterService:
         """Increment inference count. Returns new total."""
         redis = await self._get_redis()
         if redis is None:
-            return 0
+            raise RuntimeError("usage counter unavailable")
 
         key = self._key(tenant_id)
         count = await redis.incr(key)
@@ -79,7 +79,7 @@ class UsageCounterService:
         """Get current month inference count."""
         redis = await self._get_redis()
         if redis is None:
-            return 0
+            raise RuntimeError("usage counter unavailable")
 
         val = await redis.get(self._key(tenant_id))
         return int(val) if val else 0
