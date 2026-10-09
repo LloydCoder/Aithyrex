@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 import time
+
+import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -81,11 +83,12 @@ def paddle_settings(monkeypatch):
     )
 
 
-def test_paddle_canonical_active_subscription_grants_mapped_plan(monkeypatch):
+@pytest.mark.asyncio
+async def test_paddle_canonical_active_subscription_grants_mapped_plan(monkeypatch):
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
-    result = __import__("asyncio").run(BillingService().handle_paddle_event(
+    result = await BillingService().handle_paddle_event(
         "subscription.created",
         {
             "custom_data": {"clerk_org_id": "org_1"},
@@ -93,13 +96,14 @@ def test_paddle_canonical_active_subscription_grants_mapped_plan(monkeypatch):
             "status": "active",
             "items": [{"price": {"id": "pro-id"}}],
         },
-    ))
+    )
     assert result["status"] == "ok"
     assert result["plan"] == "pro"
     update.assert_awaited_once_with("org_1", "pro", "cus_1", "paddle")
 
 
-def test_paddle_unknown_price_is_rejected_without_entitlement_update(monkeypatch):
+@pytest.mark.asyncio
+async def test_paddle_unknown_price_is_rejected_without_entitlement_update(monkeypatch):
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
@@ -116,7 +120,8 @@ def test_paddle_unknown_price_is_rejected_without_entitlement_update(monkeypatch
     update.assert_not_awaited()
 
 
-def test_paddle_ambiguous_multi_item_subscription_is_rejected(monkeypatch):
+@pytest.mark.asyncio
+async def test_paddle_ambiguous_multi_item_subscription_is_rejected(monkeypatch):
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
@@ -133,7 +138,8 @@ def test_paddle_ambiguous_multi_item_subscription_is_rejected(monkeypatch):
     update.assert_not_awaited()
 
 
-def test_paddle_canceled_subscription_downgrades_to_free(monkeypatch):
+@pytest.mark.asyncio
+async def test_paddle_canceled_subscription_downgrades_to_free(monkeypatch):
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
