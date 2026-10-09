@@ -44,6 +44,36 @@ jobs:
       - name: Semgrep scan
         run: semgrep --config=auto backend/ --error
 
+  frontend:
+    name: Frontend Build and Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Audit frontend dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: TypeScript check
+        working-directory: frontend
+        run: npm run type-check
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZGV2ZWxvcG1lbnQuZXhhbXBsZS5jb20k
+          CLERK_SECRET_KEY: sk_test_ZGV2ZWxvcG1lbnQuZXhhbXBsZS5jb20k
+          NEXT_PUBLIC_API_URL: https://aithyrex-build.invalid
+        run: npm run build
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
