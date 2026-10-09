@@ -60,7 +60,11 @@ class C2BehaviourDetector:
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
-                details={"z_outlier": z_outlier},
+                details={
+                    "z_outlier": z_outlier,
+                    "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+                    "reason": "threatfade_unavailable" if tf_result.get("degraded") or tf_result.get("fallback") else "no_indicators",
+                },
             )
 
         # Z-score thresholds based on ThreatFade baseline (14.76 = Merlin QUIC)
