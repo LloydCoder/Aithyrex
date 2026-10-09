@@ -230,6 +230,8 @@ class LLMGateway:
             # Validate vote value
             if data.get("vote") not in ("block", "alert", "allow", "abstain"):
                 data["vote"] = "abstain"  # Invalid model output is not a safety decision
+                data["confidence"] = 0.0
+                data["reasoning"] = "unknown_vote"
             return data
         except json.JSONDecodeError:
             logger.warning("parliament_json_parse_failed", raw=text[:100])
