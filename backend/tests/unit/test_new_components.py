@@ -19,7 +19,8 @@ class TestMITREReport:
         data = json.loads(output)
         assert "coverage" in data
         assert data["total_techniques"] > 0
-        assert data["full_coverage"] > 0
+        assert data["full_coverage"] == 0
+        assert data["mapped_techniques"] > 0
 
     def test_json_has_required_fields(self):
         from backend.core.mitre_report import generate_json
@@ -62,17 +63,19 @@ class TestMITREReport:
 
     def test_full_coverage_techniques_present(self):
         from backend.core.mitre_report import COVERAGE_MAP
-        full = [e.technique_id for e in COVERAGE_MAP if e.coverage_level == "full"]
-        assert "AML.T0051" in full   # prompt injection
-        assert "T1552" in full        # credential leak
-        assert "T1027" in full        # obfuscated / covert channel
+        mapped = {e.technique_id: e for e in COVERAGE_MAP}
+        assert "AML.T0051" in mapped
+        assert "T1552" in mapped
+        assert "T1027" in mapped
+        assert all(e.coverage_level == "heuristic" for e in COVERAGE_MAP)
 
     def test_validation_baseline_in_markdown(self):
         from backend.core.mitre_report import generate_markdown
         md = generate_markdown()
-        assert "14.76" in md          # ThreatFade Z-score
-        assert "490,000" in md        # Packets validated
-        assert "0%" in md             # False positive rate
+        assert "No AI-text detection accuracy" in md
+        assert "false-positive rate" in md
+        assert "14.76" not in md
+        assert "490,000" not in md
 
 
 # ── Olvrix Bridge ──────────────────────────────────────────────────────────────
