@@ -1,11 +1,10 @@
 """
-AI Shield — Enforcement Routes (Pro tier)
+Aithyrex — Enforcement Routes (Pro tier)
 ==========================================
 POST /enforce/block        — block a model or agent
 POST /enforce/unblock      — remove from block list
 POST /enforce/allow        — add model to allowlist
 GET  /enforce/blocked      — list all blocked models/agents
-GET  /enforce/rules        — list custom detection rules
 
 Block mode is a Pro+ feature.
 Attempted use on Free/Starter returns 403 with upgrade prompt.
@@ -44,7 +43,7 @@ def require_pro(tenant: TokenPayload) -> None:
             detail={
                 "error": "block_mode_pro_required",
                 "message": "Block mode requires Pro or Enterprise plan.",
-                "upgrade_url": "https://tinlance.com/ai-shield#pricing",
+                "upgrade_url": "https://www.tinlance.com/agent-as-a-service",
             },
         )
 
