@@ -257,7 +257,7 @@ async def test_allowlisted_model_still_runs_detectors(engine):
 @pytest.mark.asyncio
 async def test_usage_accounting_failure_fails_closed(engine):
     with patch(
-        "backend.core.usage_counter.UsageCounterService.check_limit",
+        "backend.core.usage_counter.UsageCounterService.reserve_inference",
         new=AsyncMock(side_effect=RuntimeError("redis unavailable")),
     ):
         verdict = await engine.inspect(
