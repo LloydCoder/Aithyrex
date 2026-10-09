@@ -105,7 +105,7 @@ class UsageCounterService:
         end
         return {1, count, limit}
         """
-        result = await redis.eval(script, 1, key, limit, plan, 35 * 24 * 3600)
+        result = await redis.eval(script, 1, key, limit, plan, self._ttl_to_month_end())
         allowed, count, effective_limit = (int(value) for value in result)
         return bool(allowed), count, effective_limit
 
