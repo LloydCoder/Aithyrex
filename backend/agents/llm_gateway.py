@@ -229,11 +229,11 @@ class LLMGateway:
             data = json.loads(clean)
             # Validate vote value
             if data.get("vote") not in ("block", "alert", "allow", "abstain"):
-                data["vote"] = "allow"   # Safe default on parse failure
+                data["vote"] = "abstain"  # Invalid model output is not a safety decision
             return data
         except json.JSONDecodeError:
             logger.warning("parliament_json_parse_failed", raw=text[:100])
-            return {"vote": "allow", "confidence": 0.3, "reasoning": "parse_error"}
+            return {"vote": "abstain", "confidence": 0.0, "reasoning": "parse_error"}
 
 
 # Module-level singleton
