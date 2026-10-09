@@ -3,7 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import '@/styles/globals.css'
 
 export const metadata: Metadata = {
-  title: 'AI Shield — Runtime AI Security',
+  title: 'Aithyrex — Runtime AI Security',
   description: 'Runtime security for LLM and agentic AI systems.',
   icons: { icon: '/favicon.ico' },
 }
