@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     CLERK_SECRET_KEY: str = ""
+    CLERK_JWT_KEY: str = ""
+    CLERK_JWT_ISSUER: str = ""
+    CLERK_JWT_AUDIENCE: str = ""
+    CLERK_AUTHORIZED_PARTIES: List[str] = []
     CLERK_PUBLISHABLE_KEY: str = ""
     CLERK_WEBHOOK_SECRET: str = ""
 
