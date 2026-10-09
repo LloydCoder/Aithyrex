@@ -1,7 +1,7 @@
 """
 Aithyrex — C2 Behaviour Detector
 ====================================
-Detects C2-style communication patterns in AI agent traffic.
+Flags C2-like signals in supported AI interactions for triage; AI-text effectiveness is not validated.
 
 Uses ThreatFade as a supplementary signal. Historical network-traffic
 metrics do not validate AI-text detection accuracy; thresholds require
@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 class C2BehaviourDetector:
     """
-    Detects C2-style behaviour in AI model communications.
+    Flags C2-like behavior heuristically; it is not a validated AI-text C2 detector.
 
     Primary method: ThreatFade HTTP bridge.
     Supplementary: behavioural heuristics for agent traffic.
