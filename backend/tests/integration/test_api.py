@@ -6,7 +6,7 @@ All external services mocked:
   - ThreatFade   → clean fallback response
   - PostgreSQL   → skipped (no DB needed for detection logic)
   - Redis        → in-memory mock
-  - Clerk        → dev mode (accepts any token)
+  - Clerk        → verified-token fixture; tenant lookup mocked
   - KalevioAI   → not configured → skipped
 
 These tests prove the full HTTP pipeline:
@@ -19,6 +19,8 @@ Run with:
 from __future__ import annotations
 
 import json
+import uuid
+from types import SimpleNamespace
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -41,7 +43,30 @@ def client():
     FastAPI TestClient with all external dependencies mocked.
     Module-scoped — one client for all tests in this file.
     """
+    fake_tenant = SimpleNamespace(
+        id=uuid.UUID("00000000-0000-4000-8000-000000000001"),
+        plan="pro",
+        is_active=True,
+    )
+
+    def fake_session_factory():
+        session = MagicMock()
+        query_result = MagicMock()
+        query_result.scalar_one_or_none.return_value = fake_tenant
+        session.execute = AsyncMock(return_value=query_result)
+        session.commit = AsyncMock()
+        session.rollback = AsyncMock()
+        session.close = AsyncMock()
+        session.add = MagicMock()
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=session)
+        context.__aexit__ = AsyncMock(return_value=False)
+        return context
+
     with patch(
+        "backend.models.database.AsyncSessionFactory",
+        side_effect=fake_session_factory,
+    ), patch(
         "backend.core.threatfade_client.ThreatFadeClient.detect",
         new=AsyncMock(return_value=CLEAN_TF),
     ), patch(
@@ -240,7 +265,7 @@ class TestDetectLLM:
         )
         data = resp.json()
         assert "tenant_id" in data
-        assert data["tenant_id"] == "dev_org"
+        assert data["tenant_id"] == "00000000-0000-4000-8000-000000000001"
 
     def test_detection_has_mitre_atlas(self, client):
         resp = client.post(
