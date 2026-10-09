@@ -30,12 +30,12 @@ export default function ModelsPage() {
   useEffect(() => { void loadBlocked() }, [loadBlocked])
 
   const handleBlock = async () => {
-    if (!modelId.trim()) return
+    if (!modelId.trim() || !reason.trim()) return
     setBusyId(modelId)
     setError(null)
     try {
       const token = await getToken()
-      await api.blockModel(modelId.trim(), reason.trim() || 'Blocked by authorized operator', token || undefined)
+      await api.blockModel(modelId.trim(), reason.trim(), token || undefined)
       setModelId('')
       setReason('')
       await loadBlocked()
@@ -98,7 +98,7 @@ export default function ModelsPage() {
             aria-label="Block reason"
             style={{ background: '#080F1A', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '9px 12px', color: '#E2E8F0' }}
           />
-          <button onClick={() => void handleBlock()} disabled={!modelId.trim() || busyId !== null} className="btn-primary">
+          <button onClick={() => void handleBlock()} disabled={!modelId.trim() || !reason.trim() || busyId !== null} className="btn-primary">
             {busyId === modelId ? 'Working…' : 'Block'}
           </button>
         </div>
