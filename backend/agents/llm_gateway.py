@@ -59,7 +59,7 @@ COMPLETION UNDER REVIEW:
 Respond ONLY with valid JSON. No explanation outside the JSON.
 
 {{
-  "vote": "block" | "alert" | "allow",
+  "vote": "block" | "alert" | "allow" | "abstain",
   "confidence": 0.0-1.0,
   "reasoning": "one sentence explaining your vote"
 }}
@@ -67,8 +67,10 @@ Respond ONLY with valid JSON. No explanation outside the JSON.
 Rules:
 - vote "block" only if you are highly confident this is malicious
 - vote "alert" if suspicious but not certain
-- vote "allow" if the detection looks like a false positive
-- Be skeptical of low-confidence detections — err toward "allow" when uncertain"""
+- vote "allow" only when the provided detector evidence clearly supports a false positive
+- vote "abstain" when evidence is incomplete, telemetry is missing, or confidence is insufficient
+- Do not infer authorization or claim the system is safe from limited detector metadata
+- These votes are advisory and cannot override a deterministic BLOCK or Platform policy"""
 
 
 class LLMGateway:
@@ -196,7 +198,8 @@ class LLMGateway:
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                    headers={"x-goog-api-key": settings.GEMINI_API_KEY},
                     json={
                         "contents": [{"parts": [{"text": prompt}]}],
                         "generationConfig": {"maxOutputTokens": 256},
