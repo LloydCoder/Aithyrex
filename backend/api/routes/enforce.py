@@ -80,6 +80,9 @@ async def block_target(
             detail="target_type must be 'model' or 'agent'",
         )
 
+    if not success:
+        raise HTTPException(status_code=503, detail="Block state unavailable; no change was confirmed")
+
     return {
         "blocked": success,
         "target_type": req.target_type,
@@ -105,6 +108,9 @@ async def unblock_target(
     else:
         raise HTTPException(status_code=400, detail="target_type must be 'model' or 'agent'")
 
+    if not success:
+        raise HTTPException(status_code=503, detail="Block state unavailable; no change was confirmed")
+
     return {
         "unblocked": success,
         "target_type": req.target_type,
@@ -117,18 +123,12 @@ async def allowlist_model(
     req: AllowRequest,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
-    """Add a model to the allowlist — bypasses all detection."""
+    """Deprecated: model allowlisting is disabled because it bypassed mandatory inspection."""
     require_pro(tenant)
-
-    success = await block_mode.allowlist_model(
-        tenant_id=tenant.tenant_id,
-        model_id=req.model_id,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Model allowlisting is disabled. Mandatory detection cannot be bypassed.",
     )
-    return {
-        "allowlisted": success,
-        "model_id": req.model_id,
-        "tenant_id": tenant.tenant_id,
-    }
 
 
 @router.get("/blocked")
