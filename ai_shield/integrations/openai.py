@@ -105,7 +105,7 @@ class _ShieldedCompletions:
         return response
 
     async def _create_async(self, **kwargs):
-        """Async path for AsyncOpenAI; streaming remains explicitly unsupported.""
+        """Async path for AsyncOpenAI; streaming remains explicitly unsupported."""
         if kwargs.get("stream"):
             raise NotImplementedError("Streaming is unsupported; use a mediation gateway that buffers output")
         messages = kwargs.get("messages", [])
