@@ -8,7 +8,7 @@ from typing import Annotated
 import structlog
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+import jwt
 
 logger = structlog.get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -57,7 +57,7 @@ async def _verify_clerk_token(token: str) -> dict:
             logger.warning("clerk_jwt_unauthorized_party")
             return {}
         return claims
-    except JWTError as exc:
+    except jwt.InvalidTokenError as exc:
         logger.warning("clerk_jwt_invalid", error_type=type(exc).__name__)
         return {}
     except Exception as exc:
