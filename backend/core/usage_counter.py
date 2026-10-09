@@ -1,5 +1,5 @@
 """
-AI Shield — Usage Counter (Redis)
+Aithyrex — Usage Counter (Redis)
 ===================================
 Per-tenant monthly inference counter.
 Enforces tier limits in real time via Redis.
