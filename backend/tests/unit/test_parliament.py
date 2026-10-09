@@ -128,17 +128,17 @@ class TestThreatFadeVote:
         assert vote.vote == Vote.ABSTAIN
 
     def test_high_network_score_does_not_directly_block_ai_text(self, ensemble):
-        """Merlin QUIC C2 real-world Z-score must always BLOCK."""
+        """A high network-derived score is advisory and cannot directly block AI text."""
         vote = ensemble._threatfade_vote(z_score=14.76)
-        assert vote.vote == Vote.BLOCK
+        assert vote.vote == Vote.ALERT
 
 
 # ── Full Parliament vote scenarios ────────────────────────────────────────────
 class TestParliamentVoting:
 
     @pytest.mark.asyncio
-    async def test_2_of_3_block_returns_block(self, ensemble):
-        """Claude + ThreatFade BLOCK, Grok ALLOW → 2-of-3 → BLOCK."""
+    async def test_two_model_voters_can_block(self, ensemble):
+        """Two model voters can escalate; ThreatFade alone contributes only ALERT."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
@@ -170,7 +170,7 @@ class TestParliamentVoting:
 
     @pytest.mark.asyncio
     async def test_0_of_3_block_clears_false_positive(self, ensemble):
-        """All three ALLOW → false positive cleared → PASS."""
+        """Two model ALLOW votes with ThreatFade abstaining yield PASS for this advisory stage."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
