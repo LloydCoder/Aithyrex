@@ -100,7 +100,7 @@ class Shield:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/detect/llm",
+                    f"{self.base_url}/api/v1/detect/llm",
                     headers=self._headers,
                     json=payload,
                 )
