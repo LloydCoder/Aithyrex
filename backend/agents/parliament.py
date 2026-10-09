@@ -66,10 +66,13 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
     Clear-cut cases bypass Parliament for speed.
     """
     # No detections — nothing to evaluate
+    if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
+        return False
+
     if not any(r.detected for r in verdict.results):
         return False
 
-    # CRITICAL from credential leak or multiple detectors → bypass (too clear-cut)
+    # Critical findings and existing BLOCK verdicts are never delegated to Parliament.
     if verdict.severity == Severity.CRITICAL:
         critical_detectors = [
             r for r in verdict.results
@@ -126,7 +129,7 @@ class ParliamentEnsemble:
         verdict: ShieldVerdict,
         prompt: str,
         completion: str | None = None,
-        threatfade_z_score: float = 0.0,
+        threatfade_z_score: float | None = None,
     ) -> ParliamentVerdict:
         """
         Run Parliament Ensemble on an ambiguous ShieldVerdict.
@@ -247,9 +250,10 @@ class ParliamentEnsemble:
             overrode_detector=overrode,
         )
 
-    def _threatfade_vote(self, z_score: float) -> MemberVerdict:
+    def _threatfade_vote(self, z_score: float | None) -> MemberVerdict:
         """
-        Convert ThreatFade Z-score to a Parliament vote.
+        Convert a validated ThreatFade Z-score to a Parliament vote.
+        Missing telemetry abstains; it must never be interpreted as a clean signal.
         ThreatFade is the deterministic oracle — no API call needed.
 
         Z-score thresholds from ThreatFade validation:
@@ -258,6 +262,13 @@ class ParliamentEnsemble:
           >= 5  → ALERT
           < 5   → ALLOW
         """
+        if z_score is None:
+            return MemberVerdict(
+                member="threatfade",
+                vote=Vote.ABSTAIN,
+                confidence=0.0,
+                reasoning="ThreatFade telemetry unavailable; no safety conclusion",
+            )
         if z_score >= 10.0:
             return MemberVerdict(
                 member="threatfade",
