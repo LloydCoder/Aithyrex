@@ -147,8 +147,10 @@ class ParliamentEnsemble:
 
         # Build prompt for both members
         detection_report = _build_detection_report(verdict)
-        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
-        completion_preview = (completion or "")[:500]
+        # Never transmit customer prompts/completions to external model providers.
+        # Parliament receives detector metadata only; content is withheld by design.
+        prompt_preview = "[content withheld for privacy]"
+        completion_preview = "[content withheld for privacy]"
 
         parliament_prompt = PARLIAMENT_PROMPT.format(
             detection_report=detection_report,
@@ -175,10 +177,14 @@ class ParliamentEnsemble:
         # Replace exceptions with ABSTAIN votes
         def safe_verdict(result, member: str) -> MemberVerdict:
             if isinstance(result, Exception):
-                logger.error(f"parliament_{member}_exception", error=str(result))
+                logger.error(
+                    "parliament_member_exception",
+                    member=member,
+                    error_type=type(result).__name__,
+                )
                 return MemberVerdict(
                     member=member, vote=Vote.ABSTAIN,
-                    confidence=0.0, reasoning=f"exception: {str(result)[:80]}",
+                    confidence=0.0, reasoning="provider_error",
                 )
             return result
 
