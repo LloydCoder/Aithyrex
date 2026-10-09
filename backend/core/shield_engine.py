@@ -1,5 +1,5 @@
 """
-AI Shield — Shield Engine (Orchestrator)
+Aithyrex — Shield Engine (Orchestrator)
 =========================================
 Central coordinator for all detection modules.
 
@@ -73,13 +73,13 @@ class ShieldVerdict:
 
 class ShieldEngine:
     """
-    Central orchestrator for AI Shield detection pipeline.
+    Central orchestrator for Aithyrex detection pipeline.
 
     Usage:
         engine = ShieldEngine()
         verdict = await engine.inspect(prompt=user_input, completion=model_output)
         if verdict.action == Action.BLOCK:
-            raise SecurityError("Blocked by AI Shield")
+            raise SecurityError("Blocked by Aithyrex")
     """
 
     def __init__(self) -> None:
