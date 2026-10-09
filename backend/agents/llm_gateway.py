@@ -124,10 +124,10 @@ class LLMGateway:
                     confidence=0.0, reasoning="timeout",
                 )
             except Exception as e:
-                logger.error("claude_gateway_error", error=str(e))
+                logger.error("claude_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="claude", vote=Vote.ABSTAIN,
-                    confidence=0.0, reasoning=str(e)[:100],
+                    confidence=0.0, reasoning="provider_error",
                 )
 
     async def call_grok(self, prompt: str) -> MemberVerdict:
@@ -176,7 +176,7 @@ class LLMGateway:
                     confidence=0.0, reasoning="timeout",
                 )
             except Exception as e:
-                logger.error("grok_gateway_error", error=str(e))
+                logger.error("grok_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="grok", vote=Vote.ABSTAIN,
                     confidence=0.0, reasoning=str(e)[:100],
@@ -215,7 +215,7 @@ class LLMGateway:
                     latency_ms=latency,
                 )
             except Exception as e:
-                logger.error("gemini_gateway_error", error=str(e))
+                logger.error("gemini_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="gemini", vote=Vote.ABSTAIN,
                     confidence=0.0, reasoning=str(e)[:100],
@@ -234,7 +234,7 @@ class LLMGateway:
                 data["reasoning"] = "unknown_vote"
             return data
         except json.JSONDecodeError:
-            logger.warning("parliament_json_parse_failed", raw=text[:100])
+            logger.warning("parliament_json_parse_failed", response_length=len(text))
             return {"vote": "abstain", "confidence": 0.0, "reasoning": "parse_error"}
 
 
