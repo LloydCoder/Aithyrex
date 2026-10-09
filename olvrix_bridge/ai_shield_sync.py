@@ -46,8 +46,8 @@ Environment:
 from __future__ import annotations
 
 import hashlib
+import math
 import os
-import time
 from typing import Optional
 
 import httpx
@@ -55,8 +55,8 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-AI_SHIELD_API_URL = os.getenv("AI_SHIELD_API_URL", "https://api.aishield.tinlance.com")
-AI_SHIELD_API_KEY = os.getenv("AI_SHIELD_API_KEY", "")
+AITHYREX_API_URL = os.getenv("AITHYREX_API_URL", os.getenv("AI_SHIELD_API_URL", "")).rstrip("/")
+AITHYREX_API_TOKEN = os.getenv("AITHYREX_API_TOKEN", os.getenv("AI_SHIELD_API_KEY", ""))
 
 # Z-score threshold for ThreatFade escalation to AI Shield
 ESCALATION_Z_THRESHOLD = 7.0
@@ -77,13 +77,13 @@ class AIShieldSync:
 
     def __init__(self) -> None:
         self._headers = {
-            "Authorization": f"Bearer {AI_SHIELD_API_KEY}",
+            "Authorization": f"Bearer {AITHYREX_API_TOKEN}",
             "Content-Type": "application/json",
         }
         logger.info(
             "ai_shield_sync_init",
-            api_url=AI_SHIELD_API_URL,
-            configured=bool(AI_SHIELD_API_KEY),
+            api_url_configured=bool(AITHYREX_API_URL),
+            token_configured=bool(AITHYREX_API_TOKEN),
         )
 
     # ── Wire A: Scraper ───────────────────────────────────────────────────────
@@ -251,7 +251,12 @@ class AIShieldSync:
             business_id:       Business that triggered the detection
             url:               The URL that was scanned
         """
-        z_outlier = float(threatfade_result.get("z_outlier", 0.0))
+        try:
+            z_outlier = float(threatfade_result["z_outlier"])
+        except (KeyError, TypeError, ValueError):
+            return {"escalated": False, "degraded": True, "reason": "invalid_threatfade_signal"}
+        if not math.isfinite(z_outlier):
+            return {"escalated": False, "degraded": True, "reason": "invalid_threatfade_signal"}
 
         if z_outlier < ESCALATION_Z_THRESHOLD:
             return {"escalated": False, "z_outlier": z_outlier}
@@ -280,7 +285,7 @@ class AIShieldSync:
         )
 
         # Now escalate to FusionOps AI_AGENT_ABUSE category
-        await self._escalate_to_fusionops(
+        notified = await self._escalate_to_fusionops(
             business_id=business_id,
             z_outlier=z_outlier,
             threatfade_result=threatfade_result,
@@ -291,7 +296,8 @@ class AIShieldSync:
             "escalated": True,
             "z_outlier": z_outlier,
             "shield_action": result.get("action"),
-            "fusionops_notified": True,
+            "degraded": bool(result.get("degraded")),
+            "fusionops_notified": notified,
         }
 
     # ── FusionOps escalation ──────────────────────────────────────────────────
@@ -301,30 +307,36 @@ class AIShieldSync:
         z_outlier: float,
         threatfade_result: dict,
         shield_result: dict,
-    ) -> None:
-        """POST to FusionOps /detect/llm with AI_AGENT_ABUSE category."""
-        fusionops_url = os.getenv("FUSIONOPS_API_URL", "http://13.50.16.19:8080")
+    ) -> bool:
+        """POST to FusionOps only when an explicit authenticated endpoint is configured."""
+        fusionops_url = os.getenv("FUSIONOPS_API_URL", "").rstrip("/")
         fusionops_key = os.getenv("FUSIONOPS_API_KEY", "")
+        if not fusionops_url or not fusionops_key:
+            logger.warning("fusionops_escalation_not_configured", business_id=business_id)
+            return False
 
         payload = {
-            "source": "olvrix_ai_shield_sync",
+            "source": "olvrix_aithyrex_sync",
             "category": "AI_AGENT_ABUSE",
             "business_id": business_id,
             "z_outlier": z_outlier,
             "threatfade": threatfade_result,
-            "ai_shield": shield_result,
+            "aithyrex": shield_result,
         }
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                await client.post(
+                response = await client.post(
                     f"{fusionops_url}/detect/llm",
                     headers={"X-API-Key": fusionops_key, "Content-Type": "application/json"},
                     json=payload,
                 )
+                response.raise_for_status()
                 logger.info("fusionops_escalation_sent", business_id=business_id)
-            except Exception as e:
-                logger.error("fusionops_escalation_failed", error=str(e))
+                return True
+            except Exception as exc:
+                logger.error("fusionops_escalation_failed", error_type=type(exc).__name__)
+                return False
 
     # ── Core HTTP call ────────────────────────────────────────────────────────
     async def _call_shield(
