@@ -25,10 +25,7 @@ def mock_threatfade():
         "backend.core.threatfade_client.ThreatFadeClient.detect",
         new=AsyncMock(return_value=CLEAN_TF_RESPONSE),
     ), patch(
-        "backend.core.usage_counter.UsageCounterService.increment",
-        new=AsyncMock(return_value=1),
-    ), patch(
-        "backend.core.usage_counter.UsageCounterService.check_limit",
+        "backend.core.usage_counter.UsageCounterService.reserve_inference",
         new=AsyncMock(return_value=(True, 1, 500)),
     ), patch(
         "backend.agents.parliament.should_invoke_parliament",
@@ -127,8 +124,8 @@ async def test_verdict_contains_all_detector_results(engine):
 async def test_free_tier_limit_enforced(engine):
     """When free tier is exhausted, inspect returns BLOCK immediately."""
     with patch(
-        "backend.core.usage_counter.UsageCounterService.check_limit",
-        new=AsyncMock(return_value=(False, 501, 500)),
+        "backend.core.usage_counter.UsageCounterService.reserve_inference",
+        new=AsyncMock(return_value=(False, 500, 500)),
     ), patch(
         "backend.core.usage_counter.UsageCounterService.increment",
         new=AsyncMock(return_value=501),
@@ -146,8 +143,8 @@ async def test_free_tier_limit_enforced(engine):
 async def test_pro_tier_not_blocked_at_free_limit(engine):
     """Pro tier customers are never blocked at free tier limits."""
     with patch(
-        "backend.core.usage_counter.UsageCounterService.check_limit",
-        new=AsyncMock(return_value=(False, 501, 150_000)),
+        "backend.core.usage_counter.UsageCounterService.reserve_inference",
+        new=AsyncMock(return_value=(True, 150_001, 150_000)),
     ), patch(
         "backend.core.usage_counter.UsageCounterService.increment",
         new=AsyncMock(return_value=501),
