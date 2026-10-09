@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-06-20T21:23:31.519511+00:00",
-  "product": "AI Shield v0.1.0",
+  "generated_at": "2026-10-09",
+  "product": "Aithyrex v0.1.0",
   "vendor": "Tinlance Limited",
   "total_techniques": 11,
-  "full_coverage": 8,
-  "partial_coverage": 3,
+  "full_coverage": 0,
+  "partial_coverage": 0,
   "planned_coverage": 0,
   "frameworks": {
     "ATLAS": 6,
@@ -18,7 +18,7 @@
       "framework": "ATLAS",
       "detector": "prompt_injection",
       "method": "11 compiled regex patterns covering direct override, persona hijack, DAN mode, system tag injection, jailbreak triggers",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Direct injection. Indirect/RAG injection partially covered by data_poisoning detector.",
       "attck_ref": null
@@ -29,8 +29,8 @@
       "tactic": "Exfiltration",
       "framework": "ATLAS",
       "detector": "covert_channel + credential_leak",
-      "method": "ThreatFade entropy/Z-score + 18 credential patterns (peer-reviewed, merged to Nuclei/TruffleHog/Gitleaks)",
-      "coverage_level": "full",
+      "method": "Locally maintained credential-format heuristics; upstream merge and independent-review claims are not asserted.",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Covert channel detected via entropy anomaly. Credential leak via pattern matching.",
       "attck_ref": "T1041"
@@ -42,7 +42,7 @@
       "framework": "ATLAS",
       "detector": "data_poisoning",
       "method": "RAG context poisoning patterns, training data extraction fishing, context overflow detection, tool output injection scanning",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 4",
       "notes": "Context poisoning via 4-layer detection pipeline. Training weight poisoning not in scope (offline, not runtime).",
       "attck_ref": null
@@ -54,7 +54,7 @@
       "framework": "ATLAS",
       "detector": "data_poisoning + c2_behaviour",
       "method": "Training data extraction patterns + ThreatFade C2 pipeline",
-      "coverage_level": "partial",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1/4",
       "notes": "Detects extraction probing. Does not detect benign inference access.",
       "attck_ref": null
@@ -66,7 +66,7 @@
       "framework": "ATLAS",
       "detector": "covert_channel",
       "method": "Unicode steganography detection, zero-width character scanning, base64/hex blob detection",
-      "coverage_level": "partial",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Detects encoded payloads in completions. Does not cover image/audio adversarial examples.",
       "attck_ref": null
@@ -78,7 +78,7 @@
       "framework": "ATLAS",
       "detector": "prompt_injection",
       "method": "DAN mode, developer mode, jailbreak keyword patterns",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Covered as a subset of prompt injection detection.",
       "attck_ref": null
@@ -90,9 +90,9 @@
       "framework": "ATT&CK",
       "detector": "covert_channel",
       "method": "ThreatFade entropy analysis, base64/hex/Unicode encoding detection in LLM completions",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
-      "notes": "Z-score 14.76 validated on Merlin QUIC C2. Same methodology applied to token distributions.",
+      "notes": "Mapping only. This entry does not establish AI-text detection effectiveness; representative test evidence is required.",
       "attck_ref": null
     },
     {
@@ -101,8 +101,8 @@
       "tactic": "Command and Control",
       "framework": "ATT&CK",
       "detector": "c2_behaviour",
-      "method": "ThreatFade full C2 pipeline \u2014 entropy + Z-score + MITRE TTP mapping",
-      "coverage_level": "full",
+      "method": "ThreatFade full C2 pipeline — entropy + Z-score + MITRE TTP mapping",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Detects AI agents used as C2 relay channels.",
       "attck_ref": null
@@ -114,9 +114,9 @@
       "framework": "ATT&CK",
       "detector": "c2_behaviour",
       "method": "ThreatFade QUIC/non-standard protocol detection",
-      "coverage_level": "partial",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
-      "notes": "Validated against Merlin QUIC traffic. Other non-standard protocols partially covered.",
+      "notes": "Mapping only. This entry does not establish AI-text detection effectiveness; representative test evidence is required.",
       "attck_ref": null
     },
     {
@@ -126,9 +126,9 @@
       "framework": "ATT&CK",
       "detector": "credential_leak",
       "method": "18 regex patterns: AWS, OpenAI, Anthropic, GitHub, Stripe, Paystack, Flutterwave, Remita, Interswitch, JWT, PEM keys",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
-      "notes": "Patterns peer-reviewed via PRs to TruffleHog (15k\u2605), Gitleaks (10k\u2605), Semgrep (11k\u2605).",
+      "notes": "Mapping only. This entry does not establish AI-text detection effectiveness; representative test evidence is required.",
       "attck_ref": null
     },
     {
@@ -138,10 +138,12 @@
       "framework": "ATT&CK",
       "detector": "covert_channel + c2_behaviour",
       "method": "ThreatFade entropy + credential leak patterns",
-      "coverage_level": "full",
+      "coverage_level": "heuristic",
       "sprint": "Sprint 1",
       "notes": "Detects data encoded in LLM completions for exfiltration.",
       "attck_ref": null
     }
-  ]
+  ],
+  "mapped_techniques": 11,
+  "assurance_note": "Technique mappings do not prove implementation completeness or detection effectiveness. All entries are heuristic mappings until validated by a reproducible AI-interaction test corpus."
 }
