@@ -1,8 +1,8 @@
 """
-AI Shield — OpenAI Integration (PyPI package)
+Aithyrex — OpenAI Integration (PyPI package)
 ===============================================
 Lightweight wrapper for the OpenAI SDK.
-Calls the AI Shield API for each request — no local models.
+Calls the Aithyrex API for each request — no local models.
 
 Usage:
     from ai_shield.integrations.openai import wrap
@@ -74,7 +74,7 @@ class _ShieldedCompletions:
         pre = self._shield.inspect_sync(prompt=prompt, model=model)
         if pre.blocked:
             raise PermissionError(
-                f"[AI Shield] Prompt blocked. "
+                f"[Aithyrex] Prompt blocked. "
                 f"Severity: {pre.severity}. "
                 f"Detectors: {[d.detector for d in pre.detections if d.detected]}"
             )
@@ -99,7 +99,7 @@ class _ShieldedCompletions:
             )
             if post.blocked:
                 raise PermissionError(
-                    f"[AI Shield] Completion blocked. Severity: {post.severity}."
+                    f"[Aithyrex] Completion blocked. Severity: {post.severity}."
                 )
 
         return response
@@ -114,7 +114,7 @@ class _ShieldedCompletions:
 
         pre = await self._shield.inspect(prompt=prompt, model=model)
         if pre.blocked:
-            raise PermissionError(f"[AI Shield] Prompt blocked. Severity: {pre.severity}.")
+            raise PermissionError(f"[Aithyrex] Prompt blocked. Severity: {pre.severity}.")
 
         response = await self._completions.create(**kwargs)
 
@@ -132,7 +132,7 @@ class _ShieldedCompletions:
         if completion:
             post = await self._shield.inspect(prompt=prompt, completion=completion, model=model)
             if post.blocked:
-                raise PermissionError(f"[AI Shield] Completion blocked.")
+                raise PermissionError(f"[Aithyrex] Completion blocked.")
 
         return response
 
