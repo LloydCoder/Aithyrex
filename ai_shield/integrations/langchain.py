@@ -22,10 +22,11 @@ class AIShieldCallback:
     def __init__(
         self,
         api_key: str = "",
-        base_url: str = "https://api.aishield.tinlance.com",
+        base_url: str | None = None,
         raise_on_block: bool = True,
+        token: str | None = None,
     ) -> None:
-        self._shield = Shield(api_key=api_key, base_url=base_url)
+        self._shield = Shield(api_key=api_key, base_url=base_url, token=token)
         self._raise = raise_on_block
         self._last_prompt = ""
 
@@ -74,3 +75,6 @@ class AIShieldCallback:
 
     def on_agent_finish(self, finish: Any, **kwargs: Any) -> None:
         pass
+
+
+AithyrexCallback = AIShieldCallback
