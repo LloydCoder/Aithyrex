@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           git diff --check
-          if git diff --quiet -- frontend/package-lock.json; then
+          if [ -z "$(git status --porcelain -- frontend/package-lock.json)" ]; then
             echo "No lockfile changes."
             exit 0
           fi
