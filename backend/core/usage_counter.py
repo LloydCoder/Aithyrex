@@ -84,6 +84,31 @@ class UsageCounterService:
         val = await redis.get(self._key(tenant_id))
         return int(val) if val else 0
 
+    async def reserve_inference(self, tenant_id: str, plan: str) -> tuple[bool, int, int]:
+        """Atomically enforce Free cutoff and account an inference in Redis."""
+        redis = await self._get_redis()
+        if redis is None:
+            raise RuntimeError("usage counter unavailable")
+
+        limit = TIER_LIMITS.get(plan, TIER_LIMITS["free"])
+        key = self._key(tenant_id)
+        script = """
+        local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+        local limit = tonumber(ARGV[1])
+        local plan = ARGV[2]
+        if plan == 'free' and current >= limit then
+            return {0, current, limit}
+        end
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then
+            redis.call('EXPIRE', KEYS[1], tonumber(ARGV[3]))
+        end
+        return {1, count, limit}
+        """
+        result = await redis.eval(script, 1, key, limit, plan, 35 * 24 * 3600)
+        allowed, count, effective_limit = (int(value) for value in result)
+        return bool(allowed), count, effective_limit
+
     async def check_limit(self, tenant_id: str, plan: str) -> tuple[bool, int, int]:
         """
         Check if tenant is within their plan limit.
