@@ -1,14 +1,14 @@
-"""Clerk authentication for Aithyrex API routes."""
+"""Clerk JWT authentication for Aithyrex API routes."""
 
 from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated
 
-import httpx
 import structlog
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 
 logger = structlog.get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -28,66 +28,57 @@ class TokenPayload:
 
 
 @lru_cache(maxsize=1)
-def _get_clerk_secret() -> str:
+def _get_settings():
     from backend.core.config import settings
-    return settings.CLERK_SECRET_KEY
+    return settings
 
 
 async def _verify_clerk_token(token: str) -> dict:
-    """Verify a session token with Clerk; never accept arbitrary tokens by default."""
-    from backend.core.config import settings
-
-    clerk_secret = _get_clerk_secret()
-    if not clerk_secret:
-        if settings.APP_ENV.lower() == "development" and settings.ALLOW_INSECURE_DEV_AUTH:
-            logger.warning("explicit_insecure_development_auth_enabled")
-            return {"sub": "dev_user", "org_id": "dev_org", "public_metadata": {"plan": "free"}}
-        logger.error("clerk_auth_not_configured")
+    """Verify Clerk JWT signature and standard claims locally; fail closed on config/errors."""
+    settings = _get_settings()
+    if not settings.CLERK_JWT_KEY or not settings.CLERK_JWT_ISSUER:
+        logger.error("clerk_jwt_verification_not_configured")
         return {}
-
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                "https://api.clerk.com/v1/sessions/verify",
-                headers={
-                    "Authorization": f"Bearer {clerk_secret}",
-                    "Content-Type": "application/json",
-                },
-                json={"token": token},
-            )
-            if response.status_code != 200:
-                logger.warning("clerk_verify_failed", status=response.status_code)
-                return {}
-            claims = response.json()
-            if not isinstance(claims, dict) or not claims.get("sub"):
-                logger.warning("clerk_verify_missing_subject")
-                return {}
-            return claims
-    except (httpx.TimeoutException, httpx.HTTPError) as exc:
-        logger.error("clerk_verification_unavailable", error_type=type(exc).__name__)
+        options = {"verify_aud": bool(settings.CLERK_JWT_AUDIENCE)}
+        claims = jwt.decode(
+            token,
+            settings.CLERK_JWT_KEY,
+            algorithms=["RS256"],
+            issuer=settings.CLERK_JWT_ISSUER,
+            audience=settings.CLERK_JWT_AUDIENCE or None,
+            options=options,
+        )
+        if not isinstance(claims, dict) or not claims.get("sub"):
+            logger.warning("clerk_jwt_missing_subject")
+            return {}
+        authorized_parties = settings.CLERK_AUTHORIZED_PARTIES
+        if authorized_parties and claims.get("azp") not in authorized_parties:
+            logger.warning("clerk_jwt_unauthorized_party")
+            return {}
+        return claims
+    except JWTError as exc:
+        logger.warning("clerk_jwt_invalid", error_type=type(exc).__name__)
+        return {}
+    except Exception as exc:
+        logger.error("clerk_jwt_verification_error", error_type=type(exc).__name__)
         return {}
 
 
 async def get_current_tenant(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)] = None,
 ) -> TokenPayload:
-    """FastAPI dependency that rejects missing, invalid, or unverifiable credentials."""
+    """FastAPI dependency rejecting missing, invalid, expired, or unverifiable credentials."""
     if credentials is None:
         raise HTTPException(status_code=401, detail="Missing authorization token", headers={"WWW-Authenticate": "Bearer"})
     claims = await _verify_clerk_token(credentials.credentials)
     if not claims:
         raise HTTPException(status_code=401, detail="Invalid, expired, or unverifiable token", headers={"WWW-Authenticate": "Bearer"})
+    user_id = claims["sub"]
     org_id = claims.get("org_id")
-    user_id = claims.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token subject")
     tenant_id = org_id or user_id
-    metadata = claims.get("public_metadata", {})
-    plan = metadata.get("plan", "free") if isinstance(metadata, dict) else "free"
-    if plan not in {"free", "starter", "pro", "enterprise"}:
-        logger.warning("unknown_plan_claim_fallback", plan=plan)
-        plan = "free"
-    return TokenPayload(tenant_id=tenant_id, user_id=user_id, plan=plan, org_id=org_id)
+    # Plan claims are not authoritative entitlements. Resolve plan from server-side billing state.
+    return TokenPayload(tenant_id=tenant_id, user_id=user_id, plan="free", org_id=org_id)
 
 
 async def get_optional_tenant(
