@@ -1,151 +1,56 @@
-# X Launch Thread — AI Shield
+# Draft X Thread — Aithyrex
 
-## Account: @lloydambition (primary) + @lloydcoder (technical repost)
-## Best time: Tuesday 9am ET / 2pm Lagos
+> **Editorial status: DRAFT — do not publish until release and evaluation gates are met.**
 
----
+**Post 1**
 
-**Tweet 1 (hook)**
-Every LLM you call is an open C2 channel.
+Aithyrex is a Tinlance project exploring security inspection for supported LLM interactions.
 
-Nobody is monitoring what goes in and comes out.
+The goal is evidence-bearing findings—not another authority that can bypass policy or approvals.
 
-I built the tool that does. 🧵
+**Post 2**
 
----
+AI applications face risks from prompt injection, exposed credentials, untrusted retrieved context and tool calls that create side effects.
 
-**Tweet 2 (the problem)**
-When your app calls OpenAI:
+Detectors help, but they cannot replace least privilege, sandboxing and authorization at the execution boundary.
 
-❌ Your firewall doesn't see it
-❌ Your SIEM doesn't see it  
-❌ Your WAF doesn't see it
+**Post 3**
 
-An attacker can:
-→ inject instructions through user input
-→ exfiltrate data through completions
-→ use your agent as a C2 relay
+Aithyrex includes pattern-based prompt-injection and credential detectors, encoding heuristics, a ThreatFade bridge and an advisory voting component.
 
-All in plain HTTPS. Completely invisible.
+Those are implementation capabilities, not a claim of complete threat coverage.
 
----
+**Post 4**
 
-**Tweet 3 (the proof)**
-Last year I validated C2 detection against real Merlin QUIC malware traffic.
+Important caveat: ThreatFade's network-traffic metrics do not validate AI-text detection accuracy.
 
-490,000+ packets.
-Z-score: 14.76
-False positive rate: 0%
+Aithyrex needs its own representative AI-interaction evaluation corpus, measured false positives/negatives and reproducible reports.
 
-The methodology: Shannon entropy + Z-score deviation.
+**Post 5**
 
-Malicious traffic has anomalous entropy. So do compromised LLM completions.
+Architecture boundary:
 
----
+→ Aithyrex detects and emits findings
+→ Auctaryn assesses agent context, memory, skills and action risk
+→ Tinlance Agent Platform owns identity, policy, approvals and governed execution
+→ AURONTRA owns IT resilience and operational workflows
 
-**Tweet 4 (the insight)**
-The insight that led to AI Shield:
+**Post 6**
 
-LLM completions ARE traffic.
+The current Python client requires an explicit service URL and Clerk session JWT. Missing configuration, network failures and malformed inspection responses fail closed.
 
-A model encoding exfiltrated data will show the same statistical anomalies as C2 network traffic.
+Streaming/multimodal inputs and AsyncAnthropic are not supported by the current wrappers.
 
-The detection method transfers directly.
+**Post 7**
 
-Nobody had applied it to AI model communications before.
+MITRE ATLAS/ATT&CK references are heuristic mappings—not evidence that every technique is fully detected.
 
----
+No 0% false-positive or complete-coverage claim is being made.
 
-**Tweet 5 (the product)**
-AI Shield:
+**Post 8**
 
-→ Sits between your app and your LLM
-→ Scans every prompt for injection attacks
-→ Analyses every completion for covert channels
-→ Catches credential leaks (Paystack, Anthropic keys, AWS...)
-→ Detects C2-style agent behaviour
-→ Votes via Parliament Ensemble (Claude + Grok + ThreatFade)
+Follow the engineering work: https://github.com/LloydCoder/Aithyrex
 
-One line to install.
+Aithyrex (formerly AI Shield) | Tinlance Limited | Apache-2.0
 
----
-
-**Tweet 6 (code)**
-```python
-pip install ai-shield
-
-from ai_shield import wrap
-import openai
-
-client = wrap(
-  openai.OpenAI(api_key="..."),
-  api_key="your-shield-key"
-)
-
-# That's it. All calls now monitored.
-```
-
-Zero code changes. Same client interface. Full monitoring.
-
----
-
-**Tweet 7 (Parliament Ensemble)**
-The part I'm most proud of: Parliament Ensemble.
-
-For ambiguous detections, two AI models vote independently:
-
-Claude Sonnet: BLOCK ✓
-Grok-3: BLOCK ✓  
-ThreatFade: ALLOW
-
-2-of-3 → BLOCK
-
-Neither model can unilaterally block. Consensus required.
-
-No false positives without a majority.
-
----
-
-**Tweet 8 (OSS credibility)**
-The detection patterns in AI Shield are peer-reviewed.
-
-I contributed Nigerian fintech credential patterns to:
-
-→ Nuclei (24k ⭐)
-→ TruffleHog (15k ⭐)
-→ Semgrep (11k ⭐) — merged day one, now in global scans
-→ Gitleaks (10k ⭐)
-→ Slither (5k ⭐)
-
-The same patterns now scan your LLM completions in real time.
-
----
-
-**Tweet 9 (pricing)**
-Free tier: 500 inferences/month. No credit card.
-
-Starter: $49/mo — 25,000 inferences
-Pro: $199/mo — 150,000 inferences + block mode
-Enterprise: Custom — NIS2/DORA compliance reports
-
-NIS2 compliance angle: The EU AI Act requires cybersecurity for high-risk AI. AI Shield is the technical answer.
-
----
-
-**Tweet 10 (CTA)**
-GitHub → github.com/Tinlance/ai-shield (Apache 2.0)
-PyPI   → pip install ai-shield
-Docs   → tinlance.com/ai-shield
-
-If you're deploying LLM agents in production and want to see what's actually happening inside your inference path — this is for you.
-
-Built by @lloydambition | Tinlance Limited 🇳🇬
-
----
-
-## Repost strategy
-
-1. Post thread from @lloydambition
-2. @lloydcoder reposts Tweet 1 + Tweet 6 (code tweet)
-3. Reply to HackerNews thread with link to X thread
-4. Reply to Dev.to article comments with X thread link
+Publication remains blocked until the CI/security workflows, evaluation evidence and independent review are complete.
