@@ -147,14 +147,13 @@ class ShieldEngine:
                     blocked=True,
                 )
 
-            # Allowlisted models bypass detection entirely
+            # Allowlisting may tune alert routing later; it never bypasses detection.
             is_allowed = await block_mode.is_allowlisted(
                 tenant_id=tenant_id,
                 model_id=model,
             )
             if is_allowed:
-                logger.info("allowlisted_model_bypass", tenant_id=tenant_id, model=model)
-                return ShieldVerdict(action=Action.PASS, severity=Severity.CLEAN)
+                logger.info("allowlisted_model_detection_still_required", tenant_id=tenant_id, model=model)
 
         # ── Tier limit check (Pro+) ──────────────────────────────────────
         if tenant_id:
@@ -180,6 +179,21 @@ class ShieldEngine:
         results: list[DetectionResult] = await asyncio.gather(*tasks)
         verdict = self._aggregate(results)
 
+        # Missing mandatory ThreatFade telemetry is not a clean verdict.
+        degraded = [r for r in results if r.details.get("degraded")]
+        if degraded:
+            logger.error(
+                "required_detection_telemetry_unavailable",
+                detectors=[r.detector for r in degraded],
+                tenant_id=tenant_id,
+            )
+            verdict = ShieldVerdict(
+                action=Action.BLOCK,
+                severity=Severity.HIGH,
+                results=results,
+                blocked=True,
+            )
+
         # ── Parliament Ensemble (ambiguous cases only) ────────────────────
         # Clear-cut CRITICAL/CLEAN bypass Parliament for speed.
         # MEDIUM and single-detector HIGH go to Parliament for AI consensus.
@@ -202,16 +216,32 @@ class ShieldEngine:
                     threatfade_z_score=tf_z_score,
                 )
 
-                # Parliament overrides ShieldEngine when it has consensus
-                if parliament_verdict.consensus or parliament_verdict.overrode_detector:
+                # Parliament is advisory: it may escalate, never downgrade a detector verdict.
+                action_rank = {
+                    Action.PASS: 0,
+                    Action.LOG: 1,
+                    Action.ALERT: 2,
+                    Action.BLOCK: 3,
+                }
+                if action_rank[parliament_verdict.action] > action_rank[verdict.action]:
                     verdict = ShieldVerdict(
                         action=parliament_verdict.action,
-                        severity=parliament_verdict.severity,
-                        blocked=parliament_verdict.blocked,
+                        severity=max(
+                            (verdict.severity, parliament_verdict.severity),
+                            key=lambda severity: {
+                                Severity.CLEAN: 0,
+                                Severity.INFO: 1,
+                                Severity.LOW: 2,
+                                Severity.MEDIUM: 3,
+                                Severity.HIGH: 4,
+                                Severity.CRITICAL: 5,
+                            }[severity],
+                        ),
+                        blocked=parliament_verdict.action == Action.BLOCK,
                         results=results,
                     )
                     logger.info(
-                        "parliament_override_applied",
+                        "parliament_escalation_applied",
                         new_action=verdict.action,
                         block_votes=parliament_verdict.block_votes,
                         allow_votes=parliament_verdict.allow_votes,
