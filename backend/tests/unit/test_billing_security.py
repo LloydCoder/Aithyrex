@@ -1,10 +1,10 @@
 import hashlib
 import hmac
 import time
-
-import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+
+import pytest
 
 from backend.core.billing import (
     BillingService,
