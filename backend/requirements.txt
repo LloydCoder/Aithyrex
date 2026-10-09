@@ -37,7 +37,7 @@ PyJWT[crypto]==2.15.1
 passlib[bcrypt]==1.7.4
 
 # Security / configuration
-cryptography==49.0.0
+cryptography==50.0.0
 python-dotenv==1.2.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
