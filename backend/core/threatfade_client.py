@@ -1,5 +1,5 @@
 """
-AI Shield — ThreatFade HTTP Client
+Aithyrex — ThreatFade HTTP Client
 ====================================
 Calls the ThreatFade C2 detection engine via HTTP.
 
@@ -7,7 +7,7 @@ ThreatFade repo: github.com/LloydCoder/tinlance-threatfade
 API pattern: same as FusionOps fusionops_api.py implementation.
 
 No code duplication — ThreatFade runs as a separate service.
-Improvements to ThreatFade automatically benefit AI Shield.
+Improvements to ThreatFade automatically benefit Aithyrex.
 """
 
 from __future__ import annotations
