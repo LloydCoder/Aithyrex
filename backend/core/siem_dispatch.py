@@ -1,5 +1,5 @@
 """
-AI Shield — SIEM Dispatch Service
+Aithyrex — SIEM Dispatch Service
 ====================================
 Triggered after every detection event.
 Routes to correct exporter based on tenant plan.
@@ -144,7 +144,7 @@ class SIEMDispatcher:
 
         detectors = [r.detector for r in verdict.results if r.detected]
         payload = {
-            "text": f"🛡️ *AI Shield Alert* — `{verdict.severity.upper()}`",
+            "text": f"🛡️ *Aithyrex Alert* — `{verdict.severity.upper()}`",
             "attachments": [{
                 "color": "#EF4444" if verdict.blocked else "#F59E0B",
                 "fields": [
@@ -169,7 +169,7 @@ class SIEMDispatcher:
 
         emoji = "🚨" if verdict.blocked else "⚠️"
         text = (
-            f"{emoji} *AI Shield {verdict.severity.upper()}*\n"
+            f"{emoji} *Aithyrex {verdict.severity.upper()}*\n"
             f"Action: `{verdict.action}`\n"
             f"Tenant: `{tenant_id[:16]}`\n"
             f"Detectors: {', '.join(r.detector for r in verdict.results if r.detected)}"
