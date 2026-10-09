@@ -1,5 +1,5 @@
 """
-AI Shield — Webhook Routes
+Aithyrex — Webhook Routes
 ============================
 POST /webhooks/lemonsqueezy  — LemonSqueezy subscription events
 POST /webhooks/paddle        — Paddle subscription events (EU/Enterprise)
