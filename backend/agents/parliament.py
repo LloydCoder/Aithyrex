@@ -262,11 +262,8 @@ class ParliamentEnsemble:
         Missing telemetry abstains; it must never be interpreted as a clean signal.
         ThreatFade is the deterministic oracle — no API call needed.
 
-        Z-score thresholds from ThreatFade validation:
-          14.76 = Merlin QUIC C2 (confirmed malicious)
-          >= 10 → BLOCK
-          >= 5  → ALERT
-          < 5   → ALLOW
+        Provisional network-derived thresholds are not validated for AI text.
+        This vote can alert on high signals but cannot infer that low scores are safe.
         """
         if z_score is None:
             return MemberVerdict(
@@ -278,23 +275,23 @@ class ParliamentEnsemble:
         if z_score >= 10.0:
             return MemberVerdict(
                 member="threatfade",
-                vote=Vote.BLOCK,
-                confidence=0.95,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} exceeds C2 threshold (10.0)",
+                vote=Vote.ALERT,
+                confidence=0.0,
+                reasoning="High provisional ThreatFade score; AI-text threshold is not validated",
             )
         elif z_score >= 5.0:
             return MemberVerdict(
                 member="threatfade",
                 vote=Vote.ALERT,
-                confidence=0.70,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} is elevated but below block threshold",
+                confidence=0.0,
+                reasoning="Elevated provisional ThreatFade score; AI-text threshold is not validated",
             )
         else:
             return MemberVerdict(
                 member="threatfade",
-                vote=Vote.ALLOW,
-                confidence=0.90,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} is within normal range",
+                vote=Vote.ABSTAIN,
+                confidence=0.0,
+                reasoning="Low network-derived score does not establish a safe AI interaction",
             )
 
 
