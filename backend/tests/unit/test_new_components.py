@@ -93,7 +93,7 @@ class TestOlvrixBridge:
 
     @pytest.mark.asyncio
     async def test_no_api_key_fails_closed(self, bridge):
-        """Missing inspection configuration must not silently pass content.""
+        """Missing inspection configuration must not silently pass content."""
         result = await bridge.handle_business_scraped(
             "<html><body>Normal business site</body></html>",
             "biz-001",
