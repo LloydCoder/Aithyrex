@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
-from backend.core.auth import _verify_clerk_token, get_current_tenant
+from backend.core.auth import _verify_clerk_token, get_current_tenant, get_optional_tenant
 
 
 @pytest.mark.asyncio
@@ -64,3 +64,15 @@ async def test_plan_claim_is_ignored_in_favor_of_server_side_entitlement(monkeyp
         result = await get_current_tenant(credentials)
     assert result.tenant_id == "00000000-0000-4000-8000-000000000002"
     assert result.plan == "enterprise"
+
+
+@pytest.mark.asyncio
+async def test_optional_auth_does_not_downgrade_invalid_token_to_anonymous(monkeypatch):
+    monkeypatch.setattr(
+        "backend.core.auth._verify_clerk_token",
+        AsyncMock(return_value={}),
+    )
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid-token")
+    with pytest.raises(HTTPException) as exc:
+        await get_optional_tenant(credentials)
+    assert exc.value.status_code == 401
