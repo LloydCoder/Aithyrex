@@ -207,109 +207,84 @@ def generate_json() -> str:
 
 
 def generate_markdown() -> str:
-    """Generate GitHub-ready Markdown coverage report."""
+    """Generate a mapping report with explicit limits on assurance claims."""
     atlas = [e for e in COVERAGE_MAP if e.framework == "ATLAS"]
     attck = [e for e in COVERAGE_MAP if e.framework == "ATT&CK"]
-    full = sum(1 for e in COVERAGE_MAP if e.coverage_level == "heuristic")
 
     lines = [
-        "# AI Shield — MITRE ATLAS Coverage",
+        "# Aithyrex AI Security Threat Mapping Report",
         "",
-        f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}  ",
-        "> Product: AI Shield v0.1.0 | Vendor: Tinlance Limited",
+        f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        "> Product: Aithyrex v0.1.0 | Vendor: Tinlance Limited",
+        "> Assurance status: heuristic mappings only; no full-coverage or effectiveness claim.",
         "",
         "## Summary",
         "",
         "| Metric | Value |",
-        "|--------|-------|",
-        f"| Total techniques covered | {len(COVERAGE_MAP)} |",
-        f"| Full coverage | {full} |",
-        f"| Partial coverage | {sum(1 for e in COVERAGE_MAP if e.coverage_level == 'partial')} |",
-        f"| MITRE ATLAS techniques | {len(atlas)} |",
-        f"| MITRE ATT&CK cross-references | {len(attck)} |",
+        "|---|---:|",
+        f"| Techniques mapped | {len(COVERAGE_MAP)} |",
+        f"| Full coverage claims | 0 |",
+        f"| MITRE ATLAS mappings | {len(atlas)} |",
+        f"| MITRE ATT&CK mappings | {len(attck)} |",
         "",
-        "---",
+        "Technique mappings describe intended relevance only. They do not prove that a detector reliably detects a technique, that every variant is covered, or that false positives/negatives are bounded.",
         "",
-        "## MITRE ATLAS Coverage",
+        "## MITRE ATLAS mappings",
         "",
-        "| Technique ID | Name | Tactic | Detector | Coverage | Sprint |",
-        "|---|---|---|---|---|---|",
-    ]
-
-    for e in atlas:
-        badge = "✅" if e.coverage_level == "full" else "⚠️" if e.coverage_level == "partial" else "🔜"
-        lines.append(
-            f"| [{e.technique_id}](https://atlas.mitre.org/techniques/{e.technique_id}) "
-            f"| {e.technique_name} | {e.tactic} | `{e.detector}` "
-            f"| {badge} {e.coverage_level} | {e.sprint} |"
-        )
-
-    lines += [
-        "",
-        "---",
-        "",
-        "## MITRE ATT&CK Cross-References",
-        "",
-        "| Technique ID | Name | Tactic | Detector | Coverage |",
+        "| Technique ID | Name | Tactic | Detector | Mapping status |",
         "|---|---|---|---|---|",
     ]
 
-    for e in attck:
-        badge = "✅" if e.coverage_level == "full" else "⚠️"
+    for e in atlas:
         lines.append(
-            f"| [{e.technique_id}](https://attack.mitre.org/techniques/{e.technique_id.replace('.','/')}) "
-            f"| {e.technique_name} | {e.tactic} | `{e.detector}` | {badge} {e.coverage_level} |"
+            f"| {e.technique_id} | {e.technique_name} | {e.tactic} | {e.detector} | {e.coverage_level} |"
         )
 
     lines += [
         "",
-        "---",
+        "## MITRE ATT&CK mappings",
         "",
-        "## Detection Method Details",
-        "",
+        "| Technique ID | Name | Tactic | Detector | Mapping status |",
+        "|---|---|---|---|---|",
     ]
+    for e in attck:
+        lines.append(
+            f"| {e.technique_id} | {e.technique_name} | {e.tactic} | {e.detector} | {e.coverage_level} |"
+        )
 
+    lines += ["", "## Mapping details", ""]
     for e in COVERAGE_MAP:
         lines += [
             f"### {e.technique_id} — {e.technique_name}",
             "",
-            f"**Framework:** {e.framework}  ",
-            f"**Tactic:** {e.tactic}  ",
-            f"**Detector:** `{e.detector}`  ",
-            f"**Coverage:** {e.coverage_level}  ",
-            f"**Sprint:** {e.sprint}  ",
+            f"Framework: {e.framework}",
+            f"Tactic: {e.tactic}",
+            f"Detector: {e.detector}",
+            f"Mapping status: {e.coverage_level}",
+            f"Implementation milestone label: {e.sprint}",
             "",
-            f"**Method:** {e.detector_method}",
+            f"Method: {e.detector_method}",
             "",
         ]
         if e.notes:
-            lines.append(f"**Notes:** {e.notes}")
-            lines.append("")
+            lines.extend([f"Qualification: {e.notes}", ""])
         if e.attck_ref:
-            lines.append(f"**ATT&CK Cross-reference:** {e.attck_ref}")
-            lines.append("")
+            lines.extend([f"Related ATT&CK reference: {e.attck_ref}", ""])
 
     lines += [
-        "---",
+        "## Validation status",
         "",
-        "## Validation Baseline",
+        "No AI-text detection accuracy, precision, recall, false-positive rate, or complete framework coverage is asserted by this report. ThreatFade network-traffic results are not evidence of AI-text detection performance. Each mapping must be validated against a versioned, representative adversarial corpus before an effectiveness claim is made.",
         "",
-        "ThreatFade entropy engine validated against real C2 malware traffic:",
+        "## Evidence required to upgrade a mapping",
         "",
-        "| Metric | Value |",
-        "|--------|-------|",
-        "| Packets analysed | 490,000+ |",
-        "| Malware type | Merlin QUIC C2 |",
-        "| Z-score detected | 14.76 |",
-        "| False positive rate | 0% |",
+        "- Versioned test cases tied to the technique and detector version.",
+        "- Representative benign and malicious examples, including adversarial variants.",
+        "- Reproducible precision, recall, false-positive and false-negative measurements.",
+        "- Documented environment, thresholds, limitations and residual risks.",
         "",
-        "The same Z-score/entropy methodology applied to LLM completions.",
-        "",
-        "---",
-        "",
-        "*© 2026 Tinlance Limited — Apache 2.0*",
+        "© 2026 Tinlance Limited — Apache-2.0",
     ]
-
     return "\n".join(lines)
 
 
