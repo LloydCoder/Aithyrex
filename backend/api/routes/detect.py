@@ -1,5 +1,5 @@
 """
-AI Shield — Detection Routes
+Aithyrex — Detection Routes
 ==============================
 POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
@@ -116,7 +116,7 @@ async def detect_prompt(
                 "detectors_fired": [
                     r.detector for r in verdict.results if r.detected
                 ],
-                "message": "AI Shield blocked this prompt.",
+                "message": "Aithyrex blocked this prompt.",
             },
         )
 
