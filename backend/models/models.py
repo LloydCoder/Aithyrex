@@ -1,5 +1,5 @@
 """
-AI Shield — Database Models
+Aithyrex — Database Models
 =============================
 SQLAlchemy 2.0 async models.
 
@@ -97,7 +97,7 @@ class DetectionEvent(Base):
     blocked: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Full detector results stored as JSONB
-    results: Mapped[dict] = mapped_column(JSONB, default=list)
+    results: Mapped[list] = mapped_column(JSONB, default=list)
 
     # SIEM export tracking
     siem_exported: Mapped[bool] = mapped_column(Boolean, default=False)
