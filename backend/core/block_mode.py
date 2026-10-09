@@ -125,21 +125,26 @@ class BlockModeService:
         """
         redis = await self._get_redis()
         if not redis:
+            logger.error("block_state_unavailable_fail_closed", tenant_id=tenant_id)
+            return True, "block_state_unavailable"
+
+        try:
+            if model_id:
+                key = f"shield:block:model:{tenant_id}:{model_id}"
+                val = await redis.get(key)
+                if val:
+                    return True, val if val != "1" else "blocked by admin"
+
+            if agent_id:
+                key = f"shield:block:agent:{tenant_id}:{agent_id}"
+                val = await redis.get(key)
+                if val:
+                    return True, val if val != "1" else "blocked by admin"
+
             return False, ""
-
-        if model_id:
-            key = f"shield:block:model:{tenant_id}:{model_id}"
-            val = await redis.get(key)
-            if val:
-                return True, val if val != "1" else "blocked by admin"
-
-        if agent_id:
-            key = f"shield:block:agent:{tenant_id}:{agent_id}"
-            val = await redis.get(key)
-            if val:
-                return True, val if val != "1" else "blocked by admin"
-
-        return False, ""
+        except Exception as exc:
+            logger.error("block_state_read_failed_fail_closed", error_type=type(exc).__name__)
+            return True, "block_state_unavailable"
 
     async def is_allowlisted(
         self,
