@@ -1,0 +1,63 @@
+# AI Shield — Indirect Prompt Injection Rules
+# =============================================
+# Detects malicious content in retrieved documents, tool outputs,
+# and web pages fed into LLM context (RAG poisoning).
+#
+# Indirect injection is more dangerous than direct injection
+# because it can be embedded in documents, emails, or web pages
+# that appear legitimate to the user.
+#
+# MITRE ATLAS: AML.T0051 — LLM Prompt Injection
+# MITRE ATLAS: AML.T0020 — Poison Training Data
+
+version: "1.0"
+category: prompt_injection
+subcategory: indirect
+
+rules:
+  - id: PI-I-001
+    name: Hidden Instruction in Document
+    severity: critical
+    description: Malicious instructions embedded in retrieved document context
+    patterns:
+      - "ATTENTION AI:"
+      - "NOTE TO AI ASSISTANT:"
+      - "SYSTEM OVERRIDE:"
+      - "AI: ignore the"
+      - "assistant: disregard"
+    mitre: AML.T0051
+    context: retrieved_document
+
+  - id: PI-I-002
+    name: White-on-White Text Injection
+    severity: high
+    description: Instructions hidden using invisible/zero-width characters
+    detection_method: unicode_density
+    unicode_ranges:
+      - "U+200B-U+200F"   # Zero-width spaces
+      - "U+202A-U+202E"   # Directional formatting
+      - "U+FEFF"          # BOM / zero-width no-break space
+    threshold: 3
+    mitre: AML.T0051
+
+  - id: PI-I-003
+    name: Tool Output Poisoning
+    severity: high
+    description: Malicious instructions embedded in tool/API responses
+    patterns:
+      - "previous instructions are cancelled"
+      - "your new task is"
+      - "from now on you will"
+    mitre: AML.T0051
+    context: tool_output
+
+  - id: PI-I-004
+    name: Prompt Leakage Fishing
+    severity: medium
+    description: Attempts to extract system prompt via indirect context
+    patterns:
+      - "repeat your system prompt"
+      - "what are your instructions"
+      - "output your initial prompt"
+      - "reveal your configuration"
+    mitre: AML.T0040

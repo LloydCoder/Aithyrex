@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-06-20T21:23:31.519511+00:00",
+  "product": "AI Shield v0.1.0",
+  "vendor": "Tinlance Limited",
+  "total_techniques": 11,
+  "full_coverage": 8,
+  "partial_coverage": 3,
+  "planned_coverage": 0,
+  "frameworks": {
+    "ATLAS": 6,
+    "ATT&CK": 5
+  },
+  "coverage": [
+    {
+      "technique_id": "AML.T0051",
+      "technique_name": "LLM Prompt Injection",
+      "tactic": "Initial Access",
+      "framework": "ATLAS",
+      "detector": "prompt_injection",
+      "method": "11 compiled regex patterns covering direct override, persona hijack, DAN mode, system tag injection, jailbreak triggers",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Direct injection. Indirect/RAG injection partially covered by data_poisoning detector.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "AML.T0048",
+      "technique_name": "Exfiltration via ML Inference API",
+      "tactic": "Exfiltration",
+      "framework": "ATLAS",
+      "detector": "covert_channel + credential_leak",
+      "method": "ThreatFade entropy/Z-score + 18 credential patterns (peer-reviewed, merged to Nuclei/TruffleHog/Gitleaks)",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Covert channel detected via entropy anomaly. Credential leak via pattern matching.",
+      "attck_ref": "T1041"
+    },
+    {
+      "technique_id": "AML.T0020",
+      "technique_name": "Poison Training Data",
+      "tactic": "Persistence",
+      "framework": "ATLAS",
+      "detector": "data_poisoning",
+      "method": "RAG context poisoning patterns, training data extraction fishing, context overflow detection, tool output injection scanning",
+      "coverage_level": "full",
+      "sprint": "Sprint 4",
+      "notes": "Context poisoning via 4-layer detection pipeline. Training weight poisoning not in scope (offline, not runtime).",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "AML.T0040",
+      "technique_name": "ML Model Inference API Access",
+      "tactic": "Discovery",
+      "framework": "ATLAS",
+      "detector": "data_poisoning + c2_behaviour",
+      "method": "Training data extraction patterns + ThreatFade C2 pipeline",
+      "coverage_level": "partial",
+      "sprint": "Sprint 1/4",
+      "notes": "Detects extraction probing. Does not detect benign inference access.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "AML.T0043",
+      "technique_name": "Craft Adversarial Data",
+      "tactic": "Defense Evasion",
+      "framework": "ATLAS",
+      "detector": "covert_channel",
+      "method": "Unicode steganography detection, zero-width character scanning, base64/hex blob detection",
+      "coverage_level": "partial",
+      "sprint": "Sprint 1",
+      "notes": "Detects encoded payloads in completions. Does not cover image/audio adversarial examples.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "AML.T0054",
+      "technique_name": "LLM Jailbreak",
+      "tactic": "Defense Evasion",
+      "framework": "ATLAS",
+      "detector": "prompt_injection",
+      "method": "DAN mode, developer mode, jailbreak keyword patterns",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Covered as a subset of prompt injection detection.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "T1027",
+      "technique_name": "Obfuscated Files or Information",
+      "tactic": "Defense Evasion",
+      "framework": "ATT&CK",
+      "detector": "covert_channel",
+      "method": "ThreatFade entropy analysis, base64/hex/Unicode encoding detection in LLM completions",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Z-score 14.76 validated on Merlin QUIC C2. Same methodology applied to token distributions.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "T1071.001",
+      "technique_name": "Application Layer Protocol: Web Protocols",
+      "tactic": "Command and Control",
+      "framework": "ATT&CK",
+      "detector": "c2_behaviour",
+      "method": "ThreatFade full C2 pipeline \u2014 entropy + Z-score + MITRE TTP mapping",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Detects AI agents used as C2 relay channels.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "T1095",
+      "technique_name": "Non-Application Layer Protocol",
+      "tactic": "Command and Control",
+      "framework": "ATT&CK",
+      "detector": "c2_behaviour",
+      "method": "ThreatFade QUIC/non-standard protocol detection",
+      "coverage_level": "partial",
+      "sprint": "Sprint 1",
+      "notes": "Validated against Merlin QUIC traffic. Other non-standard protocols partially covered.",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "T1552",
+      "technique_name": "Unsecured Credentials",
+      "tactic": "Credential Access",
+      "framework": "ATT&CK",
+      "detector": "credential_leak",
+      "method": "18 regex patterns: AWS, OpenAI, Anthropic, GitHub, Stripe, Paystack, Flutterwave, Remita, Interswitch, JWT, PEM keys",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Patterns peer-reviewed via PRs to TruffleHog (15k\u2605), Gitleaks (10k\u2605), Semgrep (11k\u2605).",
+      "attck_ref": null
+    },
+    {
+      "technique_id": "T1041",
+      "technique_name": "Exfiltration Over C2 Channel",
+      "tactic": "Exfiltration",
+      "framework": "ATT&CK",
+      "detector": "covert_channel + c2_behaviour",
+      "method": "ThreatFade entropy + credential leak patterns",
+      "coverage_level": "full",
+      "sprint": "Sprint 1",
+      "notes": "Detects data encoded in LLM completions for exfiltration.",
+      "attck_ref": null
+    }
+  ]
+}

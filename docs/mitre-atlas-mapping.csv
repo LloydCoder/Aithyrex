@@ -1,0 +1,12 @@
+technique_id,technique_name,tactic,framework,detector,coverage_level,sprint,notes
+AML.T0051,LLM Prompt Injection,Initial Access,ATLAS,prompt_injection,full,Sprint 1,Direct injection. Indirect/RAG injection partially covered by data_poisoning detector.
+AML.T0048,Exfiltration via ML Inference API,Exfiltration,ATLAS,covert_channel + credential_leak,full,Sprint 1,Covert channel detected via entropy anomaly. Credential leak via pattern matching.
+AML.T0020,Poison Training Data,Persistence,ATLAS,data_poisoning,full,Sprint 4,"Context poisoning via 4-layer detection pipeline. Training weight poisoning not in scope (offline, not runtime)."
+AML.T0040,ML Model Inference API Access,Discovery,ATLAS,data_poisoning + c2_behaviour,partial,Sprint 1/4,Detects extraction probing. Does not detect benign inference access.
+AML.T0043,Craft Adversarial Data,Defense Evasion,ATLAS,covert_channel,partial,Sprint 1,Detects encoded payloads in completions. Does not cover image/audio adversarial examples.
+AML.T0054,LLM Jailbreak,Defense Evasion,ATLAS,prompt_injection,full,Sprint 1,Covered as a subset of prompt injection detection.
+T1027,Obfuscated Files or Information,Defense Evasion,ATT&CK,covert_channel,full,Sprint 1,Z-score 14.76 validated on Merlin QUIC C2. Same methodology applied to token distributions.
+T1071.001,Application Layer Protocol: Web Protocols,Command and Control,ATT&CK,c2_behaviour,full,Sprint 1,Detects AI agents used as C2 relay channels.
+T1095,Non-Application Layer Protocol,Command and Control,ATT&CK,c2_behaviour,partial,Sprint 1,Validated against Merlin QUIC traffic. Other non-standard protocols partially covered.
+T1552,Unsecured Credentials,Credential Access,ATT&CK,credential_leak,full,Sprint 1,"Patterns peer-reviewed via PRs to TruffleHog (15k★), Gitleaks (10k★), Semgrep (11k★)."
+T1041,Exfiltration Over C2 Channel,Exfiltration,ATT&CK,covert_channel + c2_behaviour,full,Sprint 1,Detects data encoded in LLM completions for exfiltration.

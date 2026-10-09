@@ -1,0 +1,162 @@
+"""
+AI Shield — Detection Routes
+==============================
+POST /detect/llm      — analyse a prompt + completion pair
+POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
+POST /detect/agent    — analyse agentic AI communication stream
+
+All routes require Clerk auth. Plan extracted from JWT for tier enforcement.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+
+from backend.core.auth import TokenPayload, get_current_tenant
+from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
+
+router = APIRouter()
+engine = ShieldEngine()
+
+
+# ── Request / Response schemas ────────────────────────────────────────────────
+class LLMInspectRequest(BaseModel):
+    prompt: str
+    completion: str | None = None
+    model: str | None = None
+
+
+class AgentInspectRequest(BaseModel):
+    agent_id: str
+    messages: list[dict]
+
+
+class DetectionResponse(BaseModel):
+    action: str
+    severity: str
+    blocked: bool
+    detections: list[dict]
+    tenant_id: str
+    inferences_used: int = 0
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+@router.post("/llm", response_model=DetectionResponse)
+async def detect_llm(
+    req: LLMInspectRequest,
+    tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
+):
+    """
+    Inspect a prompt/completion pair for threats.
+    Returns ShieldVerdict — action, severity, per-detector results.
+    """
+    verdict: ShieldVerdict = await engine.inspect(
+        prompt=req.prompt,
+        completion=req.completion,
+        tenant_id=tenant.tenant_id,
+        model=req.model,
+        plan=tenant.plan,
+    )
+
+    return DetectionResponse(
+        action=verdict.action,
+        severity=verdict.severity,
+        blocked=verdict.blocked,
+        tenant_id=tenant.tenant_id,
+        detections=[
+            {
+                "detector": r.detector,
+                "detected": r.detected,
+                "severity": r.severity,
+                "confidence": r.confidence,
+                "mitre_atlas": r.mitre_atlas,
+                "details": r.details,
+            }
+            for r in verdict.results
+            if r.detected
+        ],
+    )
+
+
+@router.post("/prompt")
+async def detect_prompt(
+    req: LLMInspectRequest,
+    tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
+):
+    """
+    Pre-flight prompt check — run BEFORE sending to LLM.
+    Returns 403 if blocked, 200 with {blocked: false} if clean.
+    """
+    verdict: ShieldVerdict = await engine.inspect(
+        prompt=req.prompt,
+        completion=None,
+        tenant_id=tenant.tenant_id,
+        plan=tenant.plan,
+    )
+
+    # Pre-flight: block on any detection (ALERT or BLOCK)
+    # This is stricter than /detect/llm which only hard-blocks on CRITICAL
+    from backend.core.shield_engine import Action, Severity
+    should_block = (
+        verdict.blocked or
+        verdict.action == Action.ALERT or
+        verdict.severity in (Severity.HIGH, Severity.CRITICAL, Severity.MEDIUM)
+    )
+
+    if should_block and any(r.detected for r in verdict.results):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "blocked": True,
+                "reason": verdict.severity,
+                "action": verdict.action,
+                "detectors_fired": [
+                    r.detector for r in verdict.results if r.detected
+                ],
+                "message": "AI Shield blocked this prompt.",
+            },
+        )
+
+    return {
+        "blocked": False,
+        "severity": verdict.severity,
+        "tenant_id": tenant.tenant_id,
+    }
+
+
+@router.post("/agent")
+async def detect_agent(
+    req: AgentInspectRequest,
+    tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
+):
+    """
+    Analyse a full agentic AI message stream.
+    Inspects each turn for injection and C2 indicators.
+    Sprint 2: full per-turn inspection.
+    """
+    # Sprint 1 — inspect the concatenated conversation
+    full_text = " ".join(
+        m.get("content", "") for m in req.messages
+        if isinstance(m.get("content"), str)
+    )
+
+    verdict: ShieldVerdict = await engine.inspect(
+        prompt=full_text,
+        tenant_id=tenant.tenant_id,
+        plan=tenant.plan,
+    )
+
+    return {
+        "agent_id": req.agent_id,
+        "action": verdict.action,
+        "severity": verdict.severity,
+        "blocked": verdict.blocked,
+        "turns_analysed": len(req.messages),
+        "detections": [
+            {"detector": r.detector, "severity": r.severity}
+            for r in verdict.results if r.detected
+        ],
+    }

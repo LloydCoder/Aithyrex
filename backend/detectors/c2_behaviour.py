@@ -1,0 +1,88 @@
+"""
+AI Shield — C2 Behaviour Detector
+====================================
+Detects C2-style communication patterns in AI agent traffic.
+
+Applies ThreatFade's full entropy/Z-score pipeline to agentic
+AI communications — the same methodology that achieved:
+  - Merlin QUIC Z-score: 14.76
+  - 490,000+ packets analysed
+  - 0% false positive rate
+
+In agentic AI, C2 indicators include:
+  - Regular heartbeat-like API polling patterns
+  - Encoded instructions hidden in benign-looking completions
+  - Out-of-distribution token sequences consistent with C2 beaconing
+  - Domain generation algorithm (DGA) patterns in tool call arguments
+
+MITRE ATT&CK: T1071.001 — C2 via Web Protocols
+MITRE ATT&CK: T1095    — Non-Application Layer Protocol
+MITRE ATLAS:  AML.T0043 — Craft Adversarial Data
+"""
+
+from __future__ import annotations
+
+import structlog
+
+from backend.core.shield_engine import DetectionResult, Severity
+from backend.core.threatfade_client import threatfade
+
+logger = structlog.get_logger(__name__)
+
+
+class C2BehaviourDetector:
+    """
+    Detects C2-style behaviour in AI model communications.
+
+    Primary method: ThreatFade HTTP bridge.
+    Supplementary: behavioural heuristics for agent traffic.
+
+    Sprint 1: ThreatFade bridge only.
+    Sprint 2: Agent communication graph analysis via ReconOS OFE.
+    """
+
+    async def detect(
+        self,
+        prompt: str,
+        completion: str | None = None,
+    ) -> DetectionResult:
+        """Submit both prompt and completion to ThreatFade for C2 analysis."""
+        text = prompt + (" " + completion if completion else "")
+
+        tf_result = await threatfade.detect(text, source="ai_traffic_c2")
+        detected   = tf_result.get("detected", False)
+        z_outlier  = tf_result.get("z_outlier", 0.0)
+        mitre_ttp  = tf_result.get("mitre_ttp", "")
+
+        if not detected:
+            return DetectionResult(
+                detector="c2_behaviour",
+                detected=False,
+                severity=Severity.CLEAN,
+                confidence=0.0,
+                details={"z_outlier": z_outlier},
+            )
+
+        # Z-score thresholds based on ThreatFade baseline (14.76 = Merlin QUIC)
+        if z_outlier >= 12.0:
+            severity, confidence = Severity.CRITICAL, 0.97
+        elif z_outlier >= 7.0:
+            severity, confidence = Severity.HIGH, 0.85
+        else:
+            severity, confidence = Severity.MEDIUM, 0.65
+
+        logger.warning(
+            "c2_behaviour_detected",
+            z_outlier=z_outlier,
+            severity=severity,
+            mitre_ttp=mitre_ttp,
+        )
+
+        return DetectionResult(
+            detector="c2_behaviour",
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            details={"z_outlier": z_outlier, "threatfade_raw": tf_result},
+            mitre_atlas=[mitre_ttp, "T1071.001", "T1095"],
+        )

@@ -1,0 +1,69 @@
+# AI Shield — Direct Prompt Injection Rules
+# ==========================================
+# Pattern-based rules for detecting direct prompt injection attacks.
+# These augment the regex patterns in detectors/prompt_injection.py
+# with structured metadata for the rules engine.
+#
+# MITRE ATLAS: AML.T0051 — LLM Prompt Injection
+
+version: "1.0"
+category: prompt_injection
+subcategory: direct
+
+rules:
+  - id: PI-D-001
+    name: System Prompt Override
+    severity: high
+    description: Attempt to override system prompt instructions
+    patterns:
+      - "ignore (all )?(previous|prior|above) instructions?"
+      - "disregard (your )?(system )?(prompt|instructions?)"
+      - "forget (everything|all) (you were|you have been) told"
+    mitre: AML.T0051
+
+  - id: PI-D-002
+    name: Persona Hijack
+    severity: high
+    description: Attempt to assign a new malicious persona
+    patterns:
+      - "you are now a"
+      - "act as if you are"
+      - "new persona:"
+      - "pretend you have no restrictions"
+      - "pretend you have no guidelines"
+    mitre: AML.T0051
+
+  - id: PI-D-003
+    name: Jailbreak Attempt
+    severity: critical
+    description: Known jailbreak trigger phrases
+    patterns:
+      - "DAN mode"
+      - "developer mode enabled"
+      - "jailbreak"
+      - "do anything now"
+      - "no restrictions mode"
+    mitre: AML.T0051
+
+  - id: PI-D-004
+    name: System Tag Injection
+    severity: high
+    description: HTML/XML system tag injection in user input
+    patterns:
+      - "<system>"
+      - "[system]"
+      - "<<SYS>>"
+      - "[INST]"
+      - "<|im_start|>system"
+    mitre: AML.T0051
+
+  - id: PI-D-005
+    name: Instruction Termination
+    severity: medium
+    description: Attempt to terminate current instruction context
+    patterns:
+      - "END OF INSTRUCTIONS"
+      - "--- new instructions ---"
+      - "STOP FOLLOWING"
+      - "override:"
+    mitre: AML.T0051
