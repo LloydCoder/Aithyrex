@@ -132,7 +132,8 @@ class AIShieldSync:
                 "action": result.get("action", "block"),
                 "severity": result.get("severity", "high"),
                 "business_id": business_id,
-                "reason": "indirect_injection_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "indirect_injection_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
@@ -177,7 +178,8 @@ class AIShieldSync:
                 "action": "block_deployment",
                 "severity": result.get("severity"),
                 "business_id": business_id,
-                "reason": "generated_content_threat_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "generated_content_threat_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
@@ -227,7 +229,8 @@ class AIShieldSync:
                 "severity": result.get("severity"),
                 "business_id": business_id,
                 "channel": channel,
-                "reason": "outreach_threat_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "outreach_threat_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
