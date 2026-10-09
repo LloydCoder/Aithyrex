@@ -36,8 +36,8 @@ class ThreatFadeClient:
             "Content-Type": "application/json",
         }
 
-    # Clean response returned when ThreatFade is unreachable
-    _CLEAN_FALLBACK: dict = {
+    # An outage is not a clean verdict; callers must treat telemetry as degraded.
+    _DEGRADED_RESPONSE: dict = {
         "detected": False,
         "confidence": "info",
         "score": 0.0,
@@ -46,15 +46,16 @@ class ThreatFadeClient:
         "rules_matched": 0,
         "mitre_ttp": "",
         "fallback": True,
+        "available": False,
+        "degraded": True,
     }
 
     async def detect(self, text: str, source: str = "ai_traffic") -> dict:
         """
         Submit text to ThreatFade for C2/covert channel analysis.
 
-        Graceful degradation: if ThreatFade is unreachable, returns CLEAN
-        so the remaining detectors (prompt_injection, credential_leak)
-        still function. Never crashes the detection pipeline.
+        ThreatFade outages are explicitly marked degraded; missing telemetry
+        must never be interpreted as a clean verdict.
 
         Returns:
             ThreatFade detection result dict:
@@ -78,6 +79,10 @@ class ThreatFadeClient:
                 )
                 response.raise_for_status()
                 result = response.json()
+                if not isinstance(result, dict):
+                    return {**self._DEGRADED_RESPONSE, "error": "invalid_response"}
+                result.setdefault("available", True)
+                result.setdefault("degraded", False)
                 logger.info(
                     "threatfade_detection",
                     detected=result.get("detected"),
@@ -88,7 +93,7 @@ class ThreatFadeClient:
                 return result
             except httpx.TimeoutException:
                 logger.warning("threatfade_timeout_fallback", source=source)
-                return {**self._CLEAN_FALLBACK, "error": "timeout"}
+                return {**self._DEGRADED_RESPONSE, "error": "timeout"}
             except httpx.ConnectError:
                 logger.warning("threatfade_unreachable_fallback", source=source)
                 return {**self._CLEAN_FALLBACK, "error": "unreachable"}
