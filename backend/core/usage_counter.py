@@ -18,13 +18,15 @@ from datetime import datetime, timezone
 
 import structlog
 
+from backend.core.config import settings
+
 logger = structlog.get_logger(__name__)
 
 TIER_LIMITS: dict[str, int] = {
-    "free":       500,
-    "starter":    25_000,
-    "pro":        150_000,
-    "enterprise": 999_999_999,   # effectively unlimited
+    "free": settings.FREE_TIER_MONTHLY_LIMIT,
+    "starter": settings.STARTER_TIER_MONTHLY_LIMIT,
+    "pro": settings.PRO_TIER_MONTHLY_LIMIT,
+    "enterprise": 999_999_999,
 }
 
 
@@ -33,7 +35,7 @@ class UsageCounterService:
     Redis-backed usage counter.
 
     Key format: shield:usage:{tenant_id}:{YYYY}:{MM}
-    TTL: 35 days (covers the full month + billing window)
+    TTL: through the next UTC month boundary plus one day
     """
 
     def __init__(self) -> None:
@@ -59,6 +61,15 @@ class UsageCounterService:
         now = datetime.now(timezone.utc)
         return f"shield:usage:{tenant_id}:{now.year}:{now.month:02d}"
 
+    @staticmethod
+    def _ttl_to_month_end() -> int:
+        now = datetime.now(timezone.utc)
+        if now.month == 12:
+            next_month = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            next_month = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+        return max(60, int((next_month - now).total_seconds()) + 86400)
+
     async def increment(self, tenant_id: str) -> int:
         """Increment inference count. Returns new total."""
         redis = await self._get_redis()
@@ -68,10 +79,9 @@ class UsageCounterService:
         key = self._key(tenant_id)
         count = await redis.incr(key)
 
-        # Set TTL on first increment — expire 35 days from now
+        # Retain the current calendar-month counter through the next boundary.
         if count == 1:
-            ttl = 35 * 24 * 3600
-            await redis.expire(key, ttl)
+            await redis.expire(key, self._ttl_to_month_end())
 
         return count
 
