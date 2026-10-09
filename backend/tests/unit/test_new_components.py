@@ -67,7 +67,8 @@ class TestMITREReport:
         assert "AML.T0051" in mapped
         assert "T1552" in mapped
         assert "T1027" in mapped
-        assert all(e.coverage_level == "heuristic" for e in COVERAGE_MAP)
+        assert all(e.coverage_level in {"heuristic", "planned"} for e in COVERAGE_MAP)
+        assert not any(e.coverage_level == "full" for e in COVERAGE_MAP)
 
     def test_validation_baseline_in_markdown(self):
         from backend.core.mitre_report import generate_markdown
