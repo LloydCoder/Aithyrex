@@ -65,7 +65,7 @@ def verify_lemonsqueezy_signature(payload: bytes, signature: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-def verify_paddle_signature(payload: bytes, signature: str, tolerance_seconds: int = 300) -> bool:
+def verify_paddle_signature(payload: bytes, signature: str, tolerance_seconds: int = 5) -> bool:
     """Verify Paddle Billing's timestamped ts=...;h1=... signature."""
     from backend.core.config import settings
 
@@ -196,28 +196,28 @@ class BillingService:
         return {"status": "unhandled", "event": event_type}
 
     async def handle_paddle_event(self, event_type: str, data: dict) -> dict:
-        """
-        Process Paddle webhook event.
-
-        Events handled:
-          subscription.activated  → activate plan
-          subscription.updated    → plan change
-          subscription.cancelled  → downgrade
-        """
+        """Process only recognized Paddle Billing subscription lifecycle events."""
         custom_data = data.get("custom_data", {}) or {}
         clerk_org_id = custom_data.get("clerk_org_id", "")
-        customer_id = data.get("customer_id", "")
-        price_id = ""
-
-        items = data.get("items", [])
-        if items:
-            price_id = items[0].get("price", {}).get("id", "")
+        customer_id = str(data.get("customer_id", ""))
 
         if not clerk_org_id:
             logger.warning("paddle_webhook_missing_clerk_org_id", event=event_type)
             return {"status": "skipped", "reason": "missing_clerk_org_id"}
 
-        if event_type in ("subscription.activated", "subscription.updated"):
+        if event_type in {"subscription.created", "subscription.updated", "subscription.resumed"}:
+            status = data.get("status")
+            if status not in {"active", "trialing"}:
+                logger.warning("paddle_subscription_not_entitled", event=event_type, status=status)
+                updated = await update_tenant_plan(clerk_org_id, "free", customer_id, "paddle")
+                if not updated:
+                    return {"status": "retry", "reason": "tenant_update_failed"}
+                return {"status": "ok", "plan": "free", "event": event_type}
+
+            items = data.get("items", [])
+            if not isinstance(items, list) or len(items) != 1:
+                return {"status": "rejected", "reason": "ambiguous_subscription_items"}
+            price_id = str((items[0].get("price") or {}).get("id", ""))
             plan = _plan_from_paddle_price(price_id)
             if plan is None:
                 logger.warning("paddle_webhook_unknown_price", event=event_type)
@@ -227,13 +227,14 @@ class BillingService:
                 return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": plan, "event": event_type}
 
-        elif event_type == "subscription.cancelled":
+        if event_type in {"subscription.canceled", "subscription.cancelled", "subscription.paused", "subscription.past_due"}:
             updated = await update_tenant_plan(clerk_org_id, "free", customer_id, "paddle")
             if not updated:
                 return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": "free", "event": event_type}
 
         return {"status": "unhandled", "event": event_type}
+
 
 
 # Module-level singleton
