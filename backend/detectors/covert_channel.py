@@ -4,9 +4,9 @@ AI Shield — Covert Channel Detector
 Detects steganographic and encoding-based covert channels
 in LLM completions using ThreatFade's entropy/Z-score methodology.
 
-The same statistical approach that caught Merlin QUIC C2 traffic
-(Z-score 14.76, 490K+ packets, 0% false positive rate) is applied
-to token distributions in model output.
+ThreatFade provides a supplementary signal. Network-traffic results do not
+validate AI-text detection accuracy; this detector's thresholds require a
+separate representative AI-interaction evaluation.
 
 Anomalous entropy patterns in completions indicate:
   - Data exfiltration via whitespace/Unicode steganography
