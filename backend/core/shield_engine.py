@@ -159,15 +159,14 @@ class ShieldEngine:
         if tenant_id:
             from backend.core.usage_counter import usage_counter
             try:
-                within_limit, count, limit = await usage_counter.check_limit(tenant_id, plan)
+                within_limit, count, limit = await usage_counter.reserve_inference(tenant_id, plan)
                 if not within_limit and plan == "free":
-                    logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count)
+                    logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count, limit=limit)
                     return ShieldVerdict(
                         action=Action.BLOCK,
                         severity=Severity.INFO,
                         blocked=True,
                     )
-                await usage_counter.increment(tenant_id)
             except Exception as exc:
                 logger.error("usage_accounting_unavailable_fail_closed", error_type=type(exc).__name__)
                 return ShieldVerdict(
