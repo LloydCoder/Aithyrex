@@ -11,8 +11,8 @@ router = APIRouter()
 
 @router.get("/summary")
 async def detection_summary(
+    tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
     days: int = 7,
-    tenant: Annotated[TokenPayload, Depends(get_current_tenant)] = None,
 ):
     """Return 501 until a tenant-scoped persisted summary query is implemented."""
     if days < 1 or days > 90:
