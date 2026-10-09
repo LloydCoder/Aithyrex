@@ -41,13 +41,13 @@ passlib[bcrypt]==1.7.4
 cryptography==49.0.0
 python-dotenv==1.2.2
 pydantic==2.9.2
-pydantic-settings==2.11.0
+pydantic-settings==2.5.2
 
 # Export formats
-stix2==3.0.2
+stix2==3.0.1
 
 # Observability
-structlog==25.4.0
+structlog==24.4.0
 
 # Testing
 pytest==9.0.3
