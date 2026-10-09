@@ -14,6 +14,8 @@ Usage:
 
 from __future__ import annotations
 
+import inspect
+
 from ai_shield.client import Shield
 
 
@@ -54,8 +56,14 @@ class _ShieldedCompletions:
     def __init__(self, completions, shield: Shield):
         self._completions = completions
         self._shield = shield
+        self._async = inspect.iscoroutinefunction(completions.create)
 
     def create(self, **kwargs):
+        if self._async:
+            return self._create_async(**kwargs)
+        return self._create_sync(**kwargs)
+
+    def _create_sync(self, **kwargs):
         if kwargs.get("stream"):
             raise NotImplementedError("Streaming is unsupported; use a mediation gateway that buffers output")
         messages = kwargs.get("messages", [])
@@ -96,8 +104,8 @@ class _ShieldedCompletions:
 
         return response
 
-    async def acreate(self, **kwargs):
-        """Async version for async OpenAI usage."""
+    async def _create_async(self, **kwargs):
+        """Async path for AsyncOpenAI; streaming remains explicitly unsupported.""
         if kwargs.get("stream"):
             raise NotImplementedError("Streaming is unsupported; use a mediation gateway that buffers output")
         messages = kwargs.get("messages", [])
@@ -127,6 +135,10 @@ class _ShieldedCompletions:
                 raise PermissionError(f"[AI Shield] Completion blocked.")
 
         return response
+
+    async def acreate(self, **kwargs):
+        """Compatibility alias for explicit async callers."""
+        return await self._create_async(**kwargs)
 
 
 def wrap(
