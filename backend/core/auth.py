@@ -117,7 +117,4 @@ async def get_optional_tenant(
     """Optional authentication for endpoints explicitly designed to be public."""
     if credentials is None:
         return None
-    try:
-        return await get_current_tenant(credentials)
-    except HTTPException:
-        return None
+    return await get_current_tenant(credentials)
