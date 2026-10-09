@@ -1,5 +1,5 @@
 """
-AI Shield — Anthropic Integration (PyPI package)
+Aithyrex — Anthropic Integration (PyPI package)
 ==================================================
 Usage:
     from ai_shield.integrations.anthropic import wrap
@@ -65,7 +65,7 @@ class _ShieldedMessages:
         pre = self._shield.inspect_sync(prompt=prompt, model=model)
         if pre.blocked:
             raise PermissionError(
-                f"[AI Shield] Prompt blocked. Severity: {pre.severity}."
+                f"[Aithyrex] Prompt blocked. Severity: {pre.severity}."
             )
 
         response = self._messages.create(**kwargs)
@@ -86,7 +86,7 @@ class _ShieldedMessages:
             )
             if post.blocked:
                 raise PermissionError(
-                    f"[AI Shield] Completion blocked. Severity: {post.severity}."
+                    f"[Aithyrex] Completion blocked. Severity: {post.severity}."
                 )
 
         return response
