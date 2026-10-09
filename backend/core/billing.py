@@ -35,19 +35,21 @@ logger = structlog.get_logger(__name__)
 # ── Plan detection from variant IDs ──────────────────────────────────────────
 def _plan_from_ls_variant(variant_id: str) -> str:
     from backend.core.config import settings
-    mapping = {
-        settings.LEMONSQUEEZY_STARTER_VARIANT_ID: "starter",
-        settings.LEMONSQUEEZY_PRO_VARIANT_ID:     "pro",
-    }
+    mapping = {}
+    if settings.LEMONSQUEEZY_STARTER_VARIANT_ID:
+        mapping[settings.LEMONSQUEEZY_STARTER_VARIANT_ID] = "starter"
+    if settings.LEMONSQUEEZY_PRO_VARIANT_ID:
+        mapping[settings.LEMONSQUEEZY_PRO_VARIANT_ID] = "pro"
     return mapping.get(str(variant_id), "free")
 
 
 def _plan_from_paddle_price(price_id: str) -> str:
     from backend.core.config import settings
-    mapping = {
-        settings.PADDLE_PRO_PRICE_ID:        "pro",
-        settings.PADDLE_ENTERPRISE_PRICE_ID: "enterprise",
-    }
+    mapping = {}
+    if settings.PADDLE_PRO_PRICE_ID:
+        mapping[settings.PADDLE_PRO_PRICE_ID] = "pro"
+    if settings.PADDLE_ENTERPRISE_PRICE_ID:
+        mapping[settings.PADDLE_ENTERPRISE_PRICE_ID] = "enterprise"
     return mapping.get(str(price_id), "free")
 
 
