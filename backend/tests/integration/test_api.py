@@ -129,7 +129,7 @@ class TestHealth:
 class TestDetectPrompt:
     def test_clean_prompt_returns_200(self, client):
         resp = client.post(
-            "/detect/prompt",
+            "/api/v1/detect/prompt",
             json={"prompt": "What is the capital of France?"},
             headers=AUTH_HEADER,
         )
@@ -193,7 +193,7 @@ class TestDetectPrompt:
 class TestDetectLLM:
     def test_clean_exchange_passes(self, client):
         resp = client.post(
-            "/detect/llm",
+            "/api/v1/detect/llm",
             json={
                 "prompt": "What is 2+2?",
                 "completion": "4",
@@ -298,7 +298,7 @@ class TestDetectLLM:
 class TestDetectAgent:
     def test_agent_scan_returns_turns_count(self, client):
         resp = client.post(
-            "/detect/agent",
+            "/api/v1/detect/agent",
             json={
                 "agent_id": "agent-001",
                 "messages": [
