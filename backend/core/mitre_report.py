@@ -1,7 +1,7 @@
 """
-AI Shield — MITRE ATLAS Coverage Report Generator
+Aithyrex — AI Security Threat Mapping Report Generator
 ===================================================
-Generates a structured coverage report mapping AI Shield
+Generates a structured mapping report linking Aithyrex
 detectors to MITRE ATLAS and ATT&CK techniques.
 
 Outputs:
@@ -35,13 +35,13 @@ class CoverageEntry:
     framework: str            # "ATLAS" or "ATT&CK"
     detector: str
     detector_method: str
-    coverage_level: str       # "full" | "partial" | "planned"
+    coverage_level: str       # "heuristic" | "planned"
     sprint: str               # When this was/will be implemented
     notes: str = ""
     attck_ref: Optional[str] = None
 
 
-# ── Complete coverage map ─────────────────────────────────────────────────────
+# ── Technique mapping (not a coverage or effectiveness claim) ─────────────────
 COVERAGE_MAP: list[CoverageEntry] = [
 
     # ── MITRE ATLAS techniques ────────────────────────────────────────────────
@@ -52,7 +52,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="prompt_injection",
         detector_method="11 compiled regex patterns covering direct override, persona hijack, DAN mode, system tag injection, jailbreak triggers",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 1",
         notes="Direct injection. Indirect/RAG injection partially covered by data_poisoning detector.",
     ),
@@ -62,7 +62,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Exfiltration",
         framework="ATLAS",
         detector="covert_channel + credential_leak",
-        detector_method="ThreatFade entropy/Z-score + 18 credential patterns (peer-reviewed, merged to Nuclei/TruffleHog/Gitleaks)",
+        detector_method="Entropy/encoding heuristics plus credential-format pattern matching; not independently validated as complete coverage",
         coverage_level="full",
         sprint="Sprint 1",
         notes="Covert channel detected via entropy anomaly. Credential leak via pattern matching.",
@@ -86,7 +86,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="data_poisoning + c2_behaviour",
         detector_method="Training data extraction patterns + ThreatFade C2 pipeline",
-        coverage_level="partial",
+        coverage_level="heuristic",
         sprint="Sprint 1/4",
         notes="Detects extraction probing. Does not detect benign inference access.",
     ),
@@ -123,7 +123,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="ThreatFade entropy analysis, base64/hex/Unicode encoding detection in LLM completions",
         coverage_level="full",
         sprint="Sprint 1",
-        notes="Z-score 14.76 validated on Merlin QUIC C2. Same methodology applied to token distributions.",
+        notes="Mapping only. Network-traffic results do not validate AI-text detection accuracy.",
     ),
     CoverageEntry(
         technique_id="T1071.001",
@@ -145,7 +145,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="ThreatFade QUIC/non-standard protocol detection",
         coverage_level="partial",
         sprint="Sprint 1",
-        notes="Validated against Merlin QUIC traffic. Other non-standard protocols partially covered.",
+        notes="Mapping only. Protocol-specific network findings do not establish AI-interaction detection coverage.",
     ),
     CoverageEntry(
         technique_id="T1552",
@@ -153,10 +153,10 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Credential Access",
         framework="ATT&CK",
         detector="credential_leak",
-        detector_method="18 regex patterns: AWS, OpenAI, Anthropic, GitHub, Stripe, Paystack, Flutterwave, Remita, Interswitch, JWT, PEM keys",
+        detector_method="Locally maintained credential-format heuristics for common provider and token formats",
         coverage_level="full",
         sprint="Sprint 1",
-        notes="Patterns peer-reviewed via PRs to TruffleHog (15k★), Gitleaks (10k★), Semgrep (11k★).",
+        notes="Pattern matching is heuristic and requires an independent credential test corpus.",
     ),
     CoverageEntry(
         technique_id="T1041",
@@ -176,10 +176,10 @@ def generate_json() -> str:
     """Generate machine-readable JSON coverage report."""
     return json.dumps({
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "product": "AI Shield v0.1.0",
+        "product": "Aithyrex v0.1.0",
         "vendor": "Tinlance Limited",
         "total_techniques": len(COVERAGE_MAP),
-        "full_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "full"),
+        "full_coverage": 0,\n        "mapped_techniques": len(COVERAGE_MAP),\n        "assurance_note": "Technique mappings do not prove implementation completeness or detection effectiveness. All entries are heuristic mappings until validated by a reproducible test corpus.",
         "partial_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "partial"),
         "planned_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "planned"),
         "frameworks": {
@@ -208,7 +208,7 @@ def generate_markdown() -> str:
     """Generate GitHub-ready Markdown coverage report."""
     atlas = [e for e in COVERAGE_MAP if e.framework == "ATLAS"]
     attck = [e for e in COVERAGE_MAP if e.framework == "ATT&CK"]
-    full = sum(1 for e in COVERAGE_MAP if e.coverage_level == "full")
+    full = sum(1 for e in COVERAGE_MAP if e.coverage_level == "heuristic")
 
     lines = [
         "# AI Shield — MITRE ATLAS Coverage",
