@@ -3,6 +3,8 @@ name: Security Scan
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   schedule:
     - cron: "0 2 * * 1" # Weekly Monday 02:00 UTC
 
@@ -35,12 +37,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # On push, compare the actual event's before/after revisions.
-      # On a scheduled run, leave both inputs empty so the action uses its
-      # documented full-history scan path instead of comparing main to HEAD.
+      # Compare event revisions on push/PR. Leave both empty on a schedule so
+      # the action uses its full-history scan path rather than main vs HEAD.
       - name: TruffleHog scan
         uses: trufflesecurity/trufflehog@0e427395344c7039c0b15a1147f5782805685b3e
         with:
           path: ./
-          base: ${{ github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || '' }}
-          head: ${{ github.event_name == 'push' && github.sha || '' }}
+          base: ${{ github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || (github.event_name == 'pull_request' && github.event.pull_request.base.sha) || '' }}
+          head: ${{ github.event_name == 'push' && github.sha || (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || '' }}
