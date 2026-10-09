@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from aithyrex import AithyrexClient
 from ai_shield.client import Shield
+from aithyrex import AithyrexClient
 
 
 @pytest.mark.asyncio
