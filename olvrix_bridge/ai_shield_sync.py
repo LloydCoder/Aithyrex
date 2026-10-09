@@ -1,5 +1,5 @@
 """
-AI Shield Sync — Olvrix Flywheel Bridge
+Aithyrex Sync — Olvrix Integration Bridge
 =========================================
 The 7th bridge in the Olvrix flywheel ecosystem.
 
@@ -16,11 +16,11 @@ Four event handlers:
     Olvrix Scraper (VPS 4) scrapes 200 businesses/day.
     Scraped HTML may contain indirect prompt injection
     payloads designed to hijack Olvrix's AI analysis.
-    AI Shield scans HTML before it reaches BusinessClassifier.
+    Aithyrex scans HTML before it reaches BusinessClassifier.
 
   Wire B — handle_website_generated()
     Olvrix AI Engine (VPS 2, Ollama) generates website copy.
-    AI Shield scans generated HTML before the site goes live.
+    Aithyrex scans generated HTML before the site goes live.
     Catches: credential leaks, covert channels, C2 patterns.
 
   Wire C — handle_outreach_generated()
@@ -39,8 +39,8 @@ Deployment:
     "ai_shield": AIShieldSync()
 
 Environment:
-  AITHYREX_API_URL=https://api.aishield.tinlance.com
-  AITHYREX_API_TOKEN=your-shield-key
+  AITHYREX_API_URL=<verified HTTPS service URL>
+  AITHYREX_API_TOKEN=<Clerk session JWT>
 """
 
 from __future__ import annotations
@@ -347,7 +347,7 @@ class AIShieldSync:
         source: str = "",
         business_id: str = "",
     ) -> dict:
-        """POST to AI Shield /detect/llm. Returns verdict dict."""
+        """Call the configured Aithyrex inspection endpoint; failures are degraded blocks."""
         if not AITHYREX_API_URL or not AITHYREX_API_TOKEN:
             logger.warning("aithyrex_inspection_not_configured", source=source, business_id=business_id)
             return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "not_configured"}
@@ -384,7 +384,7 @@ class AIShieldSync:
 
             except httpx.TimeoutException:
                 logger.warning(
-                    "ai_shield_sync_timeout",
+                    "aithyrex_inspection_timeout",
                     source=source,
                     business_id=business_id,
                 )
@@ -397,3 +397,6 @@ class AIShieldSync:
             except Exception as exc:
                 logger.error("aithyrex_inspection_failed", error_type=type(exc).__name__, source=source)
                 return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "unexpected_error"}
+
+
+AithyrexSync = AIShieldSync
