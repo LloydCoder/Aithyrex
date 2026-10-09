@@ -1,14 +1,14 @@
 """
 Aithyrex — Covert Channel Detector
 =====================================
-Detects steganographic and encoding-based covert channels
+Flags potential steganographic and encoding-based covert-channel patterns
 in LLM completions using ThreatFade's entropy/Z-score methodology.
 
 ThreatFade provides a supplementary signal. Network-traffic results do not
 validate AI-text detection accuracy; this detector's thresholds require a
 separate representative AI-interaction evaluation.
 
-Anomalous entropy patterns in completions indicate:
+Anomalous entropy patterns in completions may indicate:
   - Data exfiltration via whitespace/Unicode steganography
   - Base64/hex-encoded payloads embedded in natural language
   - Timing-channel patterns in streaming responses
