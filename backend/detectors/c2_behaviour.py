@@ -3,11 +3,9 @@ AI Shield — C2 Behaviour Detector
 ====================================
 Detects C2-style communication patterns in AI agent traffic.
 
-Applies ThreatFade's full entropy/Z-score pipeline to agentic
-AI communications — the same methodology that achieved:
-  - Merlin QUIC Z-score: 14.76
-  - 490,000+ packets analysed
-  - 0% false positive rate
+Uses ThreatFade as a supplementary signal. Historical network-traffic
+metrics do not validate AI-text detection accuracy; thresholds require
+separate representative AI-interaction evaluation.
 
 In agentic AI, C2 indicators include:
   - Regular heartbeat-like API polling patterns
@@ -87,6 +85,13 @@ class C2BehaviourDetector:
             detected=True,
             severity=severity,
             confidence=confidence,
-            details={"z_outlier": z_outlier, "threatfade_raw": tf_result},
+            details={
+                "z_outlier": z_outlier,
+                "mitre_ttp": mitre_ttp,
+                "score": tf_result.get("score"),
+                "entropy": tf_result.get("entropy"),
+                "rules_matched": tf_result.get("rules_matched"),
+                "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+            },
             mitre_atlas=[mitre_ttp, "T1071.001", "T1095"],
         )
