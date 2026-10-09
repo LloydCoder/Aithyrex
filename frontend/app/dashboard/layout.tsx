@@ -1,4 +1,5 @@
-import { auth, OrganizationSwitcher } from '@clerk/nextjs'
+import { OrganizationSwitcher } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/ui/Sidebar'
 import Topbar from '@/components/ui/Topbar'
