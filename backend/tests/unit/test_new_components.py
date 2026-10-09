@@ -80,9 +80,7 @@ class TestOlvrixBridge:
 
     @pytest.fixture
     def bridge(self):
-        import sys, os
-        sys.path.insert(0, "/home/claude/ai-shield/olvrix_bridge")
-        from ai_shield_sync import AIShieldSync
+        from olvrix_bridge.ai_shield_sync import AIShieldSync
         return AIShieldSync()
 
     @pytest.mark.asyncio
