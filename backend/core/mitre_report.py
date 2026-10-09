@@ -223,7 +223,7 @@ def generate_markdown() -> str:
         "| Metric | Value |",
         "|---|---:|",
         f"| Techniques mapped | {len(COVERAGE_MAP)} |",
-        f"| Full coverage claims | 0 |",
+        "| Full coverage claims | 0 |",
         f"| MITRE ATLAS mappings | {len(atlas)} |",
         f"| MITRE ATT&CK mappings | {len(attck)} |",
         "",
