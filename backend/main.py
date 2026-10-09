@@ -1,10 +1,10 @@
 """
-AI Shield — FastAPI Application Entry Point
+Aithyrex — FastAPI Application Entry Point
 ============================================
 Runtime security for LLM and agentic AI systems.
 
 Built by Tinlance Limited (RC: 7962164)
-https://github.com/Tinlance/ai-shield
+https://github.com/LloydCoder/Aithyrex
 """
 
 from contextlib import asynccontextmanager
