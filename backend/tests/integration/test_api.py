@@ -73,6 +73,12 @@ def client():
         "backend.core.threatfade_client.ThreatFadeClient.health",
         new=AsyncMock(return_value=True),
     ), patch(
+        "backend.core.block_mode.BlockModeService.is_blocked",
+        new=AsyncMock(return_value=(False, "")),
+    ), patch(
+        "backend.core.block_mode.BlockModeService.is_allowlisted",
+        new=AsyncMock(return_value=False),
+    ), patch(
         "backend.core.usage_counter.UsageCounterService.check_limit",
         new=AsyncMock(return_value=(True, 1, 500)),
     ), patch(
