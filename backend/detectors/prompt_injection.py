@@ -1,5 +1,5 @@
 """
-AI Shield — Prompt Injection Detector
+Aithyrex — Prompt Injection Detector
 =======================================
 Detects direct and indirect prompt injection attacks.
 
