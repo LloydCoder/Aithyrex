@@ -49,6 +49,7 @@ import hashlib
 import math
 import os
 from typing import Optional
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -123,7 +124,7 @@ class AIShieldSync:
             logger.warning(
                 "olvrix_scraped_content_blocked",
                 business_id=business_id,
-                url=url,
+                url_host=urlsplit(url).hostname or "unknown",
                 severity=result.get("severity"),
                 content_hash=content_hash,
             )
@@ -269,12 +270,12 @@ class AIShieldSync:
             business_id=business_id,
             z_outlier=z_outlier,
             mitre_ttp=threatfade_result.get("mitre_ttp"),
-            url=url,
+            url_host=urlsplit(url).hostname or "unknown",
         )
 
         # Send to AI Shield with the ThreatFade context embedded
         escalation_prompt = (
-            f"ThreatFade escalation: business {business_id} at {url} "
+            f"ThreatFade escalation: business {business_id} at {urlsplit(url).hostname or 'unknown'} "
             f"triggered Z-score {z_outlier:.2f}. "
             f"MITRE TTP: {threatfade_result.get('mitre_ttp', 'unknown')}. "
             f"Confidence: {threatfade_result.get('confidence', 'unknown')}."
