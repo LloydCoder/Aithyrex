@@ -76,9 +76,38 @@ async def get_current_tenant(
         raise HTTPException(status_code=401, detail="Invalid, expired, or unverifiable token", headers={"WWW-Authenticate": "Bearer"})
     user_id = claims["sub"]
     org_id = claims.get("org_id")
-    tenant_id = org_id or user_id
-    # Plan claims are not authoritative entitlements. Resolve plan from server-side billing state.
-    return TokenPayload(tenant_id=tenant_id, user_id=user_id, plan="free", org_id=org_id)
+    if not org_id:
+        raise HTTPException(status_code=403, detail="An active Clerk organization is required")
+
+    try:
+        from sqlalchemy import select
+        from backend.models.database import AsyncSessionFactory
+        from backend.models.models import Tenant
+
+        async with AsyncSessionFactory() as session:
+            result = await session.execute(
+                select(Tenant).where(
+                    Tenant.clerk_org_id == org_id,
+                    Tenant.is_active.is_(True),
+                )
+            )
+            tenant = result.scalar_one_or_none()
+        if tenant is None:
+            raise HTTPException(status_code=403, detail="Organization is not provisioned for Aithyrex")
+        if tenant.plan not in {"free", "starter", "pro", "enterprise"}:
+            logger.error("invalid_server_side_tenant_plan", tenant_id=str(tenant.id))
+            raise HTTPException(status_code=503, detail="Tenant entitlement state is invalid")
+        return TokenPayload(
+            tenant_id=str(tenant.id),
+            user_id=user_id,
+            plan=tenant.plan,
+            org_id=org_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("tenant_resolution_failed", error_type=type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Tenant authorization state unavailable") from exc
 
 
 async def get_optional_tenant(
