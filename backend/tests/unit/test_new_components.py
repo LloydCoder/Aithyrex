@@ -92,36 +92,45 @@ class TestOlvrixBridge:
         assert result["safe"] is True
 
     @pytest.mark.asyncio
-    async def test_no_api_key_returns_pass(self, bridge):
-        """Without API key, bridge logs but never blocks (dev mode)."""
+    async def test_no_api_key_fails_closed(self, bridge):
+        """Missing inspection configuration must not silently pass content.""
         result = await bridge.handle_business_scraped(
             "<html><body>Normal business site</body></html>",
             "biz-001",
         )
-        assert result["action"] == "pass"
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
-    async def test_timeout_returns_pass(self, bridge):
-        """Network timeout must never block the Olvrix pipeline."""
-        with patch("httpx.AsyncClient") as mock_client:
-            import httpx
+    async def test_timeout_fails_closed(self, bridge):
+        """Network timeout must be visible as a degraded block."""
+        import httpx
+        with patch("olvrix_bridge.ai_shield_sync.AITHYREX_API_URL", "https://api.example.test"), patch(
+            "olvrix_bridge.ai_shield_sync.AITHYREX_API_TOKEN", "test-session-token"
+        ), patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 side_effect=httpx.TimeoutException("timeout")
             )
             result = await bridge.handle_business_scraped("some html", "biz-002")
-        assert result["action"] == "pass"
-        assert result.get("blocked", False) is False
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
-    async def test_connection_error_returns_pass(self, bridge):
-        """AI Shield unreachable must never block Olvrix."""
-        with patch("httpx.AsyncClient") as mock_client:
-            import httpx
+    async def test_connection_error_fails_closed(self, bridge):
+        """Aithyrex unreachable must be visible as a degraded block."""
+        import httpx
+        with patch("olvrix_bridge.ai_shield_sync.AITHYREX_API_URL", "https://api.example.test"), patch(
+            "olvrix_bridge.ai_shield_sync.AITHYREX_API_TOKEN", "test-session-token"
+        ), patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 side_effect=httpx.ConnectError("unreachable")
             )
             result = await bridge.handle_website_generated("generated html", "biz-003")
-        assert result["action"] == "pass"
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
     async def test_escalation_threshold(self, bridge):
