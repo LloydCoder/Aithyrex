@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from backend.agents.parliament import (
     ParliamentEnsemble, should_invoke_parliament,
 )
-from backend.agents.llm_gateway import MemberVerdict, Vote
+from backend.agents.llm_gateway import LLMGateway, MemberVerdict, Vote
 from backend.core.shield_engine import (
     Action, DetectionResult, Severity, ShieldVerdict
 )
@@ -257,3 +257,10 @@ def test_existing_block_verdict_never_invokes_parliament():
 def test_critical_noncredential_verdict_also_bypasses_parliament():
     verdict = make_verdict(Action.BLOCK, Severity.CRITICAL, detector="c2_behaviour")
     assert should_invoke_parliament(verdict) is False
+
+ 
+@pytest.mark.parametrize("payload", ["", "not-json", '{"vote":"unknown"}'])
+def test_malformed_or_unknown_llm_vote_abstains(payload):
+    parsed = LLMGateway()._parse_vote(payload)
+    assert parsed["vote"] == "abstain"
+    assert parsed["confidence"] == 0.0
