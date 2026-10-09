@@ -35,6 +35,12 @@ async def lifespan(app: FastAPI):
             missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
         if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
             missing.append("ALLOWED_HOSTS (explicit production hosts required)")
+        if (
+            not settings.ALLOWED_ORIGINS
+            or "*" in settings.ALLOWED_ORIGINS
+            or any(not origin.startswith("https://") for origin in settings.ALLOWED_ORIGINS)
+        ):
+            missing.append("ALLOWED_ORIGINS (explicit HTTPS origins required)")
         if missing:
             raise RuntimeError("Unsafe production configuration; configure: " + ", ".join(missing))
     logger.info(
