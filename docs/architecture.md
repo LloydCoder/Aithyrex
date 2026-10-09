@@ -1,133 +1,113 @@
-# AI Shield — Architecture
+# Aithyrex Architecture and Trust Boundaries
 
-## Overview
+**Product:** Aithyrex (formerly AI Shield)  
+**Repository:** https://github.com/LloydCoder/Aithyrex  
+**Status:** Implementation snapshot; not a production-readiness attestation.
 
-AI Shield is the surveillance layer of the Tinlance AI Security Platform.
-It sits between any application and its LLM provider, inspecting every
-prompt and completion in real time.
+## 1. Purpose and scope
 
-## Connection Map
+Aithyrex is intended to detect threats in supported AI interactions and emit evidence-bearing findings. The current repository contains a FastAPI backend, local detector modules, an HTTP client for ThreatFade, a Parliament voting component, SIEM/reporting code, SDK wrappers and a dashboard.
 
-```
-AI SHIELD (Surveillance Layer)
-        │
-        ├── Detection Layer ──────────────────── ThreatFade v0.2.0
-        │     POST /detect/json                  github.com/LloydCoder/tinlance-threatfade
-        │     Z-score · Entropy · MITRE ATT&CK   490K+ packets · 0% FP rate
-        │
-        ├── Intelligence Layer ───────────────── ReconOS OFE
-        │     ThreatFade C2 bridge               github.com/Tinlance/reconos-ofe
-        │     STIX 2.1 export format             6,277 lines · 129 tests
-        │
-        ├── Compliance Layer ─────────────────── KalevioAI
-        │     POST /incidents                    github.com/Tinlance/kalevio
-        │     NIS2/DORA auto-reporting           27 EU member states
-        │
-        └── Orchestration Layer ──────────────── FusionOps
-              SOC dashboard                      github.com/Tinlance/fusionops
-              Triage + remediation agents
-```
+Aithyrex is **not proven to be a universal transparent proxy** for every LLM provider. Enforcement depends on the caller using a supported, correctly configured integration and honoring the verdict. SDK wrappers and API routes must be validated per provider, version, streaming mode and tool-call path.
 
-## Deployment Architecture
+## 2. Canonical Tinlance boundaries
 
-```
-                    ┌─────────────────────┐
-                    │     Your LLM App    │
-                    └──────────┬──────────┘
-                               │  HTTP / SDK wrapper
-                    ┌──────────▼──────────┐
-                    │     AI Shield       │
-                    │  FastAPI Proxy      │
-                    │  Port 8002          │
-                    └──────────┬──────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              ▼                ▼                ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │  ThreatFade  │  │  PostgreSQL  │  │    Redis     │
-    │  Port 8000   │  │  Port 5432   │  │  Port 6379   │
-    └──────────────┘  └──────────────┘  └──────────────┘
-              │
-    ┌──────────▼──────────┐
-    │   LLM Provider API  │
-    │   OpenAI / Anthropic│
-    │   Groq / Local      │
-    └─────────────────────┘
-```
+- **Aithyrex:** AI-interaction threat detection, detector findings, telemetry enrichment and versioned security signals.
+- **Auctaryn:** agent context, memory, skill and proposed-action risk assessment.
+- **Tinlance Agent Platform:** authoritative identity, tenant binding, authorization, policy, approvals, governed execution, tools/MCP, sandboxing, secrets, budgets and authoritative audit/evidence.
+- **ThreatFade:** separate behavioral/network detection service. Network-traffic metrics are not validation of AI-text detection.
+- **AURONTRA:** IT resilience, incident/ticket workflows and bounded remediation coordination.
+- **FusionOps:** response workflow orchestration.
+- **KalevioAI:** compliance evidence and reporting workflows; a webhook or report does not prove legal submission.
+- **TSIC:** versioned cross-repository contracts, conformance and end-to-end evidence.
+- **TADL:** developer-artifact and schema validation.
 
-## Detection Pipeline
+Aithyrex findings are untrusted signals, not authorization grants. Aithyrex must not become a competing identity, policy, approval or governed-execution authority.
 
-```
-Incoming Request (prompt)
-        │
-        ▼
-[1] Prompt Injection Detector     ← regex + semantic (Sprint 1/2)
-        │
-        ▼
-[2] Credential Leak Scanner       ← 18 patterns, FDSE Toolkit
-        │
-        ▼
-[3] Pre-flight verdict
-        │
-   BLOCK? ──yes──► 403 Forbidden (block mode, Pro+)
-        │ no
-        ▼
-[LLM API call — forwarded]
-        │
-        ▼
-Incoming Response (completion)
-        │
-        ▼
-[4] Covert Channel Detector       ← ThreatFade entropy + Z-score
-        │
-        ▼
-[5] C2 Behaviour Detector         ← ThreatFade full pipeline
-        │
-        ▼
-[6] Credential Leak (completion)  ← same 18 patterns
-        │
-        ▼
-[7] MITRE ATLAS enrichment
-        │
-        ▼
-[8] SIEM export                   ← JSON/CSV/Splunk/CEF/STIX 2.1
-        │
-        ▼
-[9] KalevioAI hook (if threshold) ← NIS2/DORA compliance
-        │
-        ▼
-Response returned to application
-```
+## 3. Current logical flow
 
-## File Structure
+1. An application or supported SDK submits a prompt for pre-flight inspection.
+2. Aithyrex runs local prompt-injection and credential-pattern detectors.
+3. When a completion is supplied, Aithyrex runs credential, encoding/covert-channel, C2-behavior and context/data-poisoning heuristics.
+4. ThreatFade is queried for supplementary telemetry. Missing, malformed or unavailable required telemetry is marked degraded; the current safety policy blocks rather than treating it as clean.
+5. The deterministic detector verdict is aggregated. Parliament may provide advisory escalation; it cannot downgrade an existing BLOCK verdict. Raw prompt/completion content is withheld from external voting models.
+6. Findings can be logged/exported and routed to downstream systems. Delivery durability and live cross-repository integration remain separate acceptance gates.
 
-See the [repo root README](../README.md) for the annotated file structure
-and reuse annotations for each file.
+Logical components:
 
-## Shared Infrastructure
+- Application or supported SDK
+- Authenticated Aithyrex pre-flight / inspection API
+- Prompt-injection detector
+- Credential-pattern detector
+- Covert-channel and encoding heuristics
+- C2-behavior heuristics
+- RAG/context-poisoning heuristics
+- ThreatFade supplementary telemetry
+- Deterministic verdict and advisory Parliament
+- Finding, SIEM and report workflows
+- Tinlance Agent Platform policy/authorization
+- Authorized execution or response workflow
 
-| Component | Source Repo | Reuse Type |
-|-----------|-------------|------------|
-| C2 detection engine | ThreatFade | HTTP call |
-| NIS2/DORA hooks | KalevioAI | HTTP POST |
-| SIEM export (4 formats) | ThreatFade | Direct port |
-| STIX 2.1 export | ReconOS OFE | Direct port |
-| FastAPI skeleton | KalevioAI | Scaffold copy |
-| Multi-tenant auth | KalevioAI | Direct reuse |
-| LemonSqueezy billing | KalevioAI/GiftMode | Direct reuse |
-| Credential patterns (18) | FDSE Toolkit | Direct port |
-| Detection YAML rules | OSS PRs (5 repos) | Peer-reviewed |
+This describes intended responsibilities, not proof that every connection is currently deployed or live.
 
-## MITRE Coverage
+## 4. Detector semantics and limitations
 
-| Technique | Name | Detector |
-|-----------|------|----------|
-| AML.T0051 | LLM Prompt Injection | prompt_injection.py |
-| AML.T0048 | Exfiltration via ML Inference API | covert_channel.py, credential_leak.py |
-| AML.T0020 | Poison Training Data | data_poisoning.py (Sprint 2) |
-| AML.T0040 | ML Model Inference API Access | data_poisoning.py (Sprint 2) |
-| AML.T0043 | Craft Adversarial Data | c2_behaviour.py |
-| T1027 | Obfuscated Files or Information | covert_channel.py |
-| T1071.001 | C2 via Web Protocols | c2_behaviour.py |
-| T1095 | Non-Application Layer Protocol | c2_behaviour.py |
-| T1552 | Unsecured Credentials | credential_leak.py |
+| Detector | Current approach | Limitation |
+|---|---|---|
+| Prompt injection | Pattern-based detection | Not complete semantic analysis; false negatives/positives require corpus-based measurement. |
+| Credential leakage | Locally maintained credential-format patterns | Coverage depends on tested formats; matches are redacted in findings. |
+| Covert channel | Encoding heuristics plus ThreatFade signal | Network-traffic performance does not establish AI-text effectiveness. |
+| C2 behavior | ThreatFade signal plus thresholds | No claim of detecting arbitrary agent C2 without representative AI-interaction evaluation. |
+| Data poisoning/context risk | Runtime text heuristics | Does not establish detection of offline model-weight or training-data poisoning. |
+
+MITRE ATLAS and ATT&CK references are **heuristic mappings**. A mapping is not evidence that the technique is fully covered.
+
+## 5. Identity, tenant isolation and policy
+
+- API routes requiring tenant access use verified Clerk JWTs with a configured trusted key, issuer and authorized-party allowlist.
+- Requests must resolve to an active, provisioned tenant record. Tenant plan is read from server-side state, not JWT metadata.
+- Production startup rejects missing JWT trust anchors, default application secrets, wildcard hosts/origins, non-TLS Redis, and default/local or non-TLS database URLs.
+- WebSocket access uses a short-lived, single-use ticket rather than a long-lived JWT in a query string. The live tenant-scoped event publisher is not yet implemented; the endpoint must not be represented as a functioning event stream.
+- Model allowlisting is disabled because it previously bypassed mandatory inspection.
+- The Tinlance Agent Platform remains authoritative for final authorization and actual tool execution.
+
+These controls require integration tests against the exact deployment configuration and tenant schema before release.
+
+## 6. Failure semantics
+
+- ThreatFade timeout, connection error, invalid JSON/schema or non-finite Z-score is a degraded result, never a clean result.
+- Block-state and usage-accounting failures are fail-closed.
+- Missing/invalid model votes abstain.
+- Parliament can escalate but cannot lower the deterministic action rank.
+- Unknown billing product IDs do not grant entitlements.
+- Webhook signature validation requires configured provider secrets; missing secrets reject the event.
+- Reports and compliance submissions that are not implemented return an explicit unavailable/not-implemented response instead of simulated success.
+
+Fail-closed behavior can affect availability. Production owners must accept the documented outage policy and operate dependency health/incident runbooks.
+
+## 7. Persistence and delivery caveats
+
+Detection-event logging, SIEM dispatch and some alert paths still use in-process background tasks. They are not yet a durable outbox guarantee. Before production assurance, implement durable event persistence/outbox, retries, idempotency, dead-letter handling, delivery acknowledgements and crash/restart tests.
+
+Dashboard data, report exports and compliance notifications must be sourced from persisted tenant-scoped backend records. Simulated data or local UI state must be explicitly labeled and cannot be presented as successful security action or legal filing.
+
+## 8. Deployment and integrations
+
+Repository configuration, an adapter class or a URL environment variable does not prove that a service is deployed or integrated. Deployment, DNS/TLS, service authentication, tenant isolation, API contract compatibility, SIEM receipt and cross-repository end-to-end flows must be verified separately.
+
+No hosted Aithyrex API base URL is asserted by this document. SDK users must configure the actual verified service URL explicitly.
+
+## 9. Assurance requirements
+
+Before launch, maintain reproducible evidence for:
+
+- Threat coverage and false-positive/false-negative evaluation on representative AI interaction data.
+- SDK sync/async/streaming and tool-call mediation.
+- Tenant-isolation and authorization regression tests.
+- ThreatFade outage, invalid-response and recovery behavior.
+- Durable evidence delivery and replay/idempotency.
+- Billing webhook signature, replay, product-ID and entitlement transitions.
+- Production deployment, rollback, backup/restore and operational SLOs.
+- Versioned TSIC contract conformance and end-to-end integration tests.
+
+Do not claim 100% security, 0% false positives, complete MITRE coverage, regulatory filing, production deployment, or a live integration without versioned, reproducible evidence.
