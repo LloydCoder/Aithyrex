@@ -1,22 +1,8 @@
-"""
-Aithyrex — Billing Service
-=============================
-Unified billing handler for LemonSqueezy (global) and Paddle (EU/Enterprise).
+"""Aithyrex billing and entitlement updates.
 
-LemonSqueezy — Global / US / Nigeria (via Paystack passthrough)
-  Handles: Free → Starter → Pro upgrades
-  Store ID: 247127 (same as KalevioAI and GiftMode)
-
-Paddle — EU / Enterprise
-  Handles: Pro and Enterprise tier
-  VAT auto-handled for EU buyers
-  Enterprise invoicing for procurement teams
-
-Plan mapping:
-  free:       500 inferences/month
-  starter:    25,000 inferences/month  ($49)
-  pro:        150,000 inferences/month ($199) — block mode unlocked
-  enterprise: unlimited                (custom) — NIS2/DORA reports
+Provider webhook handlers validate signatures, map only configured product IDs,
+and update server-side tenant plans. This module does not claim live billing
+provider configuration, replay-safe event processing, or commercial readiness.
 """
 
 from __future__ import annotations
@@ -238,15 +224,7 @@ class BillingService:
 
 
 # Module-level singleton
-billing = BillingService()"""Aithyrex billing and entitlement updates.
-
-Provider webhook handlers validate signatures, map only configured product IDs,
-and update server-side tenant plans. This module does not claim live billing
-provider configuration, replay-safe event processing, or commercial readiness.
-"""
-
-from __future__ import annotations
-
+billing = BillingService()
 import hashlib
 import hmac
 import time
