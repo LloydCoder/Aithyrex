@@ -179,7 +179,9 @@ def generate_json() -> str:
         "product": "Aithyrex v0.1.0",
         "vendor": "Tinlance Limited",
         "total_techniques": len(COVERAGE_MAP),
-        "full_coverage": 0,\n        "mapped_techniques": len(COVERAGE_MAP),\n        "assurance_note": "Technique mappings do not prove implementation completeness or detection effectiveness. All entries are heuristic mappings until validated by a reproducible test corpus.",
+        "full_coverage": 0,
+        "mapped_techniques": len(COVERAGE_MAP),
+        "assurance_note": "Technique mappings do not prove implementation completeness or detection effectiveness. All entries are heuristic mappings until validated by a reproducible test corpus.",
         "partial_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "partial"),
         "planned_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "planned"),
         "frameworks": {
