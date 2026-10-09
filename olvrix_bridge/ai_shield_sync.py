@@ -39,8 +39,8 @@ Deployment:
     "ai_shield": AIShieldSync()
 
 Environment:
-  AI_SHIELD_API_URL=https://api.aishield.tinlance.com
-  AI_SHIELD_API_KEY=your-shield-key
+  AITHYREX_API_URL=https://api.aishield.tinlance.com
+  AITHYREX_API_TOKEN=your-shield-key
 """
 
 from __future__ import annotations
@@ -348,14 +348,9 @@ class AIShieldSync:
         business_id: str = "",
     ) -> dict:
         """POST to AI Shield /detect/llm. Returns verdict dict."""
-        if not AI_SHIELD_API_KEY:
-            # Dev mode — log but don't block
-            logger.debug(
-                "ai_shield_sync_dev_mode",
-                source=source,
-                business_id=business_id,
-            )
-            return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+        if not AITHYREX_API_URL or not AITHYREX_API_TOKEN:
+            logger.warning("aithyrex_inspection_not_configured", source=source, business_id=business_id)
+            return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "not_configured"}
 
         payload: dict = {
             "prompt": prompt,
@@ -367,12 +362,24 @@ class AIShieldSync:
         async with httpx.AsyncClient(timeout=8.0) as client:
             try:
                 response = await client.post(
-                    f"{AI_SHIELD_API_URL}/detect/llm",
+                    f"{AITHYREX_API_URL}/api/v1/detect/llm",
                     headers=self._headers,
                     json=payload,
                 )
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if (
+                    isinstance(data, dict)
+                    and data.get("action") in {"pass", "log", "alert", "block"}
+                    and data.get("severity") in {"clean", "info", "low", "medium", "high", "critical"}
+                    and isinstance(data.get("blocked"), bool)
+                    and isinstance(data.get("detections"), list)
+                ):
+                    if data["action"] == "block":
+                        data["blocked"] = True
+                    data.setdefault("degraded", False)
+                    return data
+                error_code = "invalid_response_schema"
 
             except httpx.TimeoutException:
                 logger.warning(
@@ -380,7 +387,7 @@ class AIShieldSync:
                     source=source,
                     business_id=business_id,
                 )
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "inspection_unavailable"}
 
             except httpx.ConnectError:
                 logger.warning(
