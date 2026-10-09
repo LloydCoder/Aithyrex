@@ -14,7 +14,7 @@ Usage:
     # Outputs to docs/mitre-atlas-mapping.md + JSON + CSV
 
 CLI:
-    ai-shield mitre-report --format markdown
+    aithyrex mitre-report --format markdown
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="Entropy/encoding heuristics plus credential-format pattern matching; not independently validated as complete coverage",
         coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Covert channel detected via entropy anomaly. Credential leak via pattern matching.",
+        notes="Heuristics flag selected encoded/high-entropy patterns and credential formats; AI-specific effectiveness is not measured.",
         attck_ref="T1041",
     ),
     CoverageEntry(
@@ -88,7 +88,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="Training data extraction patterns + ThreatFade C2 pipeline",
         coverage_level="heuristic",
         sprint="Sprint 1/4",
-        notes="Detects extraction probing. Does not detect benign inference access.",
+        notes="Pattern-based extraction-probing heuristic; detection coverage and false-positive rate are not established.",
     ),
     CoverageEntry(
         technique_id="AML.T0043",
@@ -99,7 +99,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="Unicode steganography detection, zero-width character scanning, base64/hex blob detection",
         coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects encoded payloads in completions. Does not cover image/audio adversarial examples.",
+        notes="Selected encoded-payload heuristics only; image/audio adversarial examples are not covered by this mapping.",
     ),
     CoverageEntry(
         technique_id="AML.T0054",
@@ -110,7 +110,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="DAN mode, developer mode, jailbreak keyword patterns",
         coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Covered as a subset of prompt injection detection.",
+        notes="Mapped to prompt-injection patterns; technique-level coverage is not established.",
     ),
 
     # ── MITRE ATT&CK cross-references ────────────────────────────────────────
@@ -131,10 +131,10 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Command and Control",
         framework="ATT&CK",
         detector="c2_behaviour",
-        detector_method="ThreatFade full C2 pipeline — entropy + Z-score + MITRE TTP mapping",
+        detector_method="ThreatFade C2 signal plus local heuristic mapping",
         coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects AI agents used as C2 relay channels.",
+        notes="Intended relevance mapping only; AI-agent C2 detection effectiveness is not validated.",
     ),
     CoverageEntry(
         technique_id="T1095",
@@ -167,7 +167,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         detector_method="ThreatFade entropy + credential leak patterns",
         coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects data encoded in LLM completions for exfiltration.",
+        notes="Intended exfiltration mapping only; representative AI-interaction validation is required.",
     ),
 ]
 
