@@ -1,5 +1,5 @@
 """
-AI Shield — Covert Channel Detector
+Aithyrex — Covert Channel Detector
 =====================================
 Detects steganographic and encoding-based covert channels
 in LLM completions using ThreatFade's entropy/Z-score methodology.
@@ -102,16 +102,9 @@ class CovertChannelDetector:
                 },
             )
 
-        # Z-score above 10 → CRITICAL (ThreatFade baseline: 14.76 on real malware)
-        if z_outlier >= 10.0:
-            severity = Severity.CRITICAL
-            confidence = 0.95
-        elif z_outlier >= 5.0 or len(indicators) >= 2:
-            severity = Severity.HIGH
-            confidence = 0.80
-        else:
-            severity = Severity.MEDIUM
-            confidence = 0.55
+        # Encoding and ThreatFade thresholds are not validated for AI text; never hard-block on them alone.
+        severity = Severity.MEDIUM
+        confidence = 0.0
 
         logger.warning(
             "covert_channel_detected",
@@ -130,6 +123,7 @@ class CovertChannelDetector:
                 "z_outlier": z_outlier,
                 "threatfade_confidence": tf_confidence,
                 "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+                "confidence_calibrated": False,
             },
             mitre_atlas=["AML.T0048", "T1027"],
         )
