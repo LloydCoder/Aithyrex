@@ -158,15 +158,23 @@ class ShieldEngine:
         # ── Tier limit check (Pro+) ──────────────────────────────────────
         if tenant_id:
             from backend.core.usage_counter import usage_counter
-            within_limit, count, limit = await usage_counter.check_limit(tenant_id, plan)
-            if not within_limit and plan == "free":
-                logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count)
+            try:
+                within_limit, count, limit = await usage_counter.check_limit(tenant_id, plan)
+                if not within_limit and plan == "free":
+                    logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count)
+                    return ShieldVerdict(
+                        action=Action.BLOCK,
+                        severity=Severity.INFO,
+                        blocked=True,
+                    )
+                await usage_counter.increment(tenant_id)
+            except Exception as exc:
+                logger.error("usage_accounting_unavailable_fail_closed", error_type=type(exc).__name__)
                 return ShieldVerdict(
                     action=Action.BLOCK,
-                    severity=Severity.INFO,
+                    severity=Severity.HIGH,
                     blocked=True,
                 )
-            await usage_counter.increment(tenant_id)
 
         if not self._detectors:
             return ShieldVerdict(action=Action.PASS, severity=Severity.CLEAN)
@@ -201,13 +209,11 @@ class ShieldEngine:
         if should_invoke_parliament(verdict):
             try:
                 # Extract ThreatFade Z-score from results for 3rd vote
-                tf_z_score = 0.0
+                tf_z_score = None
                 for r in results:
-                    if r.detector in ("covert_channel", "c2_behaviour"):
-                        tf_z_score = max(
-                            tf_z_score,
-                            float(r.details.get("z_outlier", 0.0)),
-                        )
+                    if r.detector in ("covert_channel", "c2_behaviour") and not r.details.get("degraded"):
+                        observed_z = float(r.details.get("z_outlier", 0.0))
+                        tf_z_score = observed_z if tf_z_score is None else max(tf_z_score, observed_z)
 
                 parliament_verdict = await parliament.evaluate(
                     verdict=verdict,
