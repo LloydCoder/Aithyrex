@@ -99,7 +99,7 @@ async def detect_prompt(
 
     # Pre-flight: block on any detection (ALERT or BLOCK)
     # This is stricter than /detect/llm which only hard-blocks on CRITICAL
-    from backend.core.shield_engine import Action, Severity
+    from backend.core.shield_engine import Severity
     should_block = (
         verdict.blocked or
         verdict.action == Action.ALERT or
