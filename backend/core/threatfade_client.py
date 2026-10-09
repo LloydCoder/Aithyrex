@@ -12,6 +12,8 @@ Improvements to ThreatFade automatically benefit AI Shield.
 
 from __future__ import annotations
 
+import math
+
 import httpx
 import structlog
 
@@ -39,7 +41,7 @@ class ThreatFadeClient:
     # An outage is not a clean verdict; callers must treat telemetry as degraded.
     _DEGRADED_RESPONSE: dict = {
         "detected": False,
-        "confidence": "info",
+        "confidence": "unknown",
         "score": 0.0,
         "entropy": 0.0,
         "z_outlier": 0.0,
@@ -79,8 +81,19 @@ class ThreatFadeClient:
                 )
                 response.raise_for_status()
                 result = response.json()
-                if not isinstance(result, dict):
-                    return {**self._DEGRADED_RESPONSE, "error": "invalid_response"}
+                if (
+                    not isinstance(result, dict)
+                    or not isinstance(result.get("detected"), bool)
+                    or "z_outlier" not in result
+                ):
+                    return {**self._DEGRADED_RESPONSE, "error": "invalid_response_schema"}
+                try:
+                    z_outlier = float(result["z_outlier"])
+                except (TypeError, ValueError):
+                    return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
+                if not math.isfinite(z_outlier):
+                    return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
+                result["z_outlier"] = z_outlier
                 result.setdefault("available", True)
                 result.setdefault("degraded", False)
                 logger.info(
@@ -96,13 +109,13 @@ class ThreatFadeClient:
                 return {**self._DEGRADED_RESPONSE, "error": "timeout"}
             except httpx.ConnectError:
                 logger.warning("threatfade_unreachable_fallback", source=source)
-                return {**self._CLEAN_FALLBACK, "error": "unreachable"}
+                return {**self._DEGRADED_RESPONSE, "error": "unreachable"}
             except httpx.HTTPStatusError as e:
                 logger.error("threatfade_http_error", status=e.response.status_code)
-                return {**self._CLEAN_FALLBACK, "error": str(e)}
+                return {**self._DEGRADED_RESPONSE, "error": "http_status_error"}
             except Exception as e:
-                logger.error("threatfade_unexpected_error", error=str(e))
-                return {**self._CLEAN_FALLBACK, "error": str(e)}
+                logger.error("threatfade_unexpected_error", error_type=type(e).__name__)
+                return {**self._DEGRADED_RESPONSE, "error": "unexpected_error"}
 
     async def health(self) -> bool:
         """Check ThreatFade service liveness."""
