@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.ref_name }}
-      - uses: actions/setup-node@d5a9e4c4e5e4a7a7e1d4a5d0a1d1f2a1b2c3d4e5
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
       - name: Generate reproducible lockfile
