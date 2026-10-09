@@ -34,7 +34,7 @@ class TestMITREReport:
     def test_markdown_report_has_atlas_section(self):
         from backend.core.mitre_report import generate_markdown
         md = generate_markdown()
-        assert "MITRE ATLAS Coverage" in md
+        assert "MITRE ATLAS mappings" in md
         assert "AML.T0051" in md
         assert "prompt_injection" in md
 
