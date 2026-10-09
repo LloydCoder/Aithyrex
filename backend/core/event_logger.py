@@ -1,5 +1,5 @@
 """
-AI Shield — Event Logger
+Aithyrex — Event Logger
 =========================
 Persists every detection event to PostgreSQL.
 Also creates Alert records for HIGH and CRITICAL verdicts.
