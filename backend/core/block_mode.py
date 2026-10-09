@@ -163,7 +163,7 @@ class BlockModeService:
         """List all blocked models and agents for a tenant."""
         redis = await self._get_redis()
         if not redis:
-            return []
+            raise RuntimeError("Block-state storage unavailable; cannot confirm blocklist")
 
         blocked = []
         # Models
