@@ -3,9 +3,11 @@ import hmac
 import time
 from types import SimpleNamespace
 
-import pytest
-
-from backend.core.billing import verify_lemonsqueezy_signature, verify_paddle_signature, _plan_from_paddle_price
+from backend.core.billing import (
+    _plan_from_paddle_price,
+    verify_lemonsqueezy_signature,
+    verify_paddle_signature,
+)
 
 
 def test_missing_lemonsqueezy_secret_rejects_signature(monkeypatch):
@@ -51,7 +53,7 @@ def test_unknown_paddle_price_never_grants_paid_plan(monkeypatch):
     monkeypatch.setattr("backend.core.config.settings", SimpleNamespace(PADDLE_PRO_PRICE_ID="pro-id", PADDLE_ENTERPRISE_PRICE_ID="enterprise-id"))
     assert _plan_from_paddle_price("unexpected-price") is None
 
- 
+
 def test_empty_provider_price_ids_never_grant_paid_plan(monkeypatch):
     monkeypatch.setattr(
         "backend.core.config.settings",
@@ -59,7 +61,7 @@ def test_empty_provider_price_ids_never_grant_paid_plan(monkeypatch):
     )
     assert _plan_from_paddle_price("") is None
 
- 
+
 def test_unknown_lemonsqueezy_variant_is_not_entitled(monkeypatch):
     from backend.core.billing import _plan_from_ls_variant
     monkeypatch.setattr(

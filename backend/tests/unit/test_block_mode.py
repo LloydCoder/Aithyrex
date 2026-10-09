@@ -5,8 +5,9 @@ Tests Redis-backed block/allow list enforcement.
 Redis is mocked — no live Redis needed.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.core.block_mode import BlockModeService
 

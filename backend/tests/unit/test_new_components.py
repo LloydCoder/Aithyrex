@@ -4,10 +4,10 @@ AI Shield — Unit Tests: New Components (Sprint 4 additions)
 Tests MITRE report generator, Olvrix bridge, and integration middleware.
 """
 
-import asyncio
 import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 # ── MITRE Report Generator ─────────────────────────────────────────────────────

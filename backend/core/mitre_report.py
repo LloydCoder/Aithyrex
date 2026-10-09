@@ -22,7 +22,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -214,12 +214,12 @@ def generate_markdown() -> str:
         "# AI Shield — MITRE ATLAS Coverage",
         "",
         f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}  ",
-        f"> Product: AI Shield v0.1.0 | Vendor: Tinlance Limited",
+        "> Product: AI Shield v0.1.0 | Vendor: Tinlance Limited",
         "",
         "## Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total techniques covered | {len(COVERAGE_MAP)} |",
         f"| Full coverage | {full} |",
         f"| Partial coverage | {sum(1 for e in COVERAGE_MAP if e.coverage_level == 'partial')} |",

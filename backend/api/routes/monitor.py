@@ -7,7 +7,7 @@ import secrets
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket
 
 from backend.core.auth import TokenPayload, get_current_tenant
 
@@ -46,6 +46,7 @@ async def monitor_stream(websocket: WebSocket):
         return
     try:
         import hashlib
+
         from backend.core.usage_counter import usage_counter
         redis = await usage_counter._get_redis()
         if redis is None:

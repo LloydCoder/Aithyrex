@@ -10,8 +10,8 @@ They verify signatures from the payment provider instead.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
 import structlog
+from fastapi import APIRouter, HTTPException, Request, status
 
 from backend.core.billing import (
     billing,

@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import time
 from datetime import datetime, timezone
 
@@ -109,9 +108,10 @@ async def update_tenant_plan(
     Called from both LemonSqueezy and Paddle webhook handlers.
     """
     try:
+        from sqlalchemy import select
+
         from backend.models.database import AsyncSessionFactory
         from backend.models.models import Tenant
-        from sqlalchemy import select
 
         async with AsyncSessionFactory() as session:
             stmt = select(Tenant).where(Tenant.clerk_org_id == clerk_org_id)

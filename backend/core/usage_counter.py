@@ -14,7 +14,6 @@ Tier limits:
 
 from __future__ import annotations
 
-import calendar
 from datetime import datetime, timezone
 
 import structlog
@@ -44,6 +43,7 @@ class UsageCounterService:
         if self._redis is None:
             try:
                 import redis.asyncio as aioredis
+
                 from backend.core.config import settings
                 self._redis = await aioredis.from_url(
                     settings.REDIS_URL,

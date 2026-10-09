@@ -83,11 +83,11 @@ class ShieldEngine:
     """
 
     def __init__(self) -> None:
-        from backend.detectors.prompt_injection import PromptInjectionDetector
-        from backend.detectors.credential_leak import CredentialLeakDetector
-        from backend.detectors.covert_channel import CovertChannelDetector
         from backend.detectors.c2_behaviour import C2BehaviourDetector
+        from backend.detectors.covert_channel import CovertChannelDetector
+        from backend.detectors.credential_leak import CredentialLeakDetector
         from backend.detectors.data_poisoning import DataPoisoningDetector
+        from backend.detectors.prompt_injection import PromptInjectionDetector
 
         self._detectors: list[Any] = [
             PromptInjectionDetector(),
@@ -269,9 +269,9 @@ class ShieldEngine:
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
+                    from backend.compliance.nis2_dora import nis2_dora
                     from backend.core.event_logger import event_logger
                     from backend.core.siem_dispatch import siem_dispatcher
-                    from backend.compliance.nis2_dora import nis2_dora
 
                     loop.create_task(event_logger.log_event(
                         verdict=verdict,

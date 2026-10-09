@@ -34,8 +34,9 @@ async def _check_threatfade() -> dict:
 async def _check_postgres() -> dict:
     start = time.monotonic()
     try:
-        from backend.models.database import engine
         from sqlalchemy import text
+
+        from backend.models.database import engine
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return {

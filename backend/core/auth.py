@@ -5,10 +5,10 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Annotated
 
+import jwt
 import structlog
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
 
 logger = structlog.get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -81,6 +81,7 @@ async def get_current_tenant(
 
     try:
         from sqlalchemy import select
+
         from backend.models.database import AsyncSessionFactory
         from backend.models.models import Tenant
 

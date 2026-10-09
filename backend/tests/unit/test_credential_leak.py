@@ -7,8 +7,8 @@ Pattern set peer-reviewed via OSS PRs to TruffleHog + Gitleaks.
 
 import pytest
 
-from backend.detectors.credential_leak import CredentialLeakDetector
 from backend.core.shield_engine import Severity
+from backend.detectors.credential_leak import CredentialLeakDetector
 
 
 @pytest.fixture

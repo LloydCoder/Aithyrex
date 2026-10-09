@@ -14,8 +14,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from backend.core.config import settings
 from backend.api.routes import detect, enforce, health, monitor, reports, webhooks
+from backend.core.config import settings
 
 logger = structlog.get_logger(__name__)
 

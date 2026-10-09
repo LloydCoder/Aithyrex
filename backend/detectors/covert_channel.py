@@ -21,7 +21,6 @@ Sprint 2: Full token distribution Z-score analysis.
 
 from __future__ import annotations
 
-import base64
 import re
 
 import structlog

@@ -5,11 +5,11 @@ Tests the full detection pipeline — prompt in, ShieldVerdict out.
 All detectors wired. No mocks for the core detection path.
 """
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from backend.core.shield_engine import ShieldEngine, Action, Severity
+import pytest
+
+from backend.core.shield_engine import Action, Severity, ShieldEngine
 
 # ThreatFade is not running in unit tests — mock its HTTP calls
 CLEAN_TF_RESPONSE = {
@@ -165,7 +165,7 @@ async def test_pro_tier_not_blocked_at_free_limit(engine):
 # ── Verdict helper ────────────────────────────────────────────────────────────
 def test_verdict_detected_by_helper(engine):
     """ShieldVerdict.detected_by() finds the right detector."""
-    from backend.core.shield_engine import ShieldVerdict, DetectionResult
+    from backend.core.shield_engine import DetectionResult, ShieldVerdict
 
     verdict = ShieldVerdict(
         action=Action.BLOCK,

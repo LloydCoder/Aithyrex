@@ -18,14 +18,12 @@ Run with:
 
 from __future__ import annotations
 
-import json
 import uuid
 from types import SimpleNamespace
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 CLEAN_TF = {

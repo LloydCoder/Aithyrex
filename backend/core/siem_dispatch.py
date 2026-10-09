@@ -11,8 +11,6 @@ Enterprise:   All formats including STIX 2.1
 
 from __future__ import annotations
 
-import asyncio
-
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -44,7 +42,11 @@ class SIEMDispatcher:
         Returns dict of format → success.
         """
         from backend.exporters.siem_exporter import (
-            to_json, to_csv, to_cef, to_splunk_hec, to_stix21
+            to_cef,
+            to_csv,
+            to_json,
+            to_splunk_hec,
+            to_stix21,
         )
 
         formats = PLAN_FORMATS.get(plan, ["json"])
@@ -120,8 +122,8 @@ class SIEMDispatcher:
         Send alert notifications for HIGH/CRITICAL events.
         Webhooks on Starter+, Slack on Pro+.
         """
-        from backend.core.shield_engine import Severity
         from backend.core.config import settings
+        from backend.core.shield_engine import Severity
 
         if verdict.severity not in (Severity.HIGH, Severity.CRITICAL):
             return
@@ -137,6 +139,7 @@ class SIEMDispatcher:
     async def _send_slack(self, verdict, tenant_id: str) -> None:
         """POST alert to Slack webhook."""
         import httpx
+
         from backend.core.config import settings
 
         detectors = [r.detector for r in verdict.results if r.detected]
@@ -161,6 +164,7 @@ class SIEMDispatcher:
     async def _send_telegram(self, verdict, tenant_id: str) -> None:
         """Send alert via Telegram Bot API."""
         import httpx
+
         from backend.core.config import settings
 
         emoji = "🚨" if verdict.blocked else "⚠️"

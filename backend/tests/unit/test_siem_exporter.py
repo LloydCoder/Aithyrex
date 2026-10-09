@@ -5,15 +5,11 @@ Tests all 5 export formats.
 """
 
 import json
-import pytest
-from unittest.mock import AsyncMock, patch
 
-from backend.core.shield_engine import (
-    Action, DetectionResult, Severity, ShieldVerdict
-)
-from backend.exporters.siem_exporter import (
-    to_json, to_csv, to_cef, to_stix21
-)
+import pytest
+
+from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
+from backend.exporters.siem_exporter import to_cef, to_csv, to_json, to_stix21
 
 
 @pytest.fixture

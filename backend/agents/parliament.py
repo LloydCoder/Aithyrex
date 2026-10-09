@@ -35,8 +35,8 @@ from dataclasses import dataclass, field
 
 import structlog
 
-from backend.agents.llm_gateway import LLMGateway, MemberVerdict, Vote, PARLIAMENT_PROMPT
-from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
+from backend.agents.llm_gateway import PARLIAMENT_PROMPT, LLMGateway, MemberVerdict, Vote
+from backend.core.shield_engine import Action, Severity, ShieldVerdict
 
 logger = structlog.get_logger(__name__)
 

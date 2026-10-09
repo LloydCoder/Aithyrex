@@ -9,8 +9,9 @@ Run with:
     (expects ThreatFade live at localhost:8000)
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from backend.core.threatfade_client import ThreatFadeClient
 

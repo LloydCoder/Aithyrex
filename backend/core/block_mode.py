@@ -37,6 +37,7 @@ class BlockModeService:
         if self._redis is None:
             try:
                 import redis.asyncio as aioredis
+
                 from backend.core.config import settings
                 self._redis = await aioredis.from_url(
                     settings.REDIS_URL,

@@ -7,8 +7,8 @@ and tool output injection detection.
 
 import pytest
 
-from backend.detectors.data_poisoning import DataPoisoningDetector
 from backend.core.shield_engine import Severity
+from backend.detectors.data_poisoning import DataPoisoningDetector
 
 
 @pytest.fixture
