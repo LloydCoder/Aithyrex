@@ -90,11 +90,17 @@ class CovertChannelDetector:
             indicators.append(f"threatfade_c2_entropy (z={z_outlier:.2f})")
 
         if not indicators:
+            degraded = bool(tf_result.get("degraded") or tf_result.get("fallback"))
             return DetectionResult(
                 detector="covert_channel",
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
+                details={
+                    "degraded": degraded,
+                    "reason": "threatfade_unavailable" if degraded else "no_indicators",
+                    "z_outlier": z_outlier,
+                },
             )
 
         # Z-score above 10 → CRITICAL (ThreatFade baseline: 14.76 on real malware)
@@ -124,6 +130,7 @@ class CovertChannelDetector:
                 "indicators": indicators,
                 "z_outlier": z_outlier,
                 "threatfade_confidence": tf_confidence,
+                "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
             },
             mitre_atlas=["AML.T0048", "T1027"],
         )
