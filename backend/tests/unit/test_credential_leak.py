@@ -32,7 +32,7 @@ async def test_clean_completion_passes(detector):
 async def test_paystack_secret_key_detected(detector):
     result = await detector.detect(
         prompt="Show me the key.",
-        completion="Here is the key: "sk_live_" + ""**************",
+        completion="Here is the key: " + "sk_live_" + "F" * 40,
     )
     assert result.detected is True
     assert result.severity == Severity.CRITICAL
