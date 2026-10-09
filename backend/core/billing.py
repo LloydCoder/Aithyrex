@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import time
 from datetime import datetime, timezone
 
 import structlog
@@ -47,14 +48,14 @@ def _plan_from_paddle_price(price_id: str) -> str:
         settings.PADDLE_PRO_PRICE_ID:        "pro",
         settings.PADDLE_ENTERPRISE_PRICE_ID: "enterprise",
     }
-    return mapping.get(str(price_id), "pro")
+    return mapping.get(str(price_id), "free")
 
 
 # ── Signature verification ────────────────────────────────────────────────────
 def verify_lemonsqueezy_signature(payload: bytes, signature: str) -> bool:
     from backend.core.config import settings
-    if not settings.LEMONSQUEEZY_WEBHOOK_SECRET:
-        return True   # Dev mode — skip verification
+    if not settings.LEMONSQUEEZY_WEBHOOK_SECRET or not signature:
+        return False
     expected = hmac.new(
         settings.LEMONSQUEEZY_WEBHOOK_SECRET.encode(),
         payload,
@@ -63,16 +64,35 @@ def verify_lemonsqueezy_signature(payload: bytes, signature: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-def verify_paddle_signature(payload: bytes, signature: str) -> bool:
+def verify_paddle_signature(payload: bytes, signature: str, tolerance_seconds: int = 300) -> bool:
+    """Verify Paddle Billing's timestamped ts=...;h1=... signature."""
     from backend.core.config import settings
-    if not settings.PADDLE_WEBHOOK_SECRET:
-        return True   # Dev mode
-    expected = hmac.new(
-        settings.PADDLE_WEBHOOK_SECRET.encode(),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
-    return hmac.compare_digest(expected, signature)
+
+    secret = settings.PADDLE_WEBHOOK_SECRET
+    if not secret or not signature:
+        return False
+
+    fields = {}
+    for component in signature.split(";"):
+        key, separator, value = component.partition("=")
+        if separator and key and value:
+            fields.setdefault(key.strip(), []).append(value.strip())
+
+    timestamps = fields.get("ts", [])
+    signatures = fields.get("h1", [])
+    if len(timestamps) != 1 or not signatures:
+        return False
+
+    try:
+        timestamp = int(timestamps[0])
+    except (TypeError, ValueError):
+        return False
+    if abs(time.time() - timestamp) > tolerance_seconds:
+        return False
+
+    signed_payload = str(timestamp).encode("utf-8") + b":" + payload
+    expected = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(expected, candidate) for candidate in signatures)
 
 
 # ── Tenant plan update ────────────────────────────────────────────────────────
