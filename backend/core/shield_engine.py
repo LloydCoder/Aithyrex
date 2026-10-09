@@ -130,10 +130,14 @@ class ShieldEngine:
         # ── Block mode check (Pro+) — before any detection runs ─────────
         if tenant_id and model:
             from backend.core.block_mode import block_mode
-            is_blocked, block_reason = await block_mode.is_blocked(
-                tenant_id=tenant_id,
-                model_id=model,
-            )
+            try:
+                is_blocked, block_reason = await block_mode.is_blocked(
+                    tenant_id=tenant_id,
+                    model_id=model,
+                )
+            except Exception as exc:
+                logger.error("block_state_check_failed_fail_closed", error_type=type(exc).__name__)
+                return ShieldVerdict(action=Action.BLOCK, severity=Severity.HIGH, blocked=True)
             if is_blocked:
                 logger.warning(
                     "blocked_model_rejected",
@@ -147,13 +151,8 @@ class ShieldEngine:
                     blocked=True,
                 )
 
-            # Allowlisting may tune alert routing later; it never bypasses detection.
-            is_allowed = await block_mode.is_allowlisted(
-                tenant_id=tenant_id,
-                model_id=model,
-            )
-            if is_allowed:
-                logger.info("allowlisted_model_detection_still_required", tenant_id=tenant_id, model=model)
+            # Allowlist entries are not consulted by the enforcement path.
+            # A model allowlist must never bypass mandatory security inspection.
 
         # ── Tier limit check (Pro+) ──────────────────────────────────────
         if tenant_id:
