@@ -33,24 +33,24 @@ logger = structlog.get_logger(__name__)
 
 
 # ── Plan detection from variant IDs ──────────────────────────────────────────
-def _plan_from_ls_variant(variant_id: str) -> str:
+def _plan_from_ls_variant(variant_id: str) -> str | None:
     from backend.core.config import settings
     mapping = {}
     if settings.LEMONSQUEEZY_STARTER_VARIANT_ID:
         mapping[settings.LEMONSQUEEZY_STARTER_VARIANT_ID] = "starter"
     if settings.LEMONSQUEEZY_PRO_VARIANT_ID:
         mapping[settings.LEMONSQUEEZY_PRO_VARIANT_ID] = "pro"
-    return mapping.get(str(variant_id), "free")
+    return mapping.get(str(variant_id))
 
 
-def _plan_from_paddle_price(price_id: str) -> str:
+def _plan_from_paddle_price(price_id: str) -> str | None:
     from backend.core.config import settings
     mapping = {}
     if settings.PADDLE_PRO_PRICE_ID:
         mapping[settings.PADDLE_PRO_PRICE_ID] = "pro"
     if settings.PADDLE_ENTERPRISE_PRICE_ID:
         mapping[settings.PADDLE_ENTERPRISE_PRICE_ID] = "enterprise"
-    return mapping.get(str(price_id), "free")
+    return mapping.get(str(price_id))
 
 
 # ── Signature verification ────────────────────────────────────────────────────
@@ -125,8 +125,7 @@ async def update_tenant_plan(
             tenant.plan = new_plan
 
             # Block mode auto-enabled for Pro+
-            if new_plan in ("pro", "enterprise"):
-                tenant.block_mode_enabled = True
+            tenant.block_mode_enabled = new_plan in ("pro", "enterprise")
 
             if provider == "lemonsqueezy":
                 tenant.lemonsqueezy_customer_id = customer_id
@@ -180,11 +179,18 @@ class BillingService:
         if event_type in ("subscription_created", "subscription_updated"):
             variant_id = str(attrs.get("variant_id", ""))
             plan = _plan_from_ls_variant(variant_id)
-            await update_tenant_plan(clerk_org_id, plan, customer_id, "lemonsqueezy")
+            if plan is None:
+                logger.warning("ls_webhook_unknown_variant", event=event_type)
+                return {"status": "rejected", "reason": "unknown_variant_id"}
+            updated = await update_tenant_plan(clerk_org_id, plan, customer_id, "lemonsqueezy")
+            if not updated:
+                return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": plan, "event": event_type}
 
         elif event_type == "subscription_cancelled":
-            await update_tenant_plan(clerk_org_id, "free", customer_id, "lemonsqueezy")
+            updated = await update_tenant_plan(clerk_org_id, "free", customer_id, "lemonsqueezy")
+            if not updated:
+                return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": "free", "event": event_type}
 
         return {"status": "unhandled", "event": event_type}
@@ -213,11 +219,18 @@ class BillingService:
 
         if event_type in ("subscription.activated", "subscription.updated"):
             plan = _plan_from_paddle_price(price_id)
-            await update_tenant_plan(clerk_org_id, plan, customer_id, "paddle")
+            if plan is None:
+                logger.warning("paddle_webhook_unknown_price", event=event_type)
+                return {"status": "rejected", "reason": "unknown_price_id"}
+            updated = await update_tenant_plan(clerk_org_id, plan, customer_id, "paddle")
+            if not updated:
+                return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": plan, "event": event_type}
 
         elif event_type == "subscription.cancelled":
-            await update_tenant_plan(clerk_org_id, "free", customer_id, "paddle")
+            updated = await update_tenant_plan(clerk_org_id, "free", customer_id, "paddle")
+            if not updated:
+                return {"status": "retry", "reason": "tenant_update_failed"}
             return {"status": "ok", "plan": "free", "event": event_type}
 
         return {"status": "unhandled", "event": event_type}
