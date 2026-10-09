@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aithyrex is Tinlance's evidence-first AI interaction security project.">
+  <title>Aithyrex — Agentic AI Runtime Security</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#121a2e; --text:#eef3ff; --muted:#a6b3cb; --line:#2b3954; --accent:#87b7ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
+    main { width:min(960px,92vw); margin:0 auto; padding:64px 0; }
+    .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.16em; font-size:.8rem; font-weight:700; }
+    h1 { font-size:clamp(2.6rem,7vw,5rem); line-height:1.04; margin:.7rem 0 1.2rem; }
+    h2 { margin-top:2.5rem; }
+    p,li { color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:24px; margin-top:24px; }
+    .notice { border-left:4px solid var(--accent); padding:12px 18px; background:#111b31; border-radius:8px; }
+    a { color:var(--accent); }
+    footer { border-top:1px solid var(--line); margin-top:48px; padding-top:24px; color:var(--muted); font-size:.9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Tinlance · Security Engineering</div>
+  <h1>Aithyrex</h1>
+  <p style="font-size:1.35rem;color:var(--text)">Agentic AI Runtime Security</p>
+  <p>Aithyrex inspects supported AI interactions for suspicious patterns and produces security findings with explicit limitations and provenance.</p>
+
+  <div class="notice">
+    <strong>Engineering preview.</strong> Aithyrex is under active remediation and evaluation. This page does not represent a production-readiness or detection-accuracy claim.
+  </div>
+
+  <section class="panel">
+    <h2>What is being built</h2>
+    <ul>
+      <li>Prompt-injection and credential-pattern detection.</li>
+      <li>Encoding and context-risk heuristics.</li>
+      <li>Supplementary behavioral telemetry through the separate ThreatFade service.</li>
+      <li>Evidence-bearing findings and integration points for downstream response workflows.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Security boundaries matter</h2>
+    <p>Aithyrex produces findings; it is not an authorization grant. The Tinlance Agent Platform remains the authoritative identity, policy, approval and governed-execution layer. Auctaryn focuses on agent context and proposed-action risk. AURONTRA focuses on IT resilience and operations.</p>
+    <p>ThreatFade network-traffic results do not establish AI-text detection effectiveness. AI-specific performance claims require a separate representative evaluation corpus.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Current limitations</h2>
+    <ul>
+      <li>Provider wrappers are not universal transparent proxies.</li>
+      <li>Streaming and multimodal inputs are not supported by the current wrappers.</li>
+      <li>AsyncAnthropic is not supported by the current wrapper.</li>
+      <li>Hosted API availability, production deployment, live integrations, detection rates and compliance filing are not asserted here.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Follow the engineering work</h2>
+    <p>The repository contains implementation details, tests, known limitations and the phased assurance ledger.</p>
+    <p><a href="https://github.com/LloydCoder/Aithyrex">View Aithyrex on GitHub</a></p>
+  </section>
+
+  <footer>
+    Aithyrex (formerly AI Shield) · Tinlance Limited · Apache-2.0
+  </footer>
+</main>
+</body>
+</html>
