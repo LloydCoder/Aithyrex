@@ -39,7 +39,7 @@ aithyrex = "ai_shield.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["ai_shield*"]
+include = ["aithyrex*", "ai_shield*"]
 exclude = ["backend*", "frontend*", "tests*"]
 
 [tool.pytest.ini_options]
