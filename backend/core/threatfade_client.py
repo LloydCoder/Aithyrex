@@ -53,27 +53,9 @@ class ThreatFadeClient:
     }
 
     async def detect(self, text: str, source: str = "ai_traffic") -> dict:
-        """
-        Submit text to ThreatFade for C2/covert channel analysis.
-
-        ThreatFade outages are explicitly marked degraded; missing telemetry
-        must never be interpreted as a clean verdict.
-
-        Returns:
-            ThreatFade detection result dict:
-            {
-                "detected": bool,
-                "confidence": "critical|high|medium|low|info",
-                "score": float,
-                "entropy": float,
-                "z_outlier": float,
-                "rules_matched": int,
-                "mitre_ttp": str,
-                "fallback": bool,   # True if ThreatFade was unreachable
-            }
-        """
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            try:
+        """Submit text to ThreatFade; transport or schema failure is degraded."""
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
                     f"{self._base_url}/detect/json",
                     headers=self._headers,
@@ -81,50 +63,55 @@ class ThreatFadeClient:
                 )
                 response.raise_for_status()
                 result = response.json()
-                if (
-                    not isinstance(result, dict)
-                    or not isinstance(result.get("detected"), bool)
-                    or "z_outlier" not in result
-                ):
-                    return {**self._DEGRADED_RESPONSE, "error": "invalid_response_schema"}
-                try:
-                    z_outlier = float(result["z_outlier"])
-                except (TypeError, ValueError):
-                    return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
-                if not math.isfinite(z_outlier):
-                    return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
-                result["z_outlier"] = z_outlier
-                result.setdefault("available", True)
-                result.setdefault("degraded", False)
-                logger.info(
-                    "threatfade_detection",
-                    detected=result.get("detected"),
-                    confidence=result.get("confidence"),
-                    z_outlier=result.get("z_outlier"),
-                    source=source,
-                )
-                return result
-            except httpx.TimeoutException:
-                logger.warning("threatfade_timeout_fallback", source=source)
-                return {**self._DEGRADED_RESPONSE, "error": "timeout"}
-            except httpx.ConnectError:
-                logger.warning("threatfade_unreachable_fallback", source=source)
-                return {**self._DEGRADED_RESPONSE, "error": "unreachable"}
-            except httpx.HTTPStatusError as e:
-                logger.error("threatfade_http_error", status=e.response.status_code)
-                return {**self._DEGRADED_RESPONSE, "error": "http_status_error"}
-            except Exception as e:
-                logger.error("threatfade_unexpected_error", error_type=type(e).__name__)
-                return {**self._DEGRADED_RESPONSE, "error": "unexpected_error"}
+            if (
+                not isinstance(result, dict)
+                or not isinstance(result.get("detected"), bool)
+                or "z_outlier" not in result
+            ):
+                return {**self._DEGRADED_RESPONSE, "error": "invalid_response_schema"}
+            try:
+                z_outlier = float(result["z_outlier"])
+            except (TypeError, ValueError):
+                return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
+            if not math.isfinite(z_outlier):
+                return {**self._DEGRADED_RESPONSE, "error": "invalid_z_outlier"}
+            result["z_outlier"] = z_outlier
+            result.setdefault("available", True)
+            result.setdefault("degraded", False)
+            logger.info(
+                "threatfade_detection",
+                detected=result.get("detected"),
+                confidence=result.get("confidence"),
+                z_outlier=result.get("z_outlier"),
+                source=source,
+            )
+            return result
+        except httpx.TimeoutException:
+            logger.warning("threatfade_timeout_fallback", source=source)
+            return {**self._DEGRADED_RESPONSE, "error": "timeout"}
+        except httpx.ConnectError:
+            logger.warning("threatfade_unreachable_fallback", source=source)
+            return {**self._DEGRADED_RESPONSE, "error": "unreachable"}
+        except httpx.HTTPStatusError as exc:
+            logger.error("threatfade_http_error", status=exc.response.status_code)
+            return {**self._DEGRADED_RESPONSE, "error": "http_status_error"}
+        except (httpx.HTTPError, ValueError):
+            logger.error("threatfade_transport_or_json_error", source=source)
+            return {**self._DEGRADED_RESPONSE, "error": "transport_or_json_error"}
+        except Exception as exc:
+            logger.error("threatfade_unexpected_error", error_type=type(exc).__name__)
+            return {**self._DEGRADED_RESPONSE, "error": "unexpected_error"}
+
 
     async def health(self) -> bool:
-        """Check ThreatFade service liveness."""
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            try:
+        """Check ThreatFade service liveness without leaking connection errors."""
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(f"{self._base_url}/health")
                 return response.status_code == 200
-            except Exception:
-                return False
+        except Exception:
+            return False
+
 
 
 # Module-level singleton
