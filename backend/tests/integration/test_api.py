@@ -79,11 +79,8 @@ def client():
         "backend.core.block_mode.BlockModeService.is_allowlisted",
         new=AsyncMock(return_value=False),
     ), patch(
-        "backend.core.usage_counter.UsageCounterService.check_limit",
+        "backend.core.usage_counter.UsageCounterService.reserve_inference",
         new=AsyncMock(return_value=(True, 1, 500)),
-    ), patch(
-        "backend.core.usage_counter.UsageCounterService.increment",
-        new=AsyncMock(return_value=1),
     ), patch(
         "backend.core.usage_counter.UsageCounterService.get_count",
         new=AsyncMock(return_value=1),
