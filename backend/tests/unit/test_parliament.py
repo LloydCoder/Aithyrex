@@ -264,3 +264,23 @@ def test_malformed_or_unknown_llm_vote_abstains(payload):
     parsed = LLMGateway()._parse_vote(payload)
     assert parsed["vote"] == "abstain"
     assert parsed["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_parliament_never_transmits_raw_prompt_or_completion(ensemble):
+    prompt = "UNIQUE_PRIVATE_PROMPT_SENTINEL"
+    completion = "UNIQUE_PRIVATE_COMPLETION_SENTINEL"
+    ensemble.gateway.call_claude = AsyncMock(return_value=member_vote("claude", Vote.ALLOW))
+    ensemble.gateway.call_grok = AsyncMock(return_value=member_vote("grok", Vote.ALLOW))
+    await ensemble.evaluate(
+        make_verdict(Action.LOG, Severity.MEDIUM),
+        prompt=prompt,
+        completion=completion,
+        threatfade_z_score=None,
+    )
+    claude_prompt = ensemble.gateway.call_claude.await_args.args[0]
+    grok_prompt = ensemble.gateway.call_grok.await_args.args[0]
+    for external_prompt in (claude_prompt, grok_prompt):
+        assert prompt not in external_prompt
+        assert completion not in external_prompt
+        assert "[content withheld for privacy]" in external_prompt
