@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
-    if settings.APP_ENV.lower() == "production":
+    if settings.APP_ENV.lower() in {"prod", "production"}:
         missing = []
         if not settings.CLERK_JWT_KEY:
             missing.append("CLERK_JWT_KEY")
@@ -33,6 +33,16 @@ async def lifespan(app: FastAPI):
             missing.append("CLERK_AUTHORIZED_PARTIES")
         if settings.APP_SECRET_KEY == "change-me" or len(settings.APP_SECRET_KEY) < 32:
             missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
+        database_url = settings.DATABASE_URL.lower()
+        if (
+            "localhost" in database_url
+            or "127.0.0.1" in database_url
+            or "password@" in database_url
+            or not any(marker in database_url for marker in ("ssl=require", "ssl=verify-full"))
+        ):
+            missing.append("DATABASE_URL (remote database with TLS and non-default credentials required)")
+        if not settings.REDIS_URL.startswith("rediss://"):
+            missing.append("REDIS_URL (TLS-protected Redis URL required)")
         if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
             missing.append("ALLOWED_HOSTS (explicit production hosts required)")
         if (
