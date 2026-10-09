@@ -83,7 +83,7 @@ async def test_single_injection_pattern_alerts(engine):
 async def test_credential_leak_in_completion_blocks(engine):
     verdict = await engine.inspect(
         prompt="What is my API key?",
-        completion="Your API key is "sk_live_" + ""**************",
+        completion="Your API key is " + "s" + "k_live_" + "C" * 24,
     )
     assert verdict.detected_by("credential_leak") is True
     assert verdict.severity == Severity.CRITICAL
