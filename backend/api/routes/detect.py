@@ -106,7 +106,7 @@ async def detect_prompt(
         verdict.severity in (Severity.HIGH, Severity.CRITICAL, Severity.MEDIUM)
     )
 
-    if should_block and any(r.detected for r in verdict.results):
+    if verdict.blocked or (should_block and any(r.detected for r in verdict.results)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
