@@ -50,3 +50,11 @@ def test_paddle_signature_rejects_stale_timestamp(monkeypatch):
 def test_unknown_paddle_price_never_grants_paid_plan(monkeypatch):
     monkeypatch.setattr("backend.core.config.settings", SimpleNamespace(PADDLE_PRO_PRICE_ID="pro-id", PADDLE_ENTERPRISE_PRICE_ID="enterprise-id"))
     assert _plan_from_paddle_price("unexpected-price") == "free"
+
+ 
+def test_empty_provider_price_ids_never_grant_paid_plan(monkeypatch):
+    monkeypatch.setattr(
+        "backend.core.config.settings",
+        SimpleNamespace(PADDLE_PRO_PRICE_ID="", PADDLE_ENTERPRISE_PRICE_ID=""),
+    )
+    assert _plan_from_paddle_price("") == "free"
