@@ -379,7 +379,8 @@ class AIShieldSync:
                         data["blocked"] = True
                     data.setdefault("degraded", False)
                     return data
-                error_code = "invalid_response_schema"
+                logger.warning("aithyrex_inspection_degraded", source=source, business_id=business_id, error_code="invalid_response_schema")
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "invalid_response_schema"}
 
             except httpx.TimeoutException:
                 logger.warning(
@@ -390,13 +391,9 @@ class AIShieldSync:
                 return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "inspection_unavailable"}
 
             except httpx.ConnectError:
-                logger.warning(
-                    "ai_shield_sync_unreachable",
-                    api_url=AI_SHIELD_API_URL,
-                    source=source,
-                )
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+                logger.warning("aithyrex_inspection_unreachable", source=source)
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "unreachable"}
 
-            except Exception as e:
-                logger.error("ai_shield_sync_error", error=str(e), source=source)
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+            except Exception as exc:
+                logger.error("aithyrex_inspection_failed", error_type=type(exc).__name__, source=source)
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "unexpected_error"}
