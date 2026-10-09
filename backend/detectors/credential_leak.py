@@ -3,11 +3,9 @@ AI Shield — Credential Leak Detector
 ======================================
 Scans LLM completions for leaked API keys and credentials.
 
-Pattern set: FDSE Toolkit Identity Threat Scanner (18 patterns).
-Same patterns peer-reviewed and merged into:
-  - TruffleHog (15k ⭐)
-  - Gitleaks (10k ⭐)
-  - Semgrep (11k ⭐)
+Pattern set: locally maintained credential-format heuristics.
+This repository does not claim that these patterns were merged upstream
+or independently peer-reviewed unless supporting evidence is recorded.
 
 Nigerian fintech platforms included:
   Paystack, Flutterwave, Remita, Interswitch
