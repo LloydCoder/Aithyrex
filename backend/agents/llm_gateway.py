@@ -44,7 +44,7 @@ class MemberVerdict:
 
 
 # ── Prompt template ───────────────────────────────────────────────────────────
-PARLIAMENT_PROMPT = """You are a cybersecurity AI on the AI Shield Parliament Ensemble.
+PARLIAMENT_PROMPT = """You are a cybersecurity AI on the Aithyrex Parliament Ensemble.
 Your role: evaluate whether this AI model traffic represents a genuine threat.
 
 DETECTION REPORT:
