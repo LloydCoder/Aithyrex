@@ -94,6 +94,18 @@ class EventLogger:
                             )
                             session.add(alert)
 
+                for delivery_type in ("siem_dispatch", "alert_dispatch", "nis2_dora_evaluate"):
+                    session.add(
+                        DeliveryOutbox(
+                            tenant_id=parsed_tenant_id,
+                            event_id=event_id,
+                            delivery_type=delivery_type,
+                            dedupe_key=f"{event_id}:{delivery_type}",
+                            payload={"event_id": str(event_id)},
+                            status="pending",
+                        )
+                    )
+
                 await session.commit()
 
                 logger.info(
