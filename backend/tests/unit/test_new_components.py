@@ -1,5 +1,5 @@
 """
-AI Shield — Unit Tests: New Components (Sprint 4 additions)
+Aithyrex — Unit Tests: New Components (legacy integration compatibility)
 ===========================================================
 Tests MITRE report generator, Olvrix bridge, and integration middleware.
 """
