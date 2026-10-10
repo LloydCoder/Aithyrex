@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     CLERK_PUBLISHABLE_KEY: str = ""
     CLERK_WEBHOOK_SECRET: str = ""
 
+    # Platform-signed agent/action assertions; this service emits signals only.
+    PLATFORM_ACTION_JWT_PUBLIC_KEY: str = ""
+    PLATFORM_ACTION_JWT_ISSUER: str = ""
+    PLATFORM_ACTION_JWT_AUDIENCE: str = ""
+
     LEMONSQUEEZY_API_KEY: str = ""
     LEMONSQUEEZY_STORE_ID: str = ""
     LEMONSQUEEZY_WEBHOOK_SECRET: str = ""

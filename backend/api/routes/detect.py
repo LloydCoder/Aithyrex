@@ -4,23 +4,35 @@ Aithyrex — Detection Routes
 POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
 POST /detect/agent    — analyse agentic AI communication stream
+POST /detect/action   — inspect a Platform-signed proposed action; signal only
 
-All routes require verified Clerk auth and server-side tenant entitlements.
+User-facing routes require verified Clerk auth and server-side tenant entitlements.
+The action-signal route requires a short-lived RS256 Platform assertion and active tenant state.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, model_validator
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
+from backend.core.platform_action_auth import (
+    action_payload_sha256,
+    canonical_action_payload_bytes,
+    decode_platform_action_assertion,
+)
+from backend.core.rate_limiter import rate_limiter
 from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVerdict
+from backend.core.usage_counter import usage_counter
 
 router = APIRouter()
 engine = ShieldEngine()
+logger = structlog.get_logger(__name__)
 
 
 # ── Request / Response schemas ────────────────────────────────────────────────
@@ -83,6 +95,45 @@ class AgentDetectionResponse(PromptDetectionResponse):
     agent_id: str
     turns_analysed: int
     detections: list[dict]
+
+
+MAX_ACTION_PAYLOAD_BYTES = 100_000
+
+
+class AgentActionInspectionRequest(BaseModel):
+    agent_id: str = Field(min_length=1, max_length=255)
+    action_id: str = Field(min_length=1, max_length=255)
+    tool_name: str = Field(min_length=1, max_length=256)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    context: str | None = Field(default=None, max_length=20_000)
+
+    @model_validator(mode="after")
+    def enforce_action_payload_limit(self) -> "AgentActionInspectionRequest":
+        try:
+            payload = canonical_action_payload_bytes(self.tool_name, self.arguments, self.context)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Action payload must be valid canonical JSON") from exc
+        if len(payload) > MAX_ACTION_PAYLOAD_BYTES:
+            raise ValueError("Action payload exceeds the inspection limit")
+        return self
+
+
+class AgentActionSignalResponse(BaseModel):
+    schema_version: Literal["aithyrex.agent-action-signal.v1"] = "aithyrex.agent-action-signal.v1"
+    trace_id: str
+    finding_id: str
+    tenant_id: str
+    agent_id: str
+    action_id: str
+    tool_name: str
+    assertion_jti: str
+    detected: bool
+    severity: str
+    degraded: bool
+    advisory_only: Literal[True] = True
+    authorization_performed: Literal[False] = False
+    execution_performed: Literal[False] = False
+    finding: FindingV1
 
 
 def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> FindingV1:
@@ -279,3 +330,172 @@ async def detect_agent(
             for r in verdict.results if r.detected
         ],
     }
+
+
+
+async def _resolve_platform_tenant(tenant_id: str):
+    """Resolve only active, server-side tenant state for a verified Platform assertion."""
+    try:
+        tenant_uuid = UUID(tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail={
+            "error_code": "invalid_platform_tenant",
+            "message": "Platform action assertion tenant is invalid.",
+        }) from exc
+
+    try:
+        from sqlalchemy import select
+
+        from backend.models.database import AsyncSessionFactory
+        from backend.models.models import Tenant
+
+        async with AsyncSessionFactory() as session:
+            result = await session.execute(
+                select(Tenant).where(
+                    Tenant.id == tenant_uuid,
+                    Tenant.is_active.is_(True),
+                )
+            )
+            tenant = result.scalar_one_or_none()
+    except Exception as exc:
+        logger.error(
+            "platform_action_tenant_resolution_failed",
+            error_type=type(exc).__name__,
+        )
+        raise HTTPException(status_code=503, detail={
+            "error_code": "tenant_authorization_state_unavailable",
+            "message": "Tenant authorization state is unavailable.",
+        }) from exc
+
+    if tenant is None:
+        raise HTTPException(status_code=403, detail={
+            "error_code": "platform_tenant_not_provisioned",
+            "message": "Tenant is not active or provisioned for Aithyrex.",
+        })
+    if tenant.plan not in {"free", "starter", "pro", "enterprise"}:
+        raise HTTPException(status_code=503, detail={
+            "error_code": "invalid_tenant_entitlement_state",
+            "message": "Tenant entitlement state is invalid.",
+        })
+    return tenant
+
+
+@router.post(
+    "/action",
+    response_model=AgentActionSignalResponse,
+    responses={
+        401: {"model": APIErrorV1, "description": "Missing or invalid Platform assertion"},
+        403: {"model": APIErrorV1, "description": "Action payload does not match signed assertion"},
+        422: {"model": APIErrorV1, "description": "Invalid action inspection request"},
+        429: {"model": APIErrorV1, "description": "Tenant rate or usage limit reached"},
+        503: {"model": APIErrorV1, "description": "Platform assertion or tenant state unavailable"},
+    },
+)
+async def detect_agent_action(
+    req: AgentActionInspectionRequest,
+    request: Request,
+    platform_assertion: Annotated[str | None, Header(alias="X-Platform-Action-Assertion")] = None,
+):
+    """Inspect a Platform-bound tool/action payload and emit a signal only.
+
+    This endpoint neither authorizes nor executes the action. The Platform remains
+    the sole authority for action binding, approvals, policy and governed execution.
+    """
+    if not platform_assertion:
+        raise HTTPException(status_code=401, detail={
+            "error_code": "missing_platform_action_assertion",
+            "message": "A signed Platform action assertion is required.",
+        })
+
+    claims = decode_platform_action_assertion(platform_assertion)
+    payload_hash = action_payload_sha256(req.tool_name, req.arguments, req.context)
+    if (
+        claims["sub"] != req.agent_id
+        or claims["action_id"] != req.action_id
+        or claims["tool_name"] != req.tool_name
+        or claims["action_payload_sha256"] != payload_hash
+    ):
+        raise HTTPException(status_code=403, detail={
+            "error_code": "platform_action_binding_mismatch",
+            "message": "Action fields do not match the signed Platform assertion.",
+        })
+
+    tenant = await _resolve_platform_tenant(claims["tenant_id"])
+    tenant_id = str(tenant.id)
+    try:
+        await rate_limiter.enforce(tenant_id)
+        usage_allowed, _usage_count, _usage_limit = await usage_counter.reserve_inference(
+            tenant_id,
+            tenant.plan,
+        )
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail={
+            "error_code": "action_signal_capacity_unavailable",
+            "message": "Action inspection capacity state is unavailable.",
+        }) from exc
+    if not usage_allowed:
+        raise HTTPException(status_code=429, detail={
+            "error_code": "action_signal_usage_limit_reached",
+            "message": "Action inspection usage limit reached.",
+        })
+
+    payload_text = canonical_action_payload_bytes(req.tool_name, req.arguments, req.context).decode("utf-8")
+
+    # Usage and rate limits are enforced above. The detector pass itself does not
+    # apply block mode or expose an allow/block decision. Findings are evidence only.
+    verdict: ShieldVerdict = await engine.inspect(
+        prompt=payload_text,
+        completion=None,
+        tenant_id=None,
+        plan="enterprise",
+    )
+    evidence = [
+        DetectorEvidenceV1(
+            detector=result.detector,
+            detected=result.detected,
+            severity=result.severity.value if hasattr(result.severity, "value") else str(result.severity),
+            confidence=result.confidence,
+            mitre_atlas=result.mitre_atlas,
+            details=result.details,
+        )
+        for result in verdict.results
+    ]
+    degraded = any(bool(result.details.get("degraded")) for result in verdict.results)
+    detected = any(result.detected or result.details.get("degraded") for result in verdict.results)
+    severity = verdict.severity.value if hasattr(verdict.severity, "value") else str(verdict.severity)
+    trace_id = UUID(request.state.trace_id)
+    finding = FindingV1(
+        trace_id=trace_id,
+        tenant_id=tenant_id,
+        action="log",
+        severity=severity,
+        blocked=False,
+        degraded=degraded,
+        evidence=evidence,
+        provenance={
+            "component": "aithyrex-platform-action-signal",
+            "advisory_only": True,
+            "authorization_performed": False,
+            "execution_performed": False,
+            "agent_id": req.agent_id,
+            "action_id": req.action_id,
+            "tool_name": req.tool_name,
+            "platform_assertion_jti": claims["jti"],
+            "action_payload_sha256": payload_hash,
+        },
+    )
+    return AgentActionSignalResponse(
+        trace_id=str(trace_id),
+        finding_id=str(finding.finding_id),
+        tenant_id=tenant_id,
+        agent_id=req.agent_id,
+        action_id=req.action_id,
+        tool_name=req.tool_name,
+        assertion_jti=claims["jti"],
+        detected=detected,
+        severity=severity,
+        degraded=degraded,
+        finding=finding,
+    )

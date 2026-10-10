@@ -256,3 +256,33 @@ Before Phase 6 can be accepted as empirically complete, run the evaluator agains
 - Phase 6's representative, independently labeled AI-text corpus, same-sample baseline, calibration evidence and independent review remain required before any AI-text detection effectiveness or enforcement claim.
 
 The phase is complete for its declared implementation/test traceability scope. Deferred items remain explicit; no production readiness, 100% coverage, or accuracy claim is made.
+
+
+## 12. Phase 8 agent-action signal and pre-side-effect contract audit
+
+**Phase branch:** `godmode/phase-08-agent-action-security`  
+**Pull request:** https://github.com/LloydCoder/Aithyrex/pull/5  
+**Scope:** signed, action-bound advisory signal receiver plus a reference caller-side sequencing harness.
+
+### Implementation and security review
+
+- The receiver accepts only RS256 assertions, verifies configured issuer/audience/signature and required claims, bounds the assertion lifetime to 300 seconds, validates the tenant UUID, and binds the agent, action ID, tool name, and SHA-256 of canonical action payload bytes.
+- The receiver resolves an active provisioned tenant server-side and enforces tenant rate and usage limits. Missing trust configuration, unavailable tenant/capacity state, malformed payloads, and mismatched assertions do not produce an authorization grant.
+- The response contract explicitly states `advisory_only=true`, `authorization_performed=false`, `execution_performed=false`; the embedded finding is `action=log` and `blocked=false`. Platform policy remains authoritative.
+- Regression tests cover missing and malformed trust configuration, signature and expiry failures, maximum token lifetime, payload tampering, quota rejection, sensitive-content redaction, and advisory-only response semantics.
+- Added a reference contract harness that calls inspection before invoking a fake side-effect executor and asserts that a detected or degraded signal prevents the side effect. This is a sequencing contract test only; it does not establish that the production Tinlance Agent Platform is wired to call this endpoint.
+
+### CI evidence and acceptance
+
+CI and Security Scan must both pass on the latest PR head. The current Phase 8 PR head before the final harness/ledger commits passed all four CI jobs and both security jobs; those results do **not** cover subsequent commits. Final acceptance is pending until fresh workflows for the final PR head are green and the changed code, tests, and docs have been re-audited.
+
+### Residual risks (not hidden by green CI)
+
+- No persistent replay/idempotency store for assertion `jti`; duplicate calls may duplicate findings.
+- No automated/JWKS key rotation; trust-anchor changes require coordinated configuration.
+- No verified live Platform-to-Aithyrex deployment or cross-repository end-to-end test.
+- No proof that every real tool/MCP/framework side effect is intercepted before execution.
+- The reference harness demonstrates the intended ordering contract, not production integration.
+- Detector results remain heuristic and uncalibrated; a finding is not an authorization decision.
+
+**Phase 8 forensic status:** implementation and contract-test scope is eligible for acceptance only after final-head CI/security green and forensic review. Production integration, replay protection, and effectiveness claims remain explicitly unverified.
