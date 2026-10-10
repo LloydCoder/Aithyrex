@@ -1,0 +1,45 @@
+{
+  "schema_version": "tinlance.aithyrex.integration-conformance.v1",
+  "product": "Aithyrex",
+  "authority_boundary": {
+    "identity_tenant_policy_approval_and_execution": "Tinlance Agent Platform",
+    "security_signal_and_evidence": "Aithyrex",
+    "signal_semantics": "advisory_only",
+    "authorization_performed": false,
+    "execution_performed": false
+  },
+  "assertion_replay_policy": {
+    "storage": "Redis atomic SET NX EX",
+    "jti_storage": "SHA-256 digest only",
+    "ttl_source": "JWT exp minus current Unix time, capped at 300 seconds",
+    "duplicate_http_status": 409,
+    "state_unavailable_http_status": 503,
+    "retry_requires_new_assertion": true
+  },
+  "contracts": [
+    {
+      "contract_id": "aithyrex.agent-action-signal.v1",
+      "method": "POST",
+      "path": "/api/v1/detect/action",
+      "assertion_header": "X-Platform-Action-Assertion",
+      "response_schema_version": "aithyrex.agent-action-signal.v1",
+      "replay_namespace": "agent-action"
+    },
+    {
+      "contract_id": "aithyrex.context-inspection.v1",
+      "method": "POST",
+      "path": "/api/v1/detect/context",
+      "assertion_header": "X-Platform-Context-Assertion",
+      "response_schema_version": "aithyrex.context-inspection.v1",
+      "replay_namespace": "context"
+    },
+    {
+      "contract_id": "aithyrex.behavioral-correlation.v1",
+      "method": "POST",
+      "path": "/api/v1/detect/sequence",
+      "assertion_header": "X-Platform-Sequence-Assertion",
+      "response_schema_version": "aithyrex.behavioral-correlation.v1",
+      "replay_namespace": "sequence"
+    }
+  ]
+}
