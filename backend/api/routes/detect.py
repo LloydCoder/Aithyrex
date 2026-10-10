@@ -5,7 +5,7 @@ POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
 POST /detect/agent    — analyse agentic AI communication stream
 
-All routes require Clerk auth. Plan extracted from JWT for tier enforcement.
+All routes require verified Clerk auth and server-side tenant entitlements.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import DetectorEvidenceV1, FindingV1
-from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
+from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVerdict
 
 router = APIRouter()
 engine = ShieldEngine()
@@ -135,9 +135,10 @@ async def detect_prompt(
         plan=tenant.plan,
     )
 
-    # Pre-flight: block on any detection (ALERT or BLOCK)
-    # This is stricter than /detect/llm which only hard-blocks on CRITICAL
-    from backend.core.shield_engine import Severity
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
+
+    # Pre-flight: block on any detection (ALERT or BLOCK).
+    # This is stricter than /detect/llm, which preserves the detector action.
     should_block = (
         verdict.blocked or
         verdict.action == Action.ALERT or
@@ -154,7 +155,11 @@ async def detect_prompt(
                 "detectors_fired": [
                     r.detector for r in verdict.results if r.detected
                 ],
+                "error_code": "detection_blocked",
                 "message": "Aithyrex blocked this prompt.",
+                "trace_id": request.state.trace_id,
+                "finding_id": str(finding.finding_id),
+                "finding": finding.model_dump(mode="json"),
             },
         )
 
@@ -179,9 +184,8 @@ async def detect_agent(
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
-    Analyse a full agentic AI message stream.
-    Inspects each turn for injection and C2 indicators.
-    Sprint 2: full per-turn inspection.
+    Analyze supported string content from an agent message list.
+    This does not mediate tool calls, MCP operations, or per-turn side effects.
     """
     # Sprint 1 — inspect the concatenated conversation
     full_text = " ".join(
