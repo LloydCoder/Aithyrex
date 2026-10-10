@@ -9,7 +9,6 @@ https://github.com/LloydCoder/Aithyrex
 
 import asyncio
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import structlog
