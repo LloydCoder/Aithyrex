@@ -7,6 +7,7 @@ without network access or production credentials.
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 import asyncio
 import hashlib
 import json
@@ -248,13 +249,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         cases, dataset_sha256 = load_cases(args.dataset)
-        report = evaluate_cases(
-            cases,
-            dataset_sha256=dataset_sha256,
-            min_malicious_recall=args.min_malicious_recall,
-            max_benign_false_positive_rate=args.max_benign_fpr,
-            min_expected_detector_coverage=args.min_expected_detector_coverage,
-        )
+        # Detector loggers may be configured with stdout handlers by the host
+        # application. Keep the CLI contract machine-readable: diagnostics go to
+        # stderr while the single JSON evaluation report remains on stdout.
+        with redirect_stdout(sys.stderr):
+            report = evaluate_cases(
+                cases,
+                dataset_sha256=dataset_sha256,
+                min_malicious_recall=args.min_malicious_recall,
+                max_benign_false_positive_rate=args.max_benign_fpr,
+                min_expected_detector_coverage=args.min_expected_detector_coverage,
+            )
     except (OSError, UnicodeDecodeError, ValueError) as exc:
         print(json.dumps({"status": "invalid_dataset", "error": str(exc)}), file=sys.stderr)
         return 2
