@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
@@ -24,14 +24,14 @@ engine = ShieldEngine()
 
 # ── Request / Response schemas ────────────────────────────────────────────────
 class LLMInspectRequest(BaseModel):
-    prompt: str
-    completion: str | None = None
-    model: str | None = None
+    prompt: str = Field(max_length=100_000)
+    completion: str | None = Field(default=None, max_length=100_000)
+    model: str | None = Field(default=None, max_length=256)
 
 
 class AgentInspectRequest(BaseModel):
-    agent_id: str
-    messages: list[dict]
+    agent_id: str = Field(min_length=1, max_length=255)
+    messages: list[dict] = Field(max_length=1_000)
 
 
 class DetectionResponse(BaseModel):
