@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -102,6 +103,11 @@ def evaluate_release_readiness(
                 parsed = urlparse(reference)
                 if parsed.scheme != "https" or parsed.hostname != "github.com" or parsed.username or parsed.password:
                     evidence_errors.append(f"evidence item {index + 1} must be a GitHub HTTPS URL")
+                evidence_sha = item.get("commit_sha")
+                if not isinstance(evidence_sha, str) or not SHA_PATTERN.fullmatch(evidence_sha):
+                    evidence_errors.append(f"evidence item {index + 1} must include a valid commit_sha")
+                elif evidence_sha != candidate_sha:
+                    evidence_errors.append(f"evidence item {index + 1} commit_sha does not match candidate SHA")
             elif evidence_type == "repo_file":
                 relative_path = Path(reference)
                 if relative_path.is_absolute() or ".." in relative_path.parts:
@@ -170,6 +176,23 @@ def main() -> int:
 
     repo_root = Path(__file__).resolve().parents[2]
     report = evaluate_release_readiness(manifest, args.candidate_sha, repo_root)
+    if args.candidate_sha:
+        try:
+            actual_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            report["issues"].append("unable to verify checked-out Git HEAD")
+            report["ready"] = False
+        else:
+            if actual_head != args.candidate_sha:
+                report["issues"].append("candidate SHA does not match checked-out Git HEAD")
+                report["ready"] = False
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif report["ready"]:
