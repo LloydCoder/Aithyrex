@@ -103,7 +103,7 @@ class NIS2DoraHooks:
                 mitre_ids.extend(r.mitre_atlas)
 
         payload = {
-            "source": "ai_shield",
+            "source": "aithyrex",
             "tenant_id": tenant_id,
             "urgency": urgency,
             "severity": verdict.severity,
