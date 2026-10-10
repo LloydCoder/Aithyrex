@@ -11,7 +11,6 @@ import asyncio
 import hashlib
 import json
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -174,18 +173,21 @@ def evaluate_cases(
             raise ValueError(f"{name} must be between 0 and 1")
     _validate_cases(cases)
 
-    prompt_detector = PromptInjectionDetector()
-    credential_detector = CredentialLeakDetector()
-    poisoning_detector = DataPoisoningDetector()
-    rows = [
-        asyncio.run(_evaluate_case(
-            case,
-            prompt_detector=prompt_detector,
-            credential_detector=credential_detector,
-            poisoning_detector=poisoning_detector,
-        ))
-        for case in cases
-    ]
+    async def evaluate_all() -> list[dict[str, Any]]:
+        prompt_detector = PromptInjectionDetector()
+        credential_detector = CredentialLeakDetector()
+        poisoning_detector = DataPoisoningDetector()
+        return list(await asyncio.gather(*(
+            _evaluate_case(
+                case,
+                prompt_detector=prompt_detector,
+                credential_detector=credential_detector,
+                poisoning_detector=poisoning_detector,
+            )
+            for case in cases
+        )))
+
+    rows = asyncio.run(evaluate_all())
     metrics = _group_metrics(rows)
     by_source: dict[str, Any] = {}
     by_family: dict[str, Any] = {}
