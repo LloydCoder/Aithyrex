@@ -103,7 +103,23 @@ async def test_redis_read_failure_is_wrapped_and_fails_closed():
 async def test_redis_increment_failure_is_wrapped_and_fails_closed():
     service = UsageCounterService()
     service._redis = AsyncMock()
-    service._redis.incr = AsyncMock(side_effect=ConnectionError("redis unavailable"))
+    service._redis.eval = AsyncMock(side_effect=ConnectionError("redis unavailable"))
 
     with pytest.raises(RuntimeError, match="usage counter state unavailable"):
         await service.increment("tenant-1")
+
+
+@pytest.mark.asyncio
+async def test_legacy_increment_assigns_monthly_ttl_atomically():
+    service = UsageCounterService()
+    service._redis = AsyncMock()
+    service._redis.eval = AsyncMock(return_value=7)
+
+    count = await service.increment("tenant-1")
+
+    assert count == 7
+    script, numkeys, key, ttl = service._redis.eval.await_args.args
+    assert numkeys == 1
+    assert key == service._key("tenant-1")
+    assert "INCR" in script and "EXPIRE" in script
+    assert ttl == service._ttl_to_month_end()
