@@ -24,19 +24,22 @@ Create an evidence-backed release-readiness gate, threat model, independent revi
 - Add a release-readiness guide, scoped threat model, independent review protocol, and explicit controlled-launch sequence.
 - Preserve the distinction between implementation acceptance and external assurance. Current release disposition intentionally remains BLOCKED.
 
-## Reviewed implementation evidence
+## Reviewed implementation and merge evidence
 
-- Reviewed final PR head: `15f812247a0b7f0b63d138570b6e21c11c57decb`
-- CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38035813170 — success
-- Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38035813206 — success
-- CI includes unit/integration tests, Ruff over backend and assurance tooling, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, server wheel verification and Docker build.
+- Code-reviewed implementation head: `15f812247a0b7f0b63d138570b6e21c11c57decb`.
+- Final PR head (audit-record-only change): `17a2688f4b507526ae5689593a6a3410810e7d65`.
+- Final PR-head CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38035952327 — success.
+- Final PR-head Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38035952326 — success.
+- PR #15 was squash-merged as `2e2606449c58adda89cbe6f03f5e3db7b092c683`.
+- Post-merge main CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38038375803 — success.
+- Post-merge main Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38038375843 — success.
+- CI includes unit/integration tests, the offline synthetic red-team regression gate, Ruff over backend and assurance tooling, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, server wheel verification and Docker build.
 
 ## Acceptance gate
 
-- Final PR-head CI and Security Scan are green. Merge only after confirming the PR still points to the reviewed head, then verify post-merge workflows.
-- Tests must demonstrate that missing external evidence blocks release and that the evaluator never treats an unverified or mismatched candidate as ready.
-- Forensic review must verify manifest status truthfulness, exact SHA binding, evidence-path validation, supported evidence types, duplicate-ID handling and explicit external blockers.
-- Merge only after both workflows are green; then verify post-merge workflows.
+- Verified: tests demonstrate that missing external evidence blocks release and that candidate/evidence SHA mismatches are rejected.
+- Reviewed: manifest status handling, candidate/HEAD binding, repository path containment including symlink resolution, evidence type checks, duplicate gate IDs, and explicit external blockers.
+- Final PR-head CI and Security Scan passed, the PR was merged, and both post-merge workflows passed.
 
 ## External release blockers that cannot be fabricated
 
