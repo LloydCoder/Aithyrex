@@ -662,6 +662,7 @@ class TestPlatformPreSideEffectContractHarness:
 
 def _signed_platform_context_assertion(monkeypatch, payload):
     import time
+
     import jwt
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
