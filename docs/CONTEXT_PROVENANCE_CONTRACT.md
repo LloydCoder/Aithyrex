@@ -58,4 +58,4 @@ Threat detection currently scans the combined bundle. The response preserves sou
 - Rate/usage limit: HTTP 429.
 - No content is truncated or echoed in validation errors.
 - The route does not execute actions or return authorization grants.
-- Persistent replay deduplication, automated key rotation, live Platform integration, retrieval authorization, per-source detector attribution, and empirical detection calibration are not claimed complete.
+- A payload-bound assertion `jti` is consumed once through an atomic tenant/contract-scoped Redis replay guard. Replays return HTTP 409; unavailable replay state returns HTTP 503. A retry after assertion consumption requires a fresh signed assertion. Automated key rotation, live Platform integration, retrieval authorization, per-source detector attribution, and empirical detection calibration are not claimed complete.
