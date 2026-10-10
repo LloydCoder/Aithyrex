@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def test_tsic_manifest_matches_versioned_receiver_contracts():
     root = Path(__file__).resolve().parents[3]
     manifest = json.loads(

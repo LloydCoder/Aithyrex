@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from backend.api.routes.detect import _resolve_platform_tenant
 from backend.core.assertion_replay import assertion_replay_guard
 from backend.core.behavioral_correlation import BehaviorEvent, correlate_events
-from backend.core.contracts import DetectorEvidenceV1, FindingV1
+from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
 from backend.core.platform_sequence_auth import (
     decode_platform_sequence_assertion,
     sequence_sha256,
