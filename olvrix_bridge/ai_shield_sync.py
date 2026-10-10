@@ -1,5 +1,5 @@
 """
-AI Shield Sync — Olvrix Flywheel Bridge
+Aithyrex Sync — Olvrix Integration Bridge
 =========================================
 The 7th bridge in the Olvrix flywheel ecosystem.
 
@@ -16,11 +16,11 @@ Four event handlers:
     Olvrix Scraper (VPS 4) scrapes 200 businesses/day.
     Scraped HTML may contain indirect prompt injection
     payloads designed to hijack Olvrix's AI analysis.
-    AI Shield scans HTML before it reaches BusinessClassifier.
+    Aithyrex scans HTML before it reaches BusinessClassifier.
 
   Wire B — handle_website_generated()
     Olvrix AI Engine (VPS 2, Ollama) generates website copy.
-    AI Shield scans generated HTML before the site goes live.
+    Aithyrex scans generated HTML before the site goes live.
     Catches: credential leaks, covert channels, C2 patterns.
 
   Wire C — handle_outreach_generated()
@@ -39,24 +39,25 @@ Deployment:
     "ai_shield": AIShieldSync()
 
 Environment:
-  AI_SHIELD_API_URL=https://api.aishield.tinlance.com
-  AI_SHIELD_API_KEY=your-shield-key
+  AITHYREX_API_URL=<verified HTTPS service URL>
+  AITHYREX_API_TOKEN=<Clerk session JWT>
 """
 
 from __future__ import annotations
 
 import hashlib
+import math
 import os
-import time
 from typing import Optional
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-AI_SHIELD_API_URL = os.getenv("AI_SHIELD_API_URL", "https://api.aishield.tinlance.com")
-AI_SHIELD_API_KEY = os.getenv("AI_SHIELD_API_KEY", "")
+AITHYREX_API_URL = os.getenv("AITHYREX_API_URL", os.getenv("AI_SHIELD_API_URL", "")).rstrip("/")
+AITHYREX_API_TOKEN = os.getenv("AITHYREX_API_TOKEN", os.getenv("AI_SHIELD_API_KEY", ""))
 
 # Z-score threshold for ThreatFade escalation to AI Shield
 ESCALATION_Z_THRESHOLD = 7.0
@@ -77,13 +78,13 @@ class AIShieldSync:
 
     def __init__(self) -> None:
         self._headers = {
-            "Authorization": f"Bearer {AI_SHIELD_API_KEY}",
+            "Authorization": f"Bearer {AITHYREX_API_TOKEN}",
             "Content-Type": "application/json",
         }
         logger.info(
             "ai_shield_sync_init",
-            api_url=AI_SHIELD_API_URL,
-            configured=bool(AI_SHIELD_API_KEY),
+            api_url_configured=bool(AITHYREX_API_URL),
+            token_configured=bool(AITHYREX_API_TOKEN),
         )
 
     # ── Wire A: Scraper ───────────────────────────────────────────────────────
@@ -123,7 +124,7 @@ class AIShieldSync:
             logger.warning(
                 "olvrix_scraped_content_blocked",
                 business_id=business_id,
-                url=url,
+                url_host=urlsplit(url).hostname or "unknown",
                 severity=result.get("severity"),
                 content_hash=content_hash,
             )
@@ -132,7 +133,8 @@ class AIShieldSync:
                 "action": result.get("action", "block"),
                 "severity": result.get("severity", "high"),
                 "business_id": business_id,
-                "reason": "indirect_injection_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "indirect_injection_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
@@ -177,7 +179,8 @@ class AIShieldSync:
                 "action": "block_deployment",
                 "severity": result.get("severity"),
                 "business_id": business_id,
-                "reason": "generated_content_threat_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "generated_content_threat_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
@@ -227,7 +230,8 @@ class AIShieldSync:
                 "severity": result.get("severity"),
                 "business_id": business_id,
                 "channel": channel,
-                "reason": "outreach_threat_detected",
+                "reason": "inspection_unavailable" if result.get("degraded") else "outreach_threat_detected",
+                "degraded": bool(result.get("degraded")),
             }
 
         return {"safe": True, "action": "pass", "severity": "clean"}
@@ -251,7 +255,12 @@ class AIShieldSync:
             business_id:       Business that triggered the detection
             url:               The URL that was scanned
         """
-        z_outlier = float(threatfade_result.get("z_outlier", 0.0))
+        try:
+            z_outlier = float(threatfade_result["z_outlier"])
+        except (KeyError, TypeError, ValueError):
+            return {"escalated": False, "degraded": True, "reason": "invalid_threatfade_signal"}
+        if not math.isfinite(z_outlier):
+            return {"escalated": False, "degraded": True, "reason": "invalid_threatfade_signal"}
 
         if z_outlier < ESCALATION_Z_THRESHOLD:
             return {"escalated": False, "z_outlier": z_outlier}
@@ -261,12 +270,12 @@ class AIShieldSync:
             business_id=business_id,
             z_outlier=z_outlier,
             mitre_ttp=threatfade_result.get("mitre_ttp"),
-            url=url,
+            url_host=urlsplit(url).hostname or "unknown",
         )
 
         # Send to AI Shield with the ThreatFade context embedded
         escalation_prompt = (
-            f"ThreatFade escalation: business {business_id} at {url} "
+            f"ThreatFade escalation: business {business_id} at {urlsplit(url).hostname or 'unknown'} "
             f"triggered Z-score {z_outlier:.2f}. "
             f"MITRE TTP: {threatfade_result.get('mitre_ttp', 'unknown')}. "
             f"Confidence: {threatfade_result.get('confidence', 'unknown')}."
@@ -280,7 +289,7 @@ class AIShieldSync:
         )
 
         # Now escalate to FusionOps AI_AGENT_ABUSE category
-        await self._escalate_to_fusionops(
+        notified = await self._escalate_to_fusionops(
             business_id=business_id,
             z_outlier=z_outlier,
             threatfade_result=threatfade_result,
@@ -291,7 +300,8 @@ class AIShieldSync:
             "escalated": True,
             "z_outlier": z_outlier,
             "shield_action": result.get("action"),
-            "fusionops_notified": True,
+            "degraded": bool(result.get("degraded")),
+            "fusionops_notified": notified,
         }
 
     # ── FusionOps escalation ──────────────────────────────────────────────────
@@ -301,30 +311,36 @@ class AIShieldSync:
         z_outlier: float,
         threatfade_result: dict,
         shield_result: dict,
-    ) -> None:
-        """POST to FusionOps /detect/llm with AI_AGENT_ABUSE category."""
-        fusionops_url = os.getenv("FUSIONOPS_API_URL", "http://13.50.16.19:8080")
+    ) -> bool:
+        """POST to FusionOps only when an explicit authenticated endpoint is configured."""
+        fusionops_url = os.getenv("FUSIONOPS_API_URL", "").rstrip("/")
         fusionops_key = os.getenv("FUSIONOPS_API_KEY", "")
+        if not fusionops_url or not fusionops_key:
+            logger.warning("fusionops_escalation_not_configured", business_id=business_id)
+            return False
 
         payload = {
-            "source": "olvrix_ai_shield_sync",
+            "source": "olvrix_aithyrex_sync",
             "category": "AI_AGENT_ABUSE",
             "business_id": business_id,
             "z_outlier": z_outlier,
             "threatfade": threatfade_result,
-            "ai_shield": shield_result,
+            "aithyrex": shield_result,
         }
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                await client.post(
+                response = await client.post(
                     f"{fusionops_url}/detect/llm",
                     headers={"X-API-Key": fusionops_key, "Content-Type": "application/json"},
                     json=payload,
                 )
+                response.raise_for_status()
                 logger.info("fusionops_escalation_sent", business_id=business_id)
-            except Exception as e:
-                logger.error("fusionops_escalation_failed", error=str(e))
+                return True
+            except Exception as exc:
+                logger.error("fusionops_escalation_failed", error_type=type(exc).__name__)
+                return False
 
     # ── Core HTTP call ────────────────────────────────────────────────────────
     async def _call_shield(
@@ -335,15 +351,10 @@ class AIShieldSync:
         source: str = "",
         business_id: str = "",
     ) -> dict:
-        """POST to AI Shield /detect/llm. Returns verdict dict."""
-        if not AI_SHIELD_API_KEY:
-            # Dev mode — log but don't block
-            logger.debug(
-                "ai_shield_sync_dev_mode",
-                source=source,
-                business_id=business_id,
-            )
-            return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+        """Call the configured Aithyrex inspection endpoint; failures are degraded blocks."""
+        if not AITHYREX_API_URL or not AITHYREX_API_TOKEN:
+            logger.warning("aithyrex_inspection_not_configured", source=source, business_id=business_id)
+            return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "not_configured"}
 
         payload: dict = {
             "prompt": prompt,
@@ -355,29 +366,41 @@ class AIShieldSync:
         async with httpx.AsyncClient(timeout=8.0) as client:
             try:
                 response = await client.post(
-                    f"{AI_SHIELD_API_URL}/detect/llm",
+                    f"{AITHYREX_API_URL}/api/v1/detect/llm",
                     headers=self._headers,
                     json=payload,
                 )
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if (
+                    isinstance(data, dict)
+                    and data.get("action") in {"pass", "log", "alert", "block"}
+                    and data.get("severity") in {"clean", "info", "low", "medium", "high", "critical"}
+                    and isinstance(data.get("blocked"), bool)
+                    and isinstance(data.get("detections"), list)
+                ):
+                    if data["action"] == "block":
+                        data["blocked"] = True
+                    data.setdefault("degraded", False)
+                    return data
+                logger.warning("aithyrex_inspection_degraded", source=source, business_id=business_id, error_code="invalid_response_schema")
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "invalid_response_schema"}
 
             except httpx.TimeoutException:
                 logger.warning(
-                    "ai_shield_sync_timeout",
+                    "aithyrex_inspection_timeout",
                     source=source,
                     business_id=business_id,
                 )
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "inspection_unavailable"}
 
             except httpx.ConnectError:
-                logger.warning(
-                    "ai_shield_sync_unreachable",
-                    api_url=AI_SHIELD_API_URL,
-                    source=source,
-                )
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+                logger.warning("aithyrex_inspection_unreachable", source=source)
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "unreachable"}
 
-            except Exception as e:
-                logger.error("ai_shield_sync_error", error=str(e), source=source)
-                return {"action": "pass", "severity": "clean", "blocked": False, "detections": []}
+            except Exception as exc:
+                logger.error("aithyrex_inspection_failed", error_type=type(exc).__name__, source=source)
+                return {"action": "block", "severity": "high", "blocked": True, "detections": [], "degraded": True, "error_code": "unexpected_error"}
+
+
+AithyrexSync = AIShieldSync

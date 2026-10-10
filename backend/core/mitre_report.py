@@ -1,7 +1,7 @@
 """
-AI Shield — MITRE ATLAS Coverage Report Generator
+Aithyrex — AI Security Threat Mapping Report Generator
 ===================================================
-Generates a structured coverage report mapping AI Shield
+Generates a structured mapping report linking Aithyrex
 detectors to MITRE ATLAS and ATT&CK techniques.
 
 Outputs:
@@ -14,7 +14,7 @@ Usage:
     # Outputs to docs/mitre-atlas-mapping.md + JSON + CSV
 
 CLI:
-    ai-shield mitre-report --format markdown
+    aithyrex mitre-report --format markdown
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -35,13 +35,13 @@ class CoverageEntry:
     framework: str            # "ATLAS" or "ATT&CK"
     detector: str
     detector_method: str
-    coverage_level: str       # "full" | "partial" | "planned"
+    coverage_level: str       # "heuristic" | "planned"
     sprint: str               # When this was/will be implemented
     notes: str = ""
     attck_ref: Optional[str] = None
 
 
-# ── Complete coverage map ─────────────────────────────────────────────────────
+# ── Technique mapping (not a coverage or effectiveness claim) ─────────────────
 COVERAGE_MAP: list[CoverageEntry] = [
 
     # ── MITRE ATLAS techniques ────────────────────────────────────────────────
@@ -52,7 +52,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="prompt_injection",
         detector_method="11 compiled regex patterns covering direct override, persona hijack, DAN mode, system tag injection, jailbreak triggers",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 1",
         notes="Direct injection. Indirect/RAG injection partially covered by data_poisoning detector.",
     ),
@@ -62,10 +62,10 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Exfiltration",
         framework="ATLAS",
         detector="covert_channel + credential_leak",
-        detector_method="ThreatFade entropy/Z-score + 18 credential patterns (peer-reviewed, merged to Nuclei/TruffleHog/Gitleaks)",
-        coverage_level="full",
+        detector_method="Entropy/encoding heuristics plus credential-format pattern matching; not independently validated as complete coverage",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Covert channel detected via entropy anomaly. Credential leak via pattern matching.",
+        notes="Heuristics flag selected encoded/high-entropy patterns and credential formats; AI-specific effectiveness is not measured.",
         attck_ref="T1041",
     ),
     CoverageEntry(
@@ -75,7 +75,7 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="data_poisoning",
         detector_method="RAG context poisoning patterns, training data extraction fishing, context overflow detection, tool output injection scanning",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 4",
         notes="Context poisoning via 4-layer detection pipeline. Training weight poisoning not in scope (offline, not runtime).",
     ),
@@ -86,9 +86,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="data_poisoning + c2_behaviour",
         detector_method="Training data extraction patterns + ThreatFade C2 pipeline",
-        coverage_level="partial",
+        coverage_level="heuristic",
         sprint="Sprint 1/4",
-        notes="Detects extraction probing. Does not detect benign inference access.",
+        notes="Pattern-based extraction-probing heuristic; detection coverage and false-positive rate are not established.",
     ),
     CoverageEntry(
         technique_id="AML.T0043",
@@ -97,9 +97,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="covert_channel",
         detector_method="Unicode steganography detection, zero-width character scanning, base64/hex blob detection",
-        coverage_level="partial",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects encoded payloads in completions. Does not cover image/audio adversarial examples.",
+        notes="Selected encoded-payload heuristics only; image/audio adversarial examples are not covered by this mapping.",
     ),
     CoverageEntry(
         technique_id="AML.T0054",
@@ -108,9 +108,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATLAS",
         detector="prompt_injection",
         detector_method="DAN mode, developer mode, jailbreak keyword patterns",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Covered as a subset of prompt injection detection.",
+        notes="Mapped to prompt-injection patterns; technique-level coverage is not established.",
     ),
 
     # ── MITRE ATT&CK cross-references ────────────────────────────────────────
@@ -121,9 +121,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATT&CK",
         detector="covert_channel",
         detector_method="ThreatFade entropy analysis, base64/hex/Unicode encoding detection in LLM completions",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Z-score 14.76 validated on Merlin QUIC C2. Same methodology applied to token distributions.",
+        notes="Mapping only. Network-traffic results do not validate AI-text detection accuracy.",
     ),
     CoverageEntry(
         technique_id="T1071.001",
@@ -131,10 +131,10 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Command and Control",
         framework="ATT&CK",
         detector="c2_behaviour",
-        detector_method="ThreatFade full C2 pipeline — entropy + Z-score + MITRE TTP mapping",
-        coverage_level="full",
+        detector_method="ThreatFade C2 signal plus local heuristic mapping",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects AI agents used as C2 relay channels.",
+        notes="Intended relevance mapping only; AI-agent C2 detection effectiveness is not validated.",
     ),
     CoverageEntry(
         technique_id="T1095",
@@ -143,9 +143,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATT&CK",
         detector="c2_behaviour",
         detector_method="ThreatFade QUIC/non-standard protocol detection",
-        coverage_level="partial",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Validated against Merlin QUIC traffic. Other non-standard protocols partially covered.",
+        notes="Mapping only. Protocol-specific network findings do not establish AI-interaction detection coverage.",
     ),
     CoverageEntry(
         technique_id="T1552",
@@ -153,10 +153,10 @@ COVERAGE_MAP: list[CoverageEntry] = [
         tactic="Credential Access",
         framework="ATT&CK",
         detector="credential_leak",
-        detector_method="18 regex patterns: AWS, OpenAI, Anthropic, GitHub, Stripe, Paystack, Flutterwave, Remita, Interswitch, JWT, PEM keys",
-        coverage_level="full",
+        detector_method="Locally maintained credential-format heuristics for common provider and token formats",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Patterns peer-reviewed via PRs to TruffleHog (15k★), Gitleaks (10k★), Semgrep (11k★).",
+        notes="Pattern matching is heuristic and requires an independent credential test corpus.",
     ),
     CoverageEntry(
         technique_id="T1041",
@@ -165,9 +165,9 @@ COVERAGE_MAP: list[CoverageEntry] = [
         framework="ATT&CK",
         detector="covert_channel + c2_behaviour",
         detector_method="ThreatFade entropy + credential leak patterns",
-        coverage_level="full",
+        coverage_level="heuristic",
         sprint="Sprint 1",
-        notes="Detects data encoded in LLM completions for exfiltration.",
+        notes="Intended exfiltration mapping only; representative AI-interaction validation is required.",
     ),
 ]
 
@@ -176,10 +176,12 @@ def generate_json() -> str:
     """Generate machine-readable JSON coverage report."""
     return json.dumps({
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "product": "AI Shield v0.1.0",
+        "product": "Aithyrex v0.1.0",
         "vendor": "Tinlance Limited",
         "total_techniques": len(COVERAGE_MAP),
-        "full_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "full"),
+        "full_coverage": 0,
+        "mapped_techniques": len(COVERAGE_MAP),
+        "assurance_note": "Technique mappings do not prove implementation completeness or detection effectiveness. All entries are heuristic mappings until validated by a reproducible test corpus.",
         "partial_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "partial"),
         "planned_coverage": sum(1 for e in COVERAGE_MAP if e.coverage_level == "planned"),
         "frameworks": {
@@ -205,109 +207,84 @@ def generate_json() -> str:
 
 
 def generate_markdown() -> str:
-    """Generate GitHub-ready Markdown coverage report."""
+    """Generate a mapping report with explicit limits on assurance claims."""
     atlas = [e for e in COVERAGE_MAP if e.framework == "ATLAS"]
     attck = [e for e in COVERAGE_MAP if e.framework == "ATT&CK"]
-    full = sum(1 for e in COVERAGE_MAP if e.coverage_level == "full")
 
     lines = [
-        "# AI Shield — MITRE ATLAS Coverage",
+        "# Aithyrex AI Security Threat Mapping Report",
         "",
-        f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}  ",
-        f"> Product: AI Shield v0.1.0 | Vendor: Tinlance Limited",
+        f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        "> Product: Aithyrex v0.1.0 | Vendor: Tinlance Limited",
+        "> Assurance status: heuristic mappings only; no full-coverage or effectiveness claim.",
         "",
         "## Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
-        f"| Total techniques covered | {len(COVERAGE_MAP)} |",
-        f"| Full coverage | {full} |",
-        f"| Partial coverage | {sum(1 for e in COVERAGE_MAP if e.coverage_level == 'partial')} |",
-        f"| MITRE ATLAS techniques | {len(atlas)} |",
-        f"| MITRE ATT&CK cross-references | {len(attck)} |",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Techniques mapped | {len(COVERAGE_MAP)} |",
+        "| Full coverage claims | 0 |",
+        f"| MITRE ATLAS mappings | {len(atlas)} |",
+        f"| MITRE ATT&CK mappings | {len(attck)} |",
         "",
-        "---",
+        "Technique mappings describe intended relevance only. They do not prove that a detector reliably detects a technique, that every variant is covered, or that false positives/negatives are bounded.",
         "",
-        "## MITRE ATLAS Coverage",
+        "## MITRE ATLAS mappings",
         "",
-        "| Technique ID | Name | Tactic | Detector | Coverage | Sprint |",
-        "|---|---|---|---|---|---|",
-    ]
-
-    for e in atlas:
-        badge = "✅" if e.coverage_level == "full" else "⚠️" if e.coverage_level == "partial" else "🔜"
-        lines.append(
-            f"| [{e.technique_id}](https://atlas.mitre.org/techniques/{e.technique_id}) "
-            f"| {e.technique_name} | {e.tactic} | `{e.detector}` "
-            f"| {badge} {e.coverage_level} | {e.sprint} |"
-        )
-
-    lines += [
-        "",
-        "---",
-        "",
-        "## MITRE ATT&CK Cross-References",
-        "",
-        "| Technique ID | Name | Tactic | Detector | Coverage |",
+        "| Technique ID | Name | Tactic | Detector | Mapping status |",
         "|---|---|---|---|---|",
     ]
 
-    for e in attck:
-        badge = "✅" if e.coverage_level == "full" else "⚠️"
+    for e in atlas:
         lines.append(
-            f"| [{e.technique_id}](https://attack.mitre.org/techniques/{e.technique_id.replace('.','/')}) "
-            f"| {e.technique_name} | {e.tactic} | `{e.detector}` | {badge} {e.coverage_level} |"
+            f"| {e.technique_id} | {e.technique_name} | {e.tactic} | {e.detector} | {e.coverage_level} |"
         )
 
     lines += [
         "",
-        "---",
+        "## MITRE ATT&CK mappings",
         "",
-        "## Detection Method Details",
-        "",
+        "| Technique ID | Name | Tactic | Detector | Mapping status |",
+        "|---|---|---|---|---|",
     ]
+    for e in attck:
+        lines.append(
+            f"| {e.technique_id} | {e.technique_name} | {e.tactic} | {e.detector} | {e.coverage_level} |"
+        )
 
+    lines += ["", "## Mapping details", ""]
     for e in COVERAGE_MAP:
         lines += [
             f"### {e.technique_id} — {e.technique_name}",
             "",
-            f"**Framework:** {e.framework}  ",
-            f"**Tactic:** {e.tactic}  ",
-            f"**Detector:** `{e.detector}`  ",
-            f"**Coverage:** {e.coverage_level}  ",
-            f"**Sprint:** {e.sprint}  ",
+            f"Framework: {e.framework}",
+            f"Tactic: {e.tactic}",
+            f"Detector: {e.detector}",
+            f"Mapping status: {e.coverage_level}",
+            f"Implementation milestone label: {e.sprint}",
             "",
-            f"**Method:** {e.detector_method}",
+            f"Method: {e.detector_method}",
             "",
         ]
         if e.notes:
-            lines.append(f"**Notes:** {e.notes}")
-            lines.append("")
+            lines.extend([f"Qualification: {e.notes}", ""])
         if e.attck_ref:
-            lines.append(f"**ATT&CK Cross-reference:** {e.attck_ref}")
-            lines.append("")
+            lines.extend([f"Related ATT&CK reference: {e.attck_ref}", ""])
 
     lines += [
-        "---",
+        "## Validation status",
         "",
-        "## Validation Baseline",
+        "No AI-text detection accuracy, precision, recall, false-positive rate, or complete framework coverage is asserted by this report. ThreatFade network-traffic results are not evidence of AI-text detection performance. Each mapping must be validated against a versioned, representative adversarial corpus before an effectiveness claim is made.",
         "",
-        "ThreatFade entropy engine validated against real C2 malware traffic:",
+        "## Evidence required to upgrade a mapping",
         "",
-        "| Metric | Value |",
-        "|--------|-------|",
-        "| Packets analysed | 490,000+ |",
-        "| Malware type | Merlin QUIC C2 |",
-        "| Z-score detected | 14.76 |",
-        "| False positive rate | 0% |",
+        "- Versioned test cases tied to the technique and detector version.",
+        "- Representative benign and malicious examples, including adversarial variants.",
+        "- Reproducible precision, recall, false-positive and false-negative measurements.",
+        "- Documented environment, thresholds, limitations and residual risks.",
         "",
-        "The same Z-score/entropy methodology applied to LLM completions.",
-        "",
-        "---",
-        "",
-        "*© 2026 Tinlance Limited — Apache 2.0*",
+        "© 2026 Tinlance Limited — Apache-2.0",
     ]
-
     return "\n".join(lines)
 
 

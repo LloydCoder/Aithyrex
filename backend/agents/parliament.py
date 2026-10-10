@@ -35,8 +35,8 @@ from dataclasses import dataclass, field
 
 import structlog
 
-from backend.agents.llm_gateway import LLMGateway, MemberVerdict, Vote, PARLIAMENT_PROMPT
-from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
+from backend.agents.llm_gateway import PARLIAMENT_PROMPT, LLMGateway, MemberVerdict, Vote
+from backend.core.shield_engine import Action, Severity, ShieldVerdict
 
 logger = structlog.get_logger(__name__)
 
@@ -66,10 +66,13 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
     Clear-cut cases bypass Parliament for speed.
     """
     # No detections — nothing to evaluate
+    if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
+        return False
+
     if not any(r.detected for r in verdict.results):
         return False
 
-    # CRITICAL from credential leak or multiple detectors → bypass (too clear-cut)
+    # Critical findings and existing BLOCK verdicts are never delegated to Parliament.
     if verdict.severity == Severity.CRITICAL:
         critical_detectors = [
             r for r in verdict.results
@@ -126,7 +129,7 @@ class ParliamentEnsemble:
         verdict: ShieldVerdict,
         prompt: str,
         completion: str | None = None,
-        threatfade_z_score: float = 0.0,
+        threatfade_z_score: float | None = None,
     ) -> ParliamentVerdict:
         """
         Run Parliament Ensemble on an ambiguous ShieldVerdict.
@@ -142,10 +145,23 @@ class ParliamentEnsemble:
         """
         start = time.monotonic()
 
+        # Hard detector decisions are immutable, even if evaluate() is called
+        # directly instead of through should_invoke_parliament().
+        if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
+            return ParliamentVerdict(
+                action=verdict.action,
+                severity=verdict.severity,
+                blocked=verdict.blocked or verdict.action == Action.BLOCK,
+                latency_ms=round((time.monotonic() - start) * 1000, 1),
+                overrode_detector=False,
+            )
+
         # Build prompt for both members
         detection_report = _build_detection_report(verdict)
-        prompt_preview = prompt[:500] + "..." if len(prompt) > 500 else prompt
-        completion_preview = (completion or "")[:500]
+        # Never transmit customer prompts/completions to external model providers.
+        # Parliament receives detector metadata only; content is withheld by design.
+        prompt_preview = "[content withheld for privacy]"
+        completion_preview = "[content withheld for privacy]"
 
         parliament_prompt = PARLIAMENT_PROMPT.format(
             detection_report=detection_report,
@@ -172,10 +188,14 @@ class ParliamentEnsemble:
         # Replace exceptions with ABSTAIN votes
         def safe_verdict(result, member: str) -> MemberVerdict:
             if isinstance(result, Exception):
-                logger.error(f"parliament_{member}_exception", error=str(result))
+                logger.error(
+                    "parliament_member_exception",
+                    member=member,
+                    error_type=type(result).__name__,
+                )
                 return MemberVerdict(
                     member=member, vote=Vote.ABSTAIN,
-                    confidence=0.0, reasoning=f"exception: {str(result)[:80]}",
+                    confidence=0.0, reasoning="provider_error",
                 )
             return result
 
@@ -213,10 +233,11 @@ class ParliamentEnsemble:
             final_severity = Severity.MEDIUM
             consensus = False
         else:
-            # All active votes say ALLOW — this was a false positive
-            final_action = Action.PASS
-            final_severity = Severity.CLEAN
-            consensus = True
+            # Parliament is advisory: votes cannot erase detector findings.
+            # Preserve the detector verdict unless Parliament escalates it.
+            final_action = verdict.action
+            final_severity = verdict.severity
+            consensus = False
 
         overrode = (final_action != verdict.action)
         latency = round((time.monotonic() - start) * 1000, 1)
@@ -247,37 +268,42 @@ class ParliamentEnsemble:
             overrode_detector=overrode,
         )
 
-    def _threatfade_vote(self, z_score: float) -> MemberVerdict:
+    def _threatfade_vote(self, z_score: float | None) -> MemberVerdict:
         """
-        Convert ThreatFade Z-score to a Parliament vote.
+        Convert a validated ThreatFade Z-score to a Parliament vote.
+        Missing telemetry abstains; it must never be interpreted as a clean signal.
         ThreatFade is the deterministic oracle — no API call needed.
 
-        Z-score thresholds from ThreatFade validation:
-          14.76 = Merlin QUIC C2 (confirmed malicious)
-          >= 10 → BLOCK
-          >= 5  → ALERT
-          < 5   → ALLOW
+        Provisional network-derived thresholds are not validated for AI text.
+        This vote can alert on high signals but cannot infer that low scores are safe.
         """
+        if z_score is None:
+            return MemberVerdict(
+                member="threatfade",
+                vote=Vote.ABSTAIN,
+                confidence=0.0,
+                reasoning="ThreatFade telemetry unavailable; no safety conclusion",
+            )
         if z_score >= 10.0:
             return MemberVerdict(
                 member="threatfade",
-                vote=Vote.BLOCK,
-                confidence=0.95,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} exceeds C2 threshold (10.0)",
+                vote=Vote.ALERT,
+                confidence=0.0,
+                reasoning="High provisional ThreatFade score; AI-text threshold is not validated",
             )
         elif z_score >= 5.0:
             return MemberVerdict(
                 member="threatfade",
                 vote=Vote.ALERT,
-                confidence=0.70,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} is elevated but below block threshold",
+                confidence=0.0,
+                reasoning="Elevated provisional ThreatFade score; AI-text threshold is not validated",
             )
         else:
             return MemberVerdict(
                 member="threatfade",
-                vote=Vote.ALLOW,
-                confidence=0.90,
-                reasoning=f"ThreatFade Z-score {z_score:.2f} is within normal range",
+                vote=Vote.ABSTAIN,
+                confidence=0.0,
+                reasoning="Low network-derived score does not establish a safe AI interaction",
             )
 
 

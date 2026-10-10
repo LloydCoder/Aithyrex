@@ -15,16 +15,16 @@ Scenarios covered:
   8. Parliament overrides MEDIUM detector verdict
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from backend.agents.llm_gateway import LLMGateway, MemberVerdict, Vote
 from backend.agents.parliament import (
-    ParliamentEnsemble, should_invoke_parliament,
+    ParliamentEnsemble,
+    should_invoke_parliament,
 )
-from backend.agents.llm_gateway import MemberVerdict, Vote
-from backend.core.shield_engine import (
-    Action, DetectionResult, Severity, ShieldVerdict
-)
+from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -114,37 +114,37 @@ class TestShouldInvokeParliament:
 
 # ── ThreatFade oracle vote ─────────────────────────────────────────────────────
 class TestThreatFadeVote:
-    def test_high_z_score_votes_block(self, ensemble):
+    def test_high_z_score_votes_alert_only(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=14.76)
-        assert vote.vote == Vote.BLOCK
-        assert vote.confidence >= 0.9
+        assert vote.vote == Vote.ALERT
+        assert vote.confidence == 0.0
 
     def test_medium_z_score_votes_alert(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=7.0)
         assert vote.vote == Vote.ALERT
 
-    def test_low_z_score_votes_allow(self, ensemble):
+    def test_low_z_score_abstains(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=0.5)
-        assert vote.vote == Vote.ALLOW
+        assert vote.vote == Vote.ABSTAIN
 
-    def test_merlin_quic_z_score_blocks(self, ensemble):
-        """Merlin QUIC C2 real-world Z-score must always BLOCK."""
+    def test_high_network_score_does_not_directly_block_ai_text(self, ensemble):
+        """A high network-derived score is advisory and cannot directly block AI text."""
         vote = ensemble._threatfade_vote(z_score=14.76)
-        assert vote.vote == Vote.BLOCK
+        assert vote.vote == Vote.ALERT
 
 
 # ── Full Parliament vote scenarios ────────────────────────────────────────────
 class TestParliamentVoting:
 
     @pytest.mark.asyncio
-    async def test_2_of_3_block_returns_block(self, ensemble):
-        """Claude + ThreatFade BLOCK, Grok ALLOW → 2-of-3 → BLOCK."""
+    async def test_two_model_voters_can_block(self, ensemble):
+        """Two model voters can escalate; ThreatFade alone contributes only ALERT."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
                           new=AsyncMock(return_value=member_vote("claude", Vote.BLOCK))), \
              patch.object(ensemble.gateway, "call_grok",
-                          new=AsyncMock(return_value=member_vote("grok", Vote.ALLOW))):
+                          new=AsyncMock(return_value=member_vote("grok", Vote.BLOCK))):
 
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=11.0)
 
@@ -154,7 +154,7 @@ class TestParliamentVoting:
 
     @pytest.mark.asyncio
     async def test_1_of_3_block_returns_alert(self, ensemble):
-        """Only Claude BLOCK, Grok and ThreatFade ALLOW → ALERT."""
+        """One model BLOCK and another ALLOW yields ALERT; low score abstains."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
@@ -169,8 +169,8 @@ class TestParliamentVoting:
         assert result.consensus is False
 
     @pytest.mark.asyncio
-    async def test_0_of_3_block_clears_false_positive(self, ensemble):
-        """All three ALLOW → false positive cleared → PASS."""
+    async def test_allow_votes_cannot_downgrade_detector_finding(self, ensemble):
+        """Advisory allow votes cannot erase a positive detector finding."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
@@ -180,10 +180,10 @@ class TestParliamentVoting:
 
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=0.3)
 
-        assert result.action == Action.PASS
-        assert result.severity == Severity.CLEAN
-        assert result.consensus is True
-        assert result.overrode_detector is True
+        assert result.action == verdict.action
+        assert result.severity == verdict.severity
+        assert result.consensus is False
+        assert result.overrode_detector is False
 
     @pytest.mark.asyncio
     async def test_all_abstain_uses_detector_verdict(self, ensemble):
@@ -242,3 +242,60 @@ class TestParliamentVoting:
             # Should not raise
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=0.0)
             assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_direct_parliament_evaluation_preserves_hard_block(ensemble):
+    verdict = make_verdict(Action.BLOCK, Severity.CRITICAL, detector="credential_leak")
+    ensemble.gateway.call_claude = AsyncMock(return_value=member_vote("claude", Vote.ALLOW))
+    ensemble.gateway.call_grok = AsyncMock(return_value=member_vote("grok", Vote.ALLOW))
+
+    result = await ensemble.evaluate(verdict, "sensitive prompt", threatfade_z_score=0.0)
+
+    assert result.action == Action.BLOCK
+    assert result.severity == Severity.CRITICAL
+    assert result.blocked is True
+    ensemble.gateway.call_claude.assert_not_awaited()
+    ensemble.gateway.call_grok.assert_not_awaited()
+
+
+def test_missing_threatfade_telemetry_abstains(ensemble):
+    vote = ensemble._threatfade_vote(z_score=None)
+    assert vote.vote == Vote.ABSTAIN
+
+
+def test_existing_block_verdict_never_invokes_parliament():
+    verdict = make_verdict(Action.BLOCK, Severity.HIGH)
+    assert should_invoke_parliament(verdict) is False
+
+
+def test_critical_noncredential_verdict_also_bypasses_parliament():
+    verdict = make_verdict(Action.BLOCK, Severity.CRITICAL, detector="c2_behaviour")
+    assert should_invoke_parliament(verdict) is False
+
+
+@pytest.mark.parametrize("payload", ["", "not-json", '{"vote":"unknown"}'])
+def test_malformed_or_unknown_llm_vote_abstains(payload):
+    parsed = LLMGateway()._parse_vote(payload)
+    assert parsed["vote"] == "abstain"
+    assert parsed["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_parliament_never_transmits_raw_prompt_or_completion(ensemble):
+    prompt = "UNIQUE_PRIVATE_PROMPT_SENTINEL"
+    completion = "UNIQUE_PRIVATE_COMPLETION_SENTINEL"
+    ensemble.gateway.call_claude = AsyncMock(return_value=member_vote("claude", Vote.ALLOW))
+    ensemble.gateway.call_grok = AsyncMock(return_value=member_vote("grok", Vote.ALLOW))
+    await ensemble.evaluate(
+        make_verdict(Action.LOG, Severity.MEDIUM),
+        prompt=prompt,
+        completion=completion,
+        threatfade_z_score=None,
+    )
+    claude_prompt = ensemble.gateway.call_claude.await_args.args[0]
+    grok_prompt = ensemble.gateway.call_grok.await_args.args[0]
+    for external_prompt in (claude_prompt, grok_prompt):
+        assert prompt not in external_prompt
+        assert completion not in external_prompt
+        assert "[content withheld for privacy]" in external_prompt

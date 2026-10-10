@@ -1,14 +1,14 @@
 """
-AI Shield — Covert Channel Detector
+Aithyrex — Covert Channel Detector
 =====================================
-Detects steganographic and encoding-based covert channels
+Flags potential steganographic and encoding-based covert-channel patterns
 in LLM completions using ThreatFade's entropy/Z-score methodology.
 
-The same statistical approach that caught Merlin QUIC C2 traffic
-(Z-score 14.76, 490K+ packets, 0% false positive rate) is applied
-to token distributions in model output.
+ThreatFade provides a supplementary signal. Network-traffic results do not
+validate AI-text detection accuracy; this detector's thresholds require a
+separate representative AI-interaction evaluation.
 
-Anomalous entropy patterns in completions indicate:
+Anomalous entropy patterns in completions may indicate:
   - Data exfiltration via whitespace/Unicode steganography
   - Base64/hex-encoded payloads embedded in natural language
   - Timing-channel patterns in streaming responses
@@ -21,7 +21,6 @@ Sprint 2: Full token distribution Z-score analysis.
 
 from __future__ import annotations
 
-import base64
 import re
 
 import structlog
@@ -90,23 +89,22 @@ class CovertChannelDetector:
             indicators.append(f"threatfade_c2_entropy (z={z_outlier:.2f})")
 
         if not indicators:
+            degraded = bool(tf_result.get("degraded") or tf_result.get("fallback"))
             return DetectionResult(
                 detector="covert_channel",
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
+                details={
+                    "degraded": degraded,
+                    "reason": "threatfade_unavailable" if degraded else "no_indicators",
+                    "z_outlier": z_outlier,
+                },
             )
 
-        # Z-score above 10 → CRITICAL (ThreatFade baseline: 14.76 on real malware)
-        if z_outlier >= 10.0:
-            severity = Severity.CRITICAL
-            confidence = 0.95
-        elif z_outlier >= 5.0 or len(indicators) >= 2:
-            severity = Severity.HIGH
-            confidence = 0.80
-        else:
-            severity = Severity.MEDIUM
-            confidence = 0.55
+        # Encoding and ThreatFade thresholds are not validated for AI text; never hard-block on them alone.
+        severity = Severity.MEDIUM
+        confidence = 0.0
 
         logger.warning(
             "covert_channel_detected",
@@ -124,6 +122,8 @@ class CovertChannelDetector:
                 "indicators": indicators,
                 "z_outlier": z_outlier,
                 "threatfade_confidence": tf_confidence,
+                "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+                "confidence_calibrated": False,
             },
             mitre_atlas=["AML.T0048", "T1027"],
         )

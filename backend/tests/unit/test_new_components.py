@@ -4,10 +4,10 @@ AI Shield — Unit Tests: New Components (Sprint 4 additions)
 Tests MITRE report generator, Olvrix bridge, and integration middleware.
 """
 
-import asyncio
 import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 # ── MITRE Report Generator ─────────────────────────────────────────────────────
@@ -19,7 +19,8 @@ class TestMITREReport:
         data = json.loads(output)
         assert "coverage" in data
         assert data["total_techniques"] > 0
-        assert data["full_coverage"] > 0
+        assert data["full_coverage"] == 0
+        assert data["mapped_techniques"] > 0
 
     def test_json_has_required_fields(self):
         from backend.core.mitre_report import generate_json
@@ -33,7 +34,7 @@ class TestMITREReport:
     def test_markdown_report_has_atlas_section(self):
         from backend.core.mitre_report import generate_markdown
         md = generate_markdown()
-        assert "MITRE ATLAS Coverage" in md
+        assert "MITRE ATLAS mappings" in md
         assert "AML.T0051" in md
         assert "prompt_injection" in md
 
@@ -62,17 +63,19 @@ class TestMITREReport:
 
     def test_full_coverage_techniques_present(self):
         from backend.core.mitre_report import COVERAGE_MAP
-        full = [e.technique_id for e in COVERAGE_MAP if e.coverage_level == "full"]
-        assert "AML.T0051" in full   # prompt injection
-        assert "T1552" in full        # credential leak
-        assert "T1027" in full        # obfuscated / covert channel
+        mapped = {e.technique_id: e for e in COVERAGE_MAP}
+        assert "AML.T0051" in mapped
+        assert "T1552" in mapped
+        assert "T1027" in mapped
+        assert all(e.coverage_level == "heuristic" for e in COVERAGE_MAP)
 
     def test_validation_baseline_in_markdown(self):
         from backend.core.mitre_report import generate_markdown
         md = generate_markdown()
-        assert "14.76" in md          # ThreatFade Z-score
-        assert "490,000" in md        # Packets validated
-        assert "0%" in md             # False positive rate
+        assert "No AI-text detection accuracy" in md
+        assert "false-positive rate" in md
+        assert "14.76" not in md
+        assert "490,000" not in md
 
 
 # ── Olvrix Bridge ──────────────────────────────────────────────────────────────
@@ -80,9 +83,7 @@ class TestOlvrixBridge:
 
     @pytest.fixture
     def bridge(self):
-        import sys, os
-        sys.path.insert(0, "/home/claude/ai-shield/olvrix_bridge")
-        from ai_shield_sync import AIShieldSync
+        from olvrix_bridge.ai_shield_sync import AIShieldSync
         return AIShieldSync()
 
     @pytest.mark.asyncio
@@ -91,36 +92,45 @@ class TestOlvrixBridge:
         assert result["safe"] is True
 
     @pytest.mark.asyncio
-    async def test_no_api_key_returns_pass(self, bridge):
-        """Without API key, bridge logs but never blocks (dev mode)."""
+    async def test_no_api_key_fails_closed(self, bridge):
+        """Missing inspection configuration must not silently pass content."""
         result = await bridge.handle_business_scraped(
             "<html><body>Normal business site</body></html>",
             "biz-001",
         )
-        assert result["action"] == "pass"
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
-    async def test_timeout_returns_pass(self, bridge):
-        """Network timeout must never block the Olvrix pipeline."""
-        with patch("httpx.AsyncClient") as mock_client:
-            import httpx
+    async def test_timeout_fails_closed(self, bridge):
+        """Network timeout must be visible as a degraded block."""
+        import httpx
+        with patch("olvrix_bridge.ai_shield_sync.AITHYREX_API_URL", "https://api.example.test"), patch(
+            "olvrix_bridge.ai_shield_sync.AITHYREX_API_TOKEN", "test-session-token"
+        ), patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 side_effect=httpx.TimeoutException("timeout")
             )
             result = await bridge.handle_business_scraped("some html", "biz-002")
-        assert result["action"] == "pass"
-        assert result.get("blocked", False) is False
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
-    async def test_connection_error_returns_pass(self, bridge):
-        """AI Shield unreachable must never block Olvrix."""
-        with patch("httpx.AsyncClient") as mock_client:
-            import httpx
+    async def test_connection_error_fails_closed(self, bridge):
+        """Aithyrex unreachable must be visible as a degraded block."""
+        import httpx
+        with patch("olvrix_bridge.ai_shield_sync.AITHYREX_API_URL", "https://api.example.test"), patch(
+            "olvrix_bridge.ai_shield_sync.AITHYREX_API_TOKEN", "test-session-token"
+        ), patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 side_effect=httpx.ConnectError("unreachable")
             )
             result = await bridge.handle_website_generated("generated html", "biz-003")
-        assert result["action"] == "pass"
+        assert result["safe"] is False
+        assert result["degraded"] is True
+        assert result["reason"] == "inspection_unavailable"
 
     @pytest.mark.asyncio
     async def test_escalation_threshold(self, bridge):

@@ -1,5 +1,5 @@
 """
-AI Shield — SIEM Dispatch Service
+Aithyrex — SIEM Dispatch Service
 ====================================
 Triggered after every detection event.
 Routes to correct exporter based on tenant plan.
@@ -10,8 +10,6 @@ Enterprise:   All formats including STIX 2.1
 """
 
 from __future__ import annotations
-
-import asyncio
 
 import structlog
 
@@ -44,7 +42,11 @@ class SIEMDispatcher:
         Returns dict of format → success.
         """
         from backend.exporters.siem_exporter import (
-            to_json, to_csv, to_cef, to_splunk_hec, to_stix21
+            to_cef,
+            to_csv,
+            to_json,
+            to_splunk_hec,
+            to_stix21,
         )
 
         formats = PLAN_FORMATS.get(plan, ["json"])
@@ -120,8 +122,8 @@ class SIEMDispatcher:
         Send alert notifications for HIGH/CRITICAL events.
         Webhooks on Starter+, Slack on Pro+.
         """
-        from backend.core.shield_engine import Severity
         from backend.core.config import settings
+        from backend.core.shield_engine import Severity
 
         if verdict.severity not in (Severity.HIGH, Severity.CRITICAL):
             return
@@ -137,11 +139,12 @@ class SIEMDispatcher:
     async def _send_slack(self, verdict, tenant_id: str) -> None:
         """POST alert to Slack webhook."""
         import httpx
+
         from backend.core.config import settings
 
         detectors = [r.detector for r in verdict.results if r.detected]
         payload = {
-            "text": f"🛡️ *AI Shield Alert* — `{verdict.severity.upper()}`",
+            "text": f"🛡️ *Aithyrex Alert* — `{verdict.severity.upper()}`",
             "attachments": [{
                 "color": "#EF4444" if verdict.blocked else "#F59E0B",
                 "fields": [
@@ -161,11 +164,12 @@ class SIEMDispatcher:
     async def _send_telegram(self, verdict, tenant_id: str) -> None:
         """Send alert via Telegram Bot API."""
         import httpx
+
         from backend.core.config import settings
 
         emoji = "🚨" if verdict.blocked else "⚠️"
         text = (
-            f"{emoji} *AI Shield {verdict.severity.upper()}*\n"
+            f"{emoji} *Aithyrex {verdict.severity.upper()}*\n"
             f"Action: `{verdict.action}`\n"
             f"Tenant: `{tenant_id[:16]}`\n"
             f"Detectors: {', '.join(r.detector for r in verdict.results if r.detected)}"

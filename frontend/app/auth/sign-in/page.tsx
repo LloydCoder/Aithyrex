@@ -23,13 +23,13 @@ export default function SignInPage() {
           <span style={{
             fontFamily: 'Space Grotesk, sans-serif',
             fontWeight: 700, fontSize: '22px', color: '#FFFFFF',
-          }}>AI Shield</span>
+          }}>Aithyrex</span>
         </div>
         <p style={{
           fontFamily: 'JetBrains Mono, monospace',
           fontSize: '11px', color: '#475569',
           letterSpacing: '0.08em', textTransform: 'uppercase',
-        }}>Runtime AI Security Platform</p>
+        }}>Agentic AI Runtime Security</p>
       </div>
 
       <SignIn

@@ -58,7 +58,7 @@ export default function Topbar() {
             display: 'inline-block',
             boxShadow: health === 'ok' ? `0 0 6px ${statusColor}` : 'none',
           }} />
-          SHIELD {health.toUpperCase()}
+          AITHYREX {health.toUpperCase()}
         </div>
 
         {/* Docs link */}

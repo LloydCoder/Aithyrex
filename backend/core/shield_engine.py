@@ -1,5 +1,5 @@
 """
-AI Shield — Shield Engine (Orchestrator)
+Aithyrex — Shield Engine (Orchestrator)
 =========================================
 Central coordinator for all detection modules.
 
@@ -73,21 +73,21 @@ class ShieldVerdict:
 
 class ShieldEngine:
     """
-    Central orchestrator for AI Shield detection pipeline.
+    Central orchestrator for Aithyrex detection pipeline.
 
     Usage:
         engine = ShieldEngine()
         verdict = await engine.inspect(prompt=user_input, completion=model_output)
         if verdict.action == Action.BLOCK:
-            raise SecurityError("Blocked by AI Shield")
+            raise SecurityError("Blocked by Aithyrex")
     """
 
     def __init__(self) -> None:
-        from backend.detectors.prompt_injection import PromptInjectionDetector
-        from backend.detectors.credential_leak import CredentialLeakDetector
-        from backend.detectors.covert_channel import CovertChannelDetector
         from backend.detectors.c2_behaviour import C2BehaviourDetector
+        from backend.detectors.covert_channel import CovertChannelDetector
+        from backend.detectors.credential_leak import CredentialLeakDetector
         from backend.detectors.data_poisoning import DataPoisoningDetector
+        from backend.detectors.prompt_injection import PromptInjectionDetector
 
         self._detectors: list[Any] = [
             PromptInjectionDetector(),
@@ -130,10 +130,14 @@ class ShieldEngine:
         # ── Block mode check (Pro+) — before any detection runs ─────────
         if tenant_id and model:
             from backend.core.block_mode import block_mode
-            is_blocked, block_reason = await block_mode.is_blocked(
-                tenant_id=tenant_id,
-                model_id=model,
-            )
+            try:
+                is_blocked, block_reason = await block_mode.is_blocked(
+                    tenant_id=tenant_id,
+                    model_id=model,
+                )
+            except Exception as exc:
+                logger.error("block_state_check_failed_fail_closed", error_type=type(exc).__name__)
+                return ShieldVerdict(action=Action.BLOCK, severity=Severity.HIGH, blocked=True)
             if is_blocked:
                 logger.warning(
                     "blocked_model_rejected",
@@ -147,27 +151,28 @@ class ShieldEngine:
                     blocked=True,
                 )
 
-            # Allowlisted models bypass detection entirely
-            is_allowed = await block_mode.is_allowlisted(
-                tenant_id=tenant_id,
-                model_id=model,
-            )
-            if is_allowed:
-                logger.info("allowlisted_model_bypass", tenant_id=tenant_id, model=model)
-                return ShieldVerdict(action=Action.PASS, severity=Severity.CLEAN)
+            # Allowlist entries are not consulted by the enforcement path.
+            # A model allowlist must never bypass mandatory security inspection.
 
         # ── Tier limit check (Pro+) ──────────────────────────────────────
         if tenant_id:
             from backend.core.usage_counter import usage_counter
-            within_limit, count, limit = await usage_counter.check_limit(tenant_id, plan)
-            if not within_limit and plan == "free":
-                logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count)
+            try:
+                within_limit, count, limit = await usage_counter.reserve_inference(tenant_id, plan)
+                if not within_limit and plan == "free":
+                    logger.warning("free_tier_exhausted", tenant_id=tenant_id, count=count, limit=limit)
+                    return ShieldVerdict(
+                        action=Action.BLOCK,
+                        severity=Severity.INFO,
+                        blocked=True,
+                    )
+            except Exception as exc:
+                logger.error("usage_accounting_unavailable_fail_closed", error_type=type(exc).__name__)
                 return ShieldVerdict(
                     action=Action.BLOCK,
-                    severity=Severity.INFO,
+                    severity=Severity.HIGH,
                     blocked=True,
                 )
-            await usage_counter.increment(tenant_id)
 
         if not self._detectors:
             return ShieldVerdict(action=Action.PASS, severity=Severity.CLEAN)
@@ -177,8 +182,61 @@ class ShieldEngine:
             detector.detect(prompt=prompt, completion=completion)
             for detector in self._detectors
         ]
-        results: list[DetectionResult] = await asyncio.gather(*tasks)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[DetectionResult] = []
+        for detector, result in zip(self._detectors, raw_results, strict=True):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, Exception):
+                detector_name = getattr(detector, "name", detector.__class__.__name__)
+                logger.error(
+                    "detector_execution_failed_fail_closed",
+                    detector=detector_name,
+                    tenant_id=tenant_id,
+                    error_type=type(result).__name__,
+                )
+                results.append(
+                    DetectionResult(
+                        detector=str(detector_name),
+                        detected=True,
+                        severity=Severity.HIGH,
+                        confidence=1.0,
+                        details={"degraded": True, "reason": "detector_exception"},
+                    )
+                )
+            elif isinstance(result, DetectionResult):
+                results.append(result)
+            else:
+                logger.error(
+                    "detector_returned_invalid_result_fail_closed",
+                    detector=detector.__class__.__name__,
+                    tenant_id=tenant_id,
+                )
+                results.append(
+                    DetectionResult(
+                        detector=detector.__class__.__name__,
+                        detected=True,
+                        severity=Severity.HIGH,
+                        confidence=1.0,
+                        details={"degraded": True, "reason": "invalid_detector_result"},
+                    )
+                )
         verdict = self._aggregate(results)
+
+        # Missing mandatory ThreatFade telemetry is not a clean verdict.
+        degraded = [r for r in results if r.details.get("degraded")]
+        if degraded:
+            logger.error(
+                "required_detection_telemetry_unavailable",
+                detectors=[r.detector for r in degraded],
+                tenant_id=tenant_id,
+            )
+            verdict = ShieldVerdict(
+                action=Action.BLOCK,
+                severity=Severity.HIGH,
+                results=results,
+                blocked=True,
+            )
 
         # ── Parliament Ensemble (ambiguous cases only) ────────────────────
         # Clear-cut CRITICAL/CLEAN bypass Parliament for speed.
@@ -187,13 +245,11 @@ class ShieldEngine:
         if should_invoke_parliament(verdict):
             try:
                 # Extract ThreatFade Z-score from results for 3rd vote
-                tf_z_score = 0.0
+                tf_z_score = None
                 for r in results:
-                    if r.detector in ("covert_channel", "c2_behaviour"):
-                        tf_z_score = max(
-                            tf_z_score,
-                            float(r.details.get("z_outlier", 0.0)),
-                        )
+                    if r.detector in ("covert_channel", "c2_behaviour") and not r.details.get("degraded"):
+                        observed_z = float(r.details.get("z_outlier", 0.0))
+                        tf_z_score = observed_z if tf_z_score is None else max(tf_z_score, observed_z)
 
                 parliament_verdict = await parliament.evaluate(
                     verdict=verdict,
@@ -202,16 +258,32 @@ class ShieldEngine:
                     threatfade_z_score=tf_z_score,
                 )
 
-                # Parliament overrides ShieldEngine when it has consensus
-                if parliament_verdict.consensus or parliament_verdict.overrode_detector:
+                # Parliament is advisory: it may escalate, never downgrade a detector verdict.
+                action_rank = {
+                    Action.PASS: 0,
+                    Action.LOG: 1,
+                    Action.ALERT: 2,
+                    Action.BLOCK: 3,
+                }
+                if action_rank[parliament_verdict.action] > action_rank[verdict.action]:
                     verdict = ShieldVerdict(
                         action=parliament_verdict.action,
-                        severity=parliament_verdict.severity,
-                        blocked=parliament_verdict.blocked,
+                        severity=max(
+                            (verdict.severity, parliament_verdict.severity),
+                            key=lambda severity: {
+                                Severity.CLEAN: 0,
+                                Severity.INFO: 1,
+                                Severity.LOW: 2,
+                                Severity.MEDIUM: 3,
+                                Severity.HIGH: 4,
+                                Severity.CRITICAL: 5,
+                            }[severity],
+                        ),
+                        blocked=parliament_verdict.action == Action.BLOCK,
                         results=results,
                     )
                     logger.info(
-                        "parliament_override_applied",
+                        "parliament_escalation_applied",
                         new_action=verdict.action,
                         block_votes=parliament_verdict.block_votes,
                         allow_votes=parliament_verdict.allow_votes,
@@ -235,9 +307,9 @@ class ShieldEngine:
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
+                    from backend.compliance.nis2_dora import nis2_dora
                     from backend.core.event_logger import event_logger
                     from backend.core.siem_dispatch import siem_dispatcher
-                    from backend.compliance.nis2_dora import nis2_dora
 
                     loop.create_task(event_logger.log_event(
                         verdict=verdict,

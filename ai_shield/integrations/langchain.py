@@ -1,5 +1,5 @@
 """
-AI Shield — LangChain Integration (PyPI package)
+Aithyrex — LangChain Integration (PyPI package)
 ==================================================
 Usage:
     from ai_shield.integrations.langchain import AIShieldCallback
@@ -15,17 +15,18 @@ from ai_shield.client import Shield
 
 class AIShieldCallback:
     """
-    LangChain callback handler for AI Shield.
+    LangChain callback handler for Aithyrex.
     Drop into any LangChain LLM, chain, or agent.
     """
 
     def __init__(
         self,
         api_key: str = "",
-        base_url: str = "https://api.aishield.tinlance.com",
+        base_url: str | None = None,
         raise_on_block: bool = True,
+        token: str | None = None,
     ) -> None:
-        self._shield = Shield(api_key=api_key, base_url=base_url)
+        self._shield = Shield(api_key=api_key, base_url=base_url, token=token)
         self._raise = raise_on_block
         self._last_prompt = ""
 
@@ -35,7 +36,7 @@ class AIShieldCallback:
             verdict = self._shield.inspect_sync(prompt=prompt)
             if verdict.blocked and self._raise:
                 raise PermissionError(
-                    f"[AI Shield] LangChain prompt blocked. Severity: {verdict.severity}."
+                    f"[Aithyrex] LangChain prompt blocked. Severity: {verdict.severity}."
                 )
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
@@ -47,7 +48,7 @@ class AIShieldCallback:
                 )
                 if verdict.blocked and self._raise:
                     raise PermissionError(
-                        f"[AI Shield] LangChain completion blocked. Severity: {verdict.severity}."
+                        f"[Aithyrex] LangChain completion blocked. Severity: {verdict.severity}."
                     )
         except (AttributeError, IndexError):
             pass
@@ -59,14 +60,14 @@ class AIShieldCallback:
         verdict = self._shield.inspect_sync(prompt=input_str)
         if verdict.blocked and self._raise:
             raise PermissionError(
-                f"[AI Shield] Tool input blocked. Severity: {verdict.severity}."
+                f"[Aithyrex] Tool input blocked. Severity: {verdict.severity}."
             )
 
     def on_tool_end(self, output: str, **kwargs: Any) -> None:
         verdict = self._shield.inspect_sync(prompt="", completion=output)
         if verdict.blocked and self._raise:
             raise PermissionError(
-                f"[AI Shield] Tool output blocked. Severity: {verdict.severity}."
+                f"[Aithyrex] Tool output blocked. Severity: {verdict.severity}."
             )
 
     def on_agent_action(self, action: Any, **kwargs: Any) -> None:
@@ -74,3 +75,6 @@ class AIShieldCallback:
 
     def on_agent_finish(self, finish: Any, **kwargs: Any) -> None:
         pass
+
+
+AithyrexCallback = AIShieldCallback

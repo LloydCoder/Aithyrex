@@ -44,7 +44,7 @@ class MemberVerdict:
 
 
 # ── Prompt template ───────────────────────────────────────────────────────────
-PARLIAMENT_PROMPT = """You are a cybersecurity AI on the AI Shield Parliament Ensemble.
+PARLIAMENT_PROMPT = """You are a cybersecurity AI on the Aithyrex Parliament Ensemble.
 Your role: evaluate whether this AI model traffic represents a genuine threat.
 
 DETECTION REPORT:
@@ -59,7 +59,7 @@ COMPLETION UNDER REVIEW:
 Respond ONLY with valid JSON. No explanation outside the JSON.
 
 {{
-  "vote": "block" | "alert" | "allow",
+  "vote": "block" | "alert" | "allow" | "abstain",
   "confidence": 0.0-1.0,
   "reasoning": "one sentence explaining your vote"
 }}
@@ -67,8 +67,10 @@ Respond ONLY with valid JSON. No explanation outside the JSON.
 Rules:
 - vote "block" only if you are highly confident this is malicious
 - vote "alert" if suspicious but not certain
-- vote "allow" if the detection looks like a false positive
-- Be skeptical of low-confidence detections — err toward "allow" when uncertain"""
+- vote "allow" only when the provided detector evidence clearly supports a false positive
+- vote "abstain" when evidence is incomplete, telemetry is missing, or confidence is insufficient
+- Do not infer authorization or claim the system is safe from limited detector metadata
+- These votes are advisory and cannot override a deterministic BLOCK or Platform policy"""
 
 
 class LLMGateway:
@@ -124,10 +126,10 @@ class LLMGateway:
                     confidence=0.0, reasoning="timeout",
                 )
             except Exception as e:
-                logger.error("claude_gateway_error", error=str(e))
+                logger.error("claude_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="claude", vote=Vote.ABSTAIN,
-                    confidence=0.0, reasoning=str(e)[:100],
+                    confidence=0.0, reasoning="provider_error",
                 )
 
     async def call_grok(self, prompt: str) -> MemberVerdict:
@@ -176,7 +178,7 @@ class LLMGateway:
                     confidence=0.0, reasoning="timeout",
                 )
             except Exception as e:
-                logger.error("grok_gateway_error", error=str(e))
+                logger.error("grok_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="grok", vote=Vote.ABSTAIN,
                     confidence=0.0, reasoning=str(e)[:100],
@@ -196,7 +198,8 @@ class LLMGateway:
         async with httpx.AsyncClient(timeout=15.0) as client:
             try:
                 response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                    headers={"x-goog-api-key": settings.GEMINI_API_KEY},
                     json={
                         "contents": [{"parts": [{"text": prompt}]}],
                         "generationConfig": {"maxOutputTokens": 256},
@@ -215,7 +218,7 @@ class LLMGateway:
                     latency_ms=latency,
                 )
             except Exception as e:
-                logger.error("gemini_gateway_error", error=str(e))
+                logger.error("gemini_gateway_error", error_type=type(e).__name__)
                 return MemberVerdict(
                     member="gemini", vote=Vote.ABSTAIN,
                     confidence=0.0, reasoning=str(e)[:100],
@@ -229,11 +232,13 @@ class LLMGateway:
             data = json.loads(clean)
             # Validate vote value
             if data.get("vote") not in ("block", "alert", "allow", "abstain"):
-                data["vote"] = "allow"   # Safe default on parse failure
+                data["vote"] = "abstain"  # Invalid model output is not a safety decision
+                data["confidence"] = 0.0
+                data["reasoning"] = "unknown_vote"
             return data
         except json.JSONDecodeError:
-            logger.warning("parliament_json_parse_failed", raw=text[:100])
-            return {"vote": "allow", "confidence": 0.3, "reasoning": "parse_error"}
+            logger.warning("parliament_json_parse_failed", response_length=len(text))
+            return {"vote": "abstain", "confidence": 0.0, "reasoning": "parse_error"}
 
 
 # Module-level singleton

@@ -28,14 +28,15 @@ async def _check_threatfade() -> dict:
             "latency_ms": round((time.monotonic() - start) * 1000, 1),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return {"status": "error", "error_type": type(e).__name__}
 
 
 async def _check_postgres() -> dict:
     start = time.monotonic()
     try:
-        from backend.models.database import engine
         from sqlalchemy import text
+
+        from backend.models.database import engine
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return {
@@ -43,7 +44,7 @@ async def _check_postgres() -> dict:
             "latency_ms": round((time.monotonic() - start) * 1000, 1),
         }
     except Exception as e:
-        return {"status": "unreachable", "error": str(e)[:80]}
+        return {"status": "unreachable", "error_type": type(e).__name__}
 
 
 async def _check_redis() -> dict:

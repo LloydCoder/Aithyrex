@@ -1,21 +1,22 @@
 """
-AI Shield — FastAPI Application Entry Point
+Aithyrex — FastAPI Application Entry Point
 ============================================
 Runtime security for LLM and agentic AI systems.
 
 Built by Tinlance Limited (RC: 7962164)
-https://github.com/Tinlance/ai-shield
+https://github.com/LloydCoder/Aithyrex
 """
 
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from backend.core.config import settings
 from backend.api.routes import detect, enforce, health, monitor, reports, webhooks
+from backend.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -23,18 +24,53 @@ logger = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
+    if settings.APP_ENV.lower() in {"prod", "production"}:
+        missing = []
+        if not settings.CLERK_JWT_KEY:
+            missing.append("CLERK_JWT_KEY")
+        if not settings.CLERK_JWT_ISSUER:
+            missing.append("CLERK_JWT_ISSUER")
+        if not settings.CLERK_AUTHORIZED_PARTIES:
+            missing.append("CLERK_AUTHORIZED_PARTIES")
+        threatfade_url = urlparse(settings.THREATFADE_API_URL)
+        if threatfade_url.scheme != "https" or not threatfade_url.hostname:
+            missing.append("THREATFADE_API_URL (HTTPS endpoint required in production)")
+        if not settings.THREATFADE_API_KEY:
+            missing.append("THREATFADE_API_KEY")
+        if settings.APP_SECRET_KEY == "change-me" or len(settings.APP_SECRET_KEY) < 32:
+            missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
+        database_url = settings.DATABASE_URL.lower()
+        if (
+            "localhost" in database_url
+            or "127.0.0.1" in database_url
+            or "password@" in database_url
+            or not any(marker in database_url for marker in ("ssl=require", "ssl=verify-full"))
+        ):
+            missing.append("DATABASE_URL (remote database with TLS and non-default credentials required)")
+        if not settings.REDIS_URL.startswith("rediss://"):
+            missing.append("REDIS_URL (TLS-protected Redis URL required)")
+        if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
+            missing.append("ALLOWED_HOSTS (explicit production hosts required)")
+        if (
+            not settings.ALLOWED_ORIGINS
+            or "*" in settings.ALLOWED_ORIGINS
+            or any(not origin.startswith("https://") for origin in settings.ALLOWED_ORIGINS)
+        ):
+            missing.append("ALLOWED_ORIGINS (explicit HTTPS origins required)")
+        if missing:
+            raise RuntimeError("Unsafe production configuration; configure: " + ", ".join(missing))
     logger.info(
-        "ai_shield_starting",
+        "aithyrex_starting",
         version="0.1.0",
         environment=settings.APP_ENV,
     )
     yield
-    logger.info("ai_shield_shutdown")
+    logger.info("aithyrex_shutdown")
 
 
 app = FastAPI(
-    title="AI Shield",
-    description="Runtime Security for LLM and Agentic AI Systems",
+    title="Aithyrex",
+    description="Agentic AI Runtime Security",
     version="0.1.0",
     docs_url="/docs" if settings.APP_ENV == "development" else None,
     redoc_url="/redoc" if settings.APP_ENV == "development" else None,
@@ -50,7 +86,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if settings.APP_ENV == "production":
+if settings.APP_ENV.lower() in {"prod", "production"}:
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
@@ -58,8 +94,8 @@ if settings.APP_ENV == "production":
 
 # ── Routes ────────────────────────────────────────────────────────────
 app.include_router(health.router, tags=["Health"])
-app.include_router(detect.router, prefix="/detect", tags=["Detection"])
-app.include_router(monitor.router, prefix="/monitor", tags=["Monitor"])
-app.include_router(enforce.router, prefix="/enforce", tags=["Enforcement"])
-app.include_router(reports.router, prefix="/reports", tags=["Reports"])
+app.include_router(detect.router, prefix="/api/v1/detect", tags=["Detection"])
+app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["Monitor"])
+app.include_router(enforce.router, prefix="/api/v1/enforce", tags=["Enforcement"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])

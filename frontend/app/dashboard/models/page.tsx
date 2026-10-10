@@ -1,168 +1,134 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { api, type BlockedItem } from '@/lib/api'
-
-const DEMO_MODELS = [
-  { id: 'gpt-4o',             provider: 'OpenAI',    status: 'monitored', inferences: 4821, blocked_count: 23 },
-  { id: 'claude-sonnet-4-5',  provider: 'Anthropic', status: 'monitored', inferences: 2103, blocked_count: 7  },
-  { id: 'gpt-4o-mini',        provider: 'OpenAI',    status: 'monitored', inferences: 8741, blocked_count: 41 },
-  { id: 'llama-3.3-70b',      provider: 'Groq',      status: 'monitored', inferences: 1209, blocked_count: 3  },
-  { id: 'gemini-2.5-flash',   provider: 'Google',    status: 'monitored', inferences: 521,  blocked_count: 1  },
-]
 
 export default function ModelsPage() {
   const { getToken } = useAuth()
   const [blockedItems, setBlockedItems] = useState<BlockedItem[]>([])
-  const [blocking, setBlocking] = useState<string | null>(null)
+  const [modelId, setModelId] = useState('')
   const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const token = await getToken()
-        const data = await api.listBlocked(token || undefined)
-        setBlockedItems(data.blocked || [])
-      } catch {}
-    }
-    load()
-  }, [getToken])
-
-  const isBlocked = (modelId: string) =>
-    blockedItems.some(b => b.type === 'model' && b.id === modelId)
-
-  const handleBlock = async (modelId: string) => {
+  const loadBlocked = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
       const token = await getToken()
-      await api.blockModel(modelId, reason || 'Blocked by admin', token || undefined)
-      setBlockedItems(prev => [...prev, {
-        type: 'model', id: modelId,
-        reason: reason || 'Blocked by admin',
-        expires_in_seconds: 86400,
-      }])
-      setBlocking(null); setReason('')
-    } catch (e: any) {
-      alert(e.message)
+      const data = await api.listBlocked(token || undefined)
+      setBlockedItems(data.blocked || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load server-side block state')
+    } finally {
+      setLoading(false)
+    }
+  }, [getToken])
+
+  useEffect(() => { void loadBlocked() }, [loadBlocked])
+
+  const handleBlock = async () => {
+    if (!modelId.trim() || !reason.trim()) return
+    setBusyId(modelId)
+    setError(null)
+    try {
+      const token = await getToken()
+      await api.blockModel(modelId.trim(), reason.trim(), token || undefined)
+      setModelId('')
+      setReason('')
+      await loadBlocked()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Block request failed')
+    } finally {
+      setBusyId(null)
     }
   }
 
-  const handleUnblock = async (modelId: string) => {
+  const handleUnblock = async (item: BlockedItem) => {
+    setBusyId(item.id)
+    setError(null)
     try {
       const token = await getToken()
-      await api.unblockModel(modelId, token || undefined)
-      setBlockedItems(prev => prev.filter(b => !(b.type === 'model' && b.id === modelId)))
-    } catch (e: any) {
-      alert(e.message)
+      await api.unblockModel(item.id, token || undefined)
+      await loadBlocked()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unblock request failed')
+    } finally {
+      setBusyId(null)
     }
   }
 
   return (
-    <div style={{ maxWidth: '1100px' }}>
+    <div style={{ maxWidth: '1000px' }}>
       <div style={{ marginBottom: '24px' }}>
         <div style={{
           fontFamily: 'JetBrains Mono, monospace', fontSize: '10px',
           color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px',
-        }}>// Models</div>
+        }}>Enforcement State</div>
         <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '22px', fontWeight: 700, color: '#FFFFFF' }}>
-          Monitored Models
+          Model Blocklist
         </h1>
-        <p style={{ fontSize: '13px', color: '#475569', marginTop: '4px' }}>
-          All LLM models currently monitored by AI Shield
+        <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px' }}>
+          The model inventory and per-model inference counts are not available. This page shows only backend-confirmed block state.
+        </p>
+      </div>
+
+      {error && (
+        <div role="alert" className="shield-card" style={{ padding: '12px', marginBottom: '16px', color: '#EF4444' }}>
+          {error}
+        </div>
+      )}
+
+      <div className="shield-card" style={{ padding: '18px', marginBottom: '18px' }}>
+        <h2 style={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Block a model identifier</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) auto', gap: '10px' }}>
+          <input
+            value={modelId}
+            onChange={event => setModelId(event.target.value)}
+            placeholder="Exact model identifier"
+            aria-label="Model identifier"
+            style={{ background: '#080F1A', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '9px 12px', color: '#E2E8F0' }}
+          />
+          <input
+            value={reason}
+            onChange={event => setReason(event.target.value)}
+            placeholder="Reason (required for audit)"
+            aria-label="Block reason"
+            style={{ background: '#080F1A', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '9px 12px', color: '#E2E8F0' }}
+          />
+          <button onClick={() => void handleBlock()} disabled={!modelId.trim() || !reason.trim() || busyId !== null} className="btn-primary">
+            {busyId === modelId ? 'Working…' : 'Block'}
+          </button>
+        </div>
+        <p style={{ color: '#94A3B8', fontSize: '11px', marginTop: '10px' }}>
+          The server confirms the block operation. If block-state storage is unavailable, the request returns an error and no success is shown.
         </p>
       </div>
 
       <div className="shield-card" style={{ overflow: 'hidden' }}>
-        {/* Header */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 120px 110px 110px 130px',
-          padding: '10px 18px',
-          background: '#080F1A', borderBottom: '1px solid rgba(255,255,255,0.06)',
-          fontFamily: 'JetBrains Mono, monospace', fontSize: '9px',
-          color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', gap: '12px',
-        }}>
-          <span>MODEL</span><span>PROVIDER</span>
-          <span>INFERENCES</span><span>BLOCKED</span><span>ACTION</span>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#FFFFFF', fontWeight: 600 }}>
+          Active model blocks
         </div>
-
-        {DEMO_MODELS.map((model, i) => {
-          const blocked = isBlocked(model.id)
-          return (
-            <div key={model.id} style={{
-              display: 'grid', gridTemplateColumns: '1fr 120px 110px 110px 130px',
-              padding: '14px 18px', gap: '12px',
-              borderBottom: i < DEMO_MODELS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-              alignItems: 'center',
-              background: blocked ? 'rgba(239,68,68,0.03)' : 'transparent',
-            }}>
+        {loading ? (
+          <div style={{ padding: '24px', color: '#94A3B8' }}>Loading backend-confirmed state…</div>
+        ) : blockedItems.filter(item => item.type === 'model').length === 0 ? (
+          <div style={{ padding: '24px', color: '#94A3B8' }}>No active model blocks were returned by the backend.</div>
+        ) : (
+          blockedItems.filter(item => item.type === 'model').map(item => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
               <div>
-                <div style={{
-                  fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: '#E2E8F0',
-                }}>{model.id}</div>
-                {blocked && (
-                  <div style={{
-                    fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: '#EF4444',
-                    marginTop: '2px',
-                  }}>● BLOCKED</div>
-                )}
+                <div style={{ color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px' }}>{item.id}</div>
+                <div style={{ color: '#94A3B8', fontSize: '11px', marginTop: '4px' }}>{item.reason}</div>
+                <div style={{ color: '#64748B', fontSize: '10px', marginTop: '4px' }}>Expires in {Math.max(0, item.expires_in_seconds)} seconds</div>
               </div>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00D4FF' }}>
-                {model.provider}
-              </span>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#94A3B8' }}>
-                {model.inferences.toLocaleString()}
-              </span>
-              <span style={{
-                fontFamily: 'JetBrains Mono, monospace', fontSize: '11px',
-                color: model.blocked_count > 20 ? '#EF4444' : '#94A3B8',
-              }}>
-                {model.blocked_count}
-              </span>
-              <div>
-                {blocking === model.id ? (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
-                      type="text"
-                      placeholder="reason"
-                      value={reason}
-                      onChange={e => setReason(e.target.value)}
-                      style={{
-                        background: '#080F1A', border: '1px solid rgba(239,68,68,0.3)',
-                        borderRadius: '5px', padding: '4px 8px', fontSize: '11px',
-                        color: '#E2E8F0', fontFamily: 'JetBrains Mono, monospace',
-                        width: '80px', outline: 'none',
-                      }}
-                    />
-                    <button onClick={() => handleBlock(model.id)} style={{
-                      background: '#EF4444', border: 'none', color: '#FFF',
-                      fontSize: '10px', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer',
-                      fontFamily: 'JetBrains Mono, monospace',
-                    }}>BLOCK</button>
-                    <button onClick={() => { setBlocking(null); setReason('') }} style={{
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#94A3B8', fontSize: '10px', padding: '4px 8px',
-                      borderRadius: '5px', cursor: 'pointer',
-                      fontFamily: 'JetBrains Mono, monospace',
-                    }}>✕</button>
-                  </div>
-                ) : blocked ? (
-                  <button onClick={() => handleUnblock(model.id)} style={{
-                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
-                    color: '#10B981', fontSize: '10px', padding: '5px 10px',
-                    borderRadius: '5px', cursor: 'pointer',
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}>UNBLOCK</button>
-                ) : (
-                  <button onClick={() => setBlocking(model.id)} style={{
-                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                    color: '#EF4444', fontSize: '10px', padding: '5px 10px',
-                    borderRadius: '5px', cursor: 'pointer',
-                    fontFamily: 'JetBrains Mono, monospace', transition: 'all 0.15s',
-                  }}>BLOCK</button>
-                )}
-              </div>
+              <button onClick={() => void handleUnblock(item)} disabled={busyId !== null} className="btn-ghost">
+                {busyId === item.id ? 'Working…' : 'Unblock'}
+              </button>
             </div>
-          )
-        })}
+          ))
+        )}
       </div>
     </div>
   )

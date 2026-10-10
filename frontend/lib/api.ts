@@ -1,15 +1,16 @@
 /**
- * AI Shield — API Client
+ * Aithyrex — API Client
  * Typed fetch wrapper for the FastAPI backend.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002'
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
   token?: string,
 ): Promise<T> {
+  if (!API_URL) throw new Error('Aithyrex API URL is not configured')
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -76,33 +77,33 @@ export const api = {
     model?: string,
     token?: string,
   ) =>
-    apiFetch<DetectionResponse>('/detect/llm', {
+    apiFetch<DetectionResponse>('/api/v1/detect/llm', {
       method: 'POST',
       body: JSON.stringify({ prompt, completion, model }),
     }, token),
 
   detectPrompt: (prompt: string, token?: string) =>
-    apiFetch<{ blocked: boolean; severity: string }>('/detect/prompt', {
+    apiFetch<{ blocked: boolean; severity: string }>('/api/v1/detect/prompt', {
       method: 'POST',
       body: JSON.stringify({ prompt }),
     }, token),
 
   summary: (days = 7, token?: string) =>
-    apiFetch<SummaryResponse>(`/reports/summary?days=${days}`, {}, token),
+    apiFetch<SummaryResponse>(`/api/v1/reports/summary?days=${days}`, {}, token),
 
   listBlocked: (token?: string) =>
     apiFetch<{ blocked_count: number; blocked: BlockedItem[] }>(
-      '/enforce/blocked', {}, token
+      '/api/v1/enforce/blocked', {}, token
     ),
 
   blockModel: (target_id: string, reason: string, token?: string) =>
-    apiFetch('/enforce/block', {
+    apiFetch('/api/v1/enforce/block', {
       method: 'POST',
       body: JSON.stringify({ target_type: 'model', target_id, reason }),
     }, token),
 
   unblockModel: (target_id: string, token?: string) =>
-    apiFetch('/enforce/unblock', {
+    apiFetch('/api/v1/enforce/unblock', {
       method: 'POST',
       body: JSON.stringify({ target_type: 'model', target_id, reason: '' }),
     }, token),

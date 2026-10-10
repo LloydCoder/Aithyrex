@@ -1,5 +1,5 @@
 """
-AI Shield — Event Logger
+Aithyrex — Event Logger
 =========================
 Persists every detection event to PostgreSQL.
 Also creates Alert records for HIGH and CRITICAL verdicts.
@@ -10,9 +10,7 @@ Runs as a background task — never blocks the HTTP response.
 
 from __future__ import annotations
 
-import asyncio
 import uuid
-from datetime import datetime, timezone
 
 import structlog
 
@@ -43,9 +41,9 @@ class EventLogger:
         Returns the event UUID if saved, None if DB unavailable.
         """
         try:
+            from backend.core.shield_engine import Severity
             from backend.models.database import AsyncSessionFactory
             from backend.models.models import Alert, DetectionEvent
-            from backend.core.shield_engine import Action, Severity
 
             event_id = uuid.uuid4()
 
@@ -126,9 +124,10 @@ class EventLogger:
         from backend.core.usage_counter import TIER_LIMITS, usage_counter
 
         try:
+            from sqlalchemy import select
+
             from backend.models.database import AsyncSessionFactory
             from backend.models.models import UsageCounter
-            from sqlalchemy import select
 
             redis_count = await usage_counter.get_count(tenant_id)
             limit = TIER_LIMITS.get(plan, 500)

@@ -7,8 +7,8 @@ Pattern set peer-reviewed via OSS PRs to TruffleHog + Gitleaks.
 
 import pytest
 
-from backend.detectors.credential_leak import CredentialLeakDetector
 from backend.core.shield_engine import Severity
+from backend.detectors.credential_leak import CredentialLeakDetector
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ async def test_clean_completion_passes(detector):
 async def test_paystack_secret_key_detected(detector):
     result = await detector.detect(
         prompt="Show me the key.",
-        completion="Here is the key: "sk_live_" + ""**************",
+        completion="Here is the key: " + "sk_live_" + "F" * 40,
     )
     assert result.detected is True
     assert result.severity == Severity.CRITICAL
@@ -93,7 +93,7 @@ async def test_github_token_detected(detector):
 async def test_credential_confidence_is_high(detector):
     result = await detector.detect(
         prompt="Show key.",
-        completion=""sk_live_" + ""***************",
+        completion="sk_live_" + "A" * 24,
     )
     assert result.confidence >= 0.95
 
@@ -113,7 +113,7 @@ async def test_mitre_tags_present(detector):
 async def test_credential_in_prompt_detected(detector):
     """Credentials in prompt (injection via user input) also caught."""
     result = await detector.detect(
-        prompt="My key is "sk_live_" + ""************, use it.",
+        prompt="My key is " + "sk_live_" + "B" * 24 + ", use it.",
         completion=None,
     )
     assert result.detected is True

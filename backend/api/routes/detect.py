@@ -1,5 +1,5 @@
 """
-AI Shield — Detection Routes
+Aithyrex — Detection Routes
 ==============================
 POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
@@ -24,14 +24,14 @@ engine = ShieldEngine()
 
 # ── Request / Response schemas ────────────────────────────────────────────────
 class LLMInspectRequest(BaseModel):
-    prompt: str
-    completion: str | None = None
-    model: str | None = None
+    prompt: str = Field(max_length=100_000)
+    completion: str | None = Field(default=None, max_length=100_000)
+    model: str | None = Field(default=None, max_length=256)
 
 
 class AgentInspectRequest(BaseModel):
-    agent_id: str
-    messages: list[dict]
+    agent_id: str = Field(min_length=1, max_length=255)
+    messages: list[dict] = Field(max_length=1_000)
 
 
 class DetectionResponse(BaseModel):
@@ -99,14 +99,14 @@ async def detect_prompt(
 
     # Pre-flight: block on any detection (ALERT or BLOCK)
     # This is stricter than /detect/llm which only hard-blocks on CRITICAL
-    from backend.core.shield_engine import Action, Severity
+    from backend.core.shield_engine import Severity
     should_block = (
         verdict.blocked or
         verdict.action == Action.ALERT or
         verdict.severity in (Severity.HIGH, Severity.CRITICAL, Severity.MEDIUM)
     )
 
-    if should_block and any(r.detected for r in verdict.results):
+    if verdict.blocked or (should_block and any(r.detected for r in verdict.results)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
@@ -116,7 +116,7 @@ async def detect_prompt(
                 "detectors_fired": [
                     r.detector for r in verdict.results if r.detected
                 ],
-                "message": "AI Shield blocked this prompt.",
+                "message": "Aithyrex blocked this prompt.",
             },
         )
 

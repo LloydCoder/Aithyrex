@@ -1,13 +1,11 @@
 """
-AI Shield — C2 Behaviour Detector
+Aithyrex — C2 Behaviour Detector
 ====================================
-Detects C2-style communication patterns in AI agent traffic.
+Flags C2-like signals in supported AI interactions for triage; AI-text effectiveness is not validated.
 
-Applies ThreatFade's full entropy/Z-score pipeline to agentic
-AI communications — the same methodology that achieved:
-  - Merlin QUIC Z-score: 14.76
-  - 490,000+ packets analysed
-  - 0% false positive rate
+Uses ThreatFade as a supplementary signal. Historical network-traffic
+metrics do not validate AI-text detection accuracy; thresholds require
+separate representative AI-interaction evaluation.
 
 In agentic AI, C2 indicators include:
   - Regular heartbeat-like API polling patterns
@@ -32,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 class C2BehaviourDetector:
     """
-    Detects C2-style behaviour in AI model communications.
+    Flags C2-like behavior heuristically; it is not a validated AI-text C2 detector.
 
     Primary method: ThreatFade HTTP bridge.
     Supplementary: behavioural heuristics for agent traffic.
@@ -50,9 +48,19 @@ class C2BehaviourDetector:
         text = prompt + (" " + completion if completion else "")
 
         tf_result = await threatfade.detect(text, source="ai_traffic_c2")
-        detected   = tf_result.get("detected", False)
-        z_outlier  = tf_result.get("z_outlier", 0.0)
-        mitre_ttp  = tf_result.get("mitre_ttp", "")
+        detected = tf_result.get("detected", False)
+        z_outlier = tf_result.get("z_outlier", 0.0)
+        mitre_ttp = tf_result.get("mitre_ttp", "")
+        degraded = bool(tf_result.get("degraded") or tf_result.get("fallback"))
+
+        if degraded:
+            return DetectionResult(
+                detector="c2_behaviour",
+                detected=False,
+                severity=Severity.INFO,
+                confidence=0.0,
+                details={"z_outlier": z_outlier, "degraded": True, "reason": "threatfade_unavailable"},
+            )
 
         if not detected:
             return DetectionResult(
@@ -60,16 +68,16 @@ class C2BehaviourDetector:
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
-                details={"z_outlier": z_outlier},
+                details={
+                    "z_outlier": z_outlier,
+                    "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
+                    "reason": "threatfade_unavailable" if tf_result.get("degraded") or tf_result.get("fallback") else "no_indicators",
+                },
             )
 
-        # Z-score thresholds based on ThreatFade baseline (14.76 = Merlin QUIC)
-        if z_outlier >= 12.0:
-            severity, confidence = Severity.CRITICAL, 0.97
-        elif z_outlier >= 7.0:
-            severity, confidence = Severity.HIGH, 0.85
-        else:
-            severity, confidence = Severity.MEDIUM, 0.65
+        # ThreatFade scores are not validated for AI text. Keep this detector advisory-only.
+        severity = Severity.MEDIUM
+        confidence = 0.0
 
         logger.warning(
             "c2_behaviour_detected",
@@ -83,6 +91,14 @@ class C2BehaviourDetector:
             detected=True,
             severity=severity,
             confidence=confidence,
-            details={"z_outlier": z_outlier, "threatfade_raw": tf_result},
+            details={
+                "z_outlier": z_outlier,
+                "mitre_ttp": mitre_ttp,
+                "score": tf_result.get("score"),
+                "entropy": tf_result.get("entropy"),
+                "rules_matched": tf_result.get("rules_matched"),
+                "degraded": False,
+                "confidence_calibrated": False,
+            },
             mitre_atlas=[mitre_ttp, "T1071.001", "T1095"],
         )

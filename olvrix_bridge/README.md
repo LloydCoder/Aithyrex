@@ -1,112 +1,40 @@
-# AI Shield Sync — Olvrix Integration
+# Aithyrex ↔ Olvrix Bridge
 
-This directory contains `ai_shield_sync.py` — the 7th bridge in the
-Olvrix flywheel ecosystem.
+**Status: prototype adapter; not evidence of a live or production integration.**
 
-## Integration Steps
+This directory contains the Aithyrex-side adapter currently implemented in `ai_shield_sync.py`. `AIShieldSync` is retained as a legacy class name; `AithyrexSync` is the canonical alias.
 
-### 1. Copy to olvrix-bridge repo
+## Intended use
 
-```bash
-cp ai_shield_sync.py /path/to/olvrix-bridge/ai_shield_sync.py
-```
+The adapter can request Aithyrex inspection for scraped HTML, generated website content, generated outreach and high-severity ThreatFade signals. It returns an explicit blocked/degraded result when Aithyrex is not configured, unreachable, or returns an invalid response. Consumers must treat `safe: false` as a stop signal and must not send/deploy content when inspection is degraded.
 
-### 2. Register in flywheel_orchestrator.py
+Empty input is treated as a no-op and is returned as safe without a remote inspection. Callers must ensure this behavior is appropriate for their workflow.
 
-```python
-# In olvrix-bridge/flywheel_orchestrator.py
+## Required configuration
 
-from .ai_shield_sync import AIShieldSync   # Add this line
+- `AITHYREX_API_URL`: explicitly verified HTTPS service base URL. No hosted URL is assumed by this repository.
+- `AITHYREX_API_TOKEN`: currently expected to be a Clerk session JWT for an active, provisioned organization. This is not a suitable durable service-to-service credential. Production integration is blocked until a supported service-principal credential contract is implemented and validated through the Tinlance Agent Platform.
+- `FUSIONOPS_API_URL` and `FUSIONOPS_API_KEY`: optional, explicitly configured FusionOps destination and credential. The adapter reports notification success only after an HTTP success response.
 
-class FlywheelOrchestrator:
-    def __init__(self):
-        self.syncs = {
-            "threatfade":   ThreatFadeSync(),
-            "reconos":      ReconOSSync(),
-            "hezcast":      HezCastSync(),
-            "fadereach":    FadeReachSync(),
-            "resonaforge":  ResonaForgeSync(),
-            "ai_shield":    AIShieldSync(),   # Add this line
-        }
-```
+Legacy `AI_SHIELD_API_URL` and `AI_SHIELD_API_KEY` environment variables are not the canonical configuration and should be removed during migration.
 
-### 3. Wire into classifier.py
+## Contract and security constraints
 
-```python
-# In olvrix-intelligence/classifier.py
+- The adapter calls the versioned Aithyrex API route `/api/v1/detect/llm`.
+- Aithyrex currently verifies Clerk JWTs and resolves an active tenant from server-side state. It does not implement generic static API-key authentication.
+- Do not place a human's long-lived session token in a server environment as a permanent service credential.
+- No direct Aithyrex-to-Olvrix production integration is claimed until service authentication, tenant binding, payload schemas, rate limits, retries, and end-to-end tests are complete.
+- FusionOps delivery is separate from Aithyrex inspection. A local result or configured URL is not proof of receipt unless the HTTP response is successful and correlated evidence is retained.
+- The adapter's Z-score escalation threshold is a local integration rule, not a validated AI-text detection threshold.
 
-from olvrix_bridge.ai_shield_sync import AIShieldSync
-ai_shield_sync = AIShieldSync()
+## Integration acceptance checklist
 
-async def classify(self, business: dict) -> ClassificationResult:
-    tasks = [
-        self._lighthouse_audit(business["url"]),
-        self._threatfade_scan(business["url"]),
-        self._html_analysis(business["html"]),
-        self._fdse_scan(business["html"]),
-        self._google_enrichment(business),
-        self._ai_shield_scan(business["html"], business["id"]),  # Add this
-    ]
-    results = await asyncio.gather(*tasks)
+- [ ] Provisioned service identity and tenant-bound authorization contract approved by the Tinlance Agent Platform owners.
+- [ ] TLS and service authentication verified in the target environment.
+- [ ] Schema validation and explicit degraded-state handling tested.
+- [ ] Scraped content, generated content, outreach and ThreatFade event paths tested end to end.
+- [ ] Consumer proves it stops downstream classification/send/deployment on block or degraded inspection.
+- [ ] Retry, idempotency, timeout, logging-redaction and delivery acknowledgement tests pass.
+- [ ] TSIC contract conformance evidence recorded.
 
-async def _ai_shield_scan(self, html: str, business_id: str) -> dict:
-    return await ai_shield_sync.handle_business_scraped(html, business_id)
-```
-
-### 4. Wire into outreach pipeline
-
-```python
-# In olvrix-outreach/send.py — before Evolution API call
-
-result = await ai_shield_sync.handle_outreach_generated(
-    message=generated_message,
-    channel="whatsapp",
-    business_id=business_id,
-)
-if not result["safe"]:
-    logger.warning("outreach_blocked_by_ai_shield", **result)
-    return  # Skip this message — don't send
-```
-
-### 5. Add environment variables
-
-```bash
-# In olvrix/.env (all VPS)
-AI_SHIELD_API_URL=https://api.aishield.tinlance.com
-AI_SHIELD_API_KEY=your-shield-api-key
-OLVRIX_TENANT_ID=olvrix-main
-```
-
-### 6. Update Olvrix Widgets bridge.py
-
-```python
-# In olvrix-widgets/apps/api/app/services/ecosystem/bridge.py
-# The handler is already built. Add only the HTTP call:
-
-async def _handle_ai_shield(self, event_type: str, payload: dict) -> None:
-    async with httpx.AsyncClient() as client:
-        await client.post(
-            f"{settings.AI_SHIELD_API_URL}/detect/llm",
-            headers={"X-API-Key": settings.AI_SHIELD_API_KEY},
-            json={
-                "prompt": payload.get("message_hash", ""),
-                "completion": payload.get("response_hash", ""),
-                "tenant_id": payload.get("client_id", ""),
-                "model": "ollama-local",
-            }
-        )
-```
-
-## Usage Metrics
-
-At Olvrix's target scale of 200 businesses/day:
-
-| Event | Inferences/day | Inferences/month |
-|-------|---------------|-----------------|
-| Business scraped | 200 | 6,000 |
-| Website generated | 200 | 6,000 |
-| Outreach messages | 200 | 6,000 |
-| **Total** | **600** | **~18,000** |
-
-18,000 inferences/month fits comfortably within the Pro tier (150K/month).
-Cost: $199/month — covered by first paying Olvrix client.
+Do not use the adapter as a production security control until all required checks are complete.

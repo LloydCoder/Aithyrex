@@ -4,13 +4,12 @@ AI Shield — Unit Tests: NIS2/DORA Compliance Hooks
 Tests KalevioAI notification logic and threshold detection.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from backend.compliance.nis2_dora import NIS2DoraHooks
-from backend.core.shield_engine import (
-    Action, DetectionResult, Severity, ShieldVerdict
-)
+from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
 
 
 @pytest.fixture
@@ -114,7 +113,6 @@ async def test_high_counter_resets_after_cluster_alert(hooks, high_verdict):
 @pytest.mark.asyncio
 async def test_kalevio_payload_structure(hooks, critical_verdict):
     """KalevioAI payload must include all required NIS2 fields."""
-    import httpx
 
     captured = {}
 

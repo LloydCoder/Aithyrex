@@ -1,5 +1,5 @@
 """
-AI Shield — Webhook Routes
+Aithyrex — Webhook Routes
 ============================
 POST /webhooks/lemonsqueezy  — LemonSqueezy subscription events
 POST /webhooks/paddle        — Paddle subscription events (EU/Enterprise)
@@ -10,8 +10,8 @@ They verify signatures from the payment provider instead.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
 import structlog
+from fastapi import APIRouter, HTTPException, Request, status
 
 from backend.core.billing import (
     billing,
@@ -49,6 +49,10 @@ async def lemonsqueezy_webhook(request: Request):
     logger.info("ls_webhook_received", event_type=event_type)
 
     result = await billing.handle_lemonsqueezy_event(event_type, data)
+    if result.get("status") == "retry":
+        raise HTTPException(status_code=503, detail="Billing state update failed; retry webhook")
+    if result.get("status") in {"rejected", "skipped"}:
+        raise HTTPException(status_code=400, detail=result.get("reason", "Webhook event rejected"))
     return {"received": True, **result}
 
 
@@ -79,4 +83,8 @@ async def paddle_webhook(request: Request):
     logger.info("paddle_webhook_received", event_type=event_type)
 
     result = await billing.handle_paddle_event(event_type, event_data)
+    if result.get("status") == "retry":
+        raise HTTPException(status_code=503, detail="Billing state update failed; retry webhook")
+    if result.get("status") in {"rejected", "skipped"}:
+        raise HTTPException(status_code=400, detail=result.get("reason", "Webhook event rejected"))
     return {"received": True, **result}

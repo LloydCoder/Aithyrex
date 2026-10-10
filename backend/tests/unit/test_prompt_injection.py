@@ -5,12 +5,11 @@ TDD Guard: Tests written before Sprint 1 implementation.
 Red → Green → Refactor cycle enforced.
 """
 
-import asyncio
 
 import pytest
 
-from backend.detectors.prompt_injection import PromptInjectionDetector
 from backend.core.shield_engine import Severity
+from backend.detectors.prompt_injection import PromptInjectionDetector
 
 
 @pytest.fixture

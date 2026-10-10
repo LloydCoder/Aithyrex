@@ -1,11 +1,10 @@
 """
-AI Shield — Enforcement Routes (Pro tier)
+Aithyrex — Enforcement Routes (Pro tier)
 ==========================================
 POST /enforce/block        — block a model or agent
 POST /enforce/unblock      — remove from block list
 POST /enforce/allow        — add model to allowlist
 GET  /enforce/blocked      — list all blocked models/agents
-GET  /enforce/rules        — list custom detection rules
 
 Block mode is a Pro+ feature.
 Attempted use on Free/Starter returns 403 with upgrade prompt.
@@ -16,7 +15,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.block_mode import block_mode
@@ -26,14 +25,16 @@ router = APIRouter()
 
 # ── Request schemas ───────────────────────────────────────────────────────────
 class BlockRequest(BaseModel):
-    target_type: str          # "model" | "agent"
-    target_id: str
-    reason: str = ""
-    ttl_hours: int = 24       # Block duration
+    target_type: str = Field(pattern=r"^(model|agent)\z")
+    target_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*\z")
+    reason: str = Field(default="", max_length=500)
+    ttl_hours: int = Field(default=24, ge=1, le=720)
 
 
 class AllowRequest(BaseModel):
-    model_id: str
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*\z")
 
 
 # ── Plan gate ─────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ def require_pro(tenant: TokenPayload) -> None:
             detail={
                 "error": "block_mode_pro_required",
                 "message": "Block mode requires Pro or Enterprise plan.",
-                "upgrade_url": "https://tinlance.com/ai-shield#pricing",
+                "upgrade_url": "https://www.tinlance.com/agent-as-a-service",
             },
         )
 
@@ -80,6 +81,9 @@ async def block_target(
             detail="target_type must be 'model' or 'agent'",
         )
 
+    if not success:
+        raise HTTPException(status_code=503, detail="Block state unavailable; no change was confirmed")
+
     return {
         "blocked": success,
         "target_type": req.target_type,
@@ -105,6 +109,9 @@ async def unblock_target(
     else:
         raise HTTPException(status_code=400, detail="target_type must be 'model' or 'agent'")
 
+    if not success:
+        raise HTTPException(status_code=503, detail="Block state unavailable; no change was confirmed")
+
     return {
         "unblocked": success,
         "target_type": req.target_type,
@@ -117,18 +124,12 @@ async def allowlist_model(
     req: AllowRequest,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
-    """Add a model to the allowlist — bypasses all detection."""
+    """Deprecated: model allowlisting is disabled because it bypassed mandatory inspection."""
     require_pro(tenant)
-
-    success = await block_mode.allowlist_model(
-        tenant_id=tenant.tenant_id,
-        model_id=req.model_id,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Model allowlisting is disabled. Mandatory detection cannot be bypassed.",
     )
-    return {
-        "allowlisted": success,
-        "model_id": req.model_id,
-        "tenant_id": tenant.tenant_id,
-    }
 
 
 @router.get("/blocked")

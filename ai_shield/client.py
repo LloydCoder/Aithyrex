@@ -1,21 +1,12 @@
-"""
-AI Shield — Python Client
-==========================
-Lightweight HTTP client for the AI Shield API.
-No heavy dependencies — just httpx.
-
-Usage:
-    shield = Shield(api_key="your-key", base_url="https://api.aishield.tinlance.com")
-    verdict = await shield.inspect(prompt="...", completion="...")
-    if verdict.blocked:
-        raise SecurityError(f"Blocked: {verdict.severity}")
-"""
+"""Aithyrex HTTP client; ai_shield is retained as a legacy import namespace."""
 
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass, field
 from typing import Optional
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -30,44 +21,52 @@ class Detection:
 
 @dataclass
 class ShieldVerdict:
-    action: str        # "pass" | "log" | "alert" | "block"
-    severity: str      # "clean" | "low" | "medium" | "high" | "critical"
+    action: str
+    severity: str
     blocked: bool
     detections: list[Detection] = field(default_factory=list)
     tenant_id: str = ""
+    degraded: bool = False
+    error_code: str | None = None
 
     def detected_by(self, detector_name: str) -> bool:
         return any(d.detector == detector_name and d.detected for d in self.detections)
 
 
+def _blocked(error_code: str) -> ShieldVerdict:
+    """Conservative verdict for any missing configuration or failed inspection."""
+    return ShieldVerdict(
+        action="block",
+        severity="high",
+        blocked=True,
+        degraded=True,
+        error_code=error_code,
+    )
+
+
 class Shield:
-    """
-    AI Shield API client.
+    """Aithyrex API client; the credential must be a verified Clerk session JWT.
 
-    Connects to the AI Shield FastAPI backend.
-    Can be self-hosted or use the hosted service at api.aishield.tinlance.com.
-
-    Usage:
-        # Async
-        shield = Shield(api_key="your-key")
-        verdict = await shield.inspect(prompt=user_input)
-
-        # Sync
-        verdict = shield.inspect_sync(prompt=user_input)
+    No hosted endpoint is assumed. Configure AITHYREX_API_URL or pass base_url.
+    The api_key argument is retained for compatibility but is treated as a bearer
+    session token; Aithyrex does not currently implement generic static API keys.
     """
 
     def __init__(
         self,
         api_key: str = "",
-        base_url: str = "https://api.aishield.tinlance.com",
+        base_url: str | None = None,
         timeout: float = 10.0,
+        *,
+        token: str | None = None,
     ) -> None:
-        self.api_key  = api_key
-        self.base_url = base_url.rstrip("/")
-        self.timeout  = timeout
+        self.api_key = api_key
+        self.token = token or api_key or os.getenv("AITHYREX_API_TOKEN", "")
+        self.base_url = (base_url or os.getenv("AITHYREX_API_URL", "")).rstrip("/")
+        self.timeout = timeout
         self._headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {self.token}",
         }
 
     async def inspect(
@@ -76,21 +75,21 @@ class Shield:
         completion: Optional[str] = None,
         model: Optional[str] = None,
     ) -> ShieldVerdict:
-        """
-        Inspect a prompt/completion pair.
+        """Inspect content. Configuration, transport and schema errors fail closed."""
+        if not self.base_url:
+            return _blocked("api_url_not_configured")
+        if not self.token:
+            return _blocked("session_token_not_configured")
 
-        Args:
-            prompt:     The input sent to the LLM.
-            completion: The LLM output (optional for pre-flight checks).
-            model:      Model identifier for logging.
-
-        Returns:
-            ShieldVerdict with action, severity, blocked flag, and detections.
-        """
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx is required: pip install httpx")
+            return _blocked("httpx_not_installed")
+
+        parsed = urlparse(self.base_url)
+        local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        if parsed.scheme != "https" and not local_http:
+            return _blocked("insecure_api_url")
 
         payload: dict = {"prompt": prompt}
         if completion is not None:
@@ -98,39 +97,72 @@ class Shield:
         if model is not None:
             payload["model"] = model
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/detect/llm",
+                    f"{self.base_url}/api/v1/detect/llm",
                     headers=self._headers,
                     json=payload,
                 )
                 response.raise_for_status()
                 data = response.json()
+        except httpx.TimeoutException:
+            return _blocked("inspection_timeout")
+        except httpx.ConnectError:
+            return _blocked("inspection_unreachable")
+        except httpx.HTTPStatusError as exc:
+            return _blocked(f"inspection_http_{exc.response.status_code}")
+        except (httpx.HTTPError, ValueError):
+            return _blocked("inspection_transport_or_json_error")
+        except Exception:
+            return _blocked("inspection_unexpected_error")
 
-                return ShieldVerdict(
-                    action=data.get("action", "pass"),
-                    severity=data.get("severity", "clean"),
-                    blocked=data.get("blocked", False),
-                    tenant_id=data.get("tenant_id", ""),
-                    detections=[
-                        Detection(
-                            detector=d["detector"],
-                            detected=d["detected"],
-                            severity=d["severity"],
-                            confidence=d["confidence"],
-                            mitre_atlas=d.get("mitre_atlas", []),
-                            details=d.get("details", {}),
-                        )
-                        for d in data.get("detections", [])
-                    ],
+        if not isinstance(data, dict):
+            return _blocked("invalid_response_schema")
+        action = data.get("action")
+        severity = data.get("severity")
+        blocked = data.get("blocked")
+        raw_detections = data.get("detections")
+        if (
+            action not in {"pass", "log", "alert", "block"}
+            or severity not in {"clean", "info", "low", "medium", "high", "critical"}
+            or not isinstance(blocked, bool)
+            or not isinstance(raw_detections, list)
+        ):
+            return _blocked("invalid_response_schema")
+        if action == "block":
+            blocked = True
+
+        detections: list[Detection] = []
+        for item in raw_detections:
+            if not isinstance(item, dict):
+                return _blocked("invalid_detection_schema")
+            if not isinstance(item.get("detector"), str) or not isinstance(item.get("detected"), bool):
+                return _blocked("invalid_detection_schema")
+            try:
+                confidence = float(item.get("confidence", 0.0))
+            except (TypeError, ValueError):
+                return _blocked("invalid_detection_schema")
+            if not 0.0 <= confidence <= 1.0:
+                return _blocked("invalid_detection_schema")
+            detections.append(
+                Detection(
+                    detector=item["detector"],
+                    detected=item["detected"],
+                    severity=str(item.get("severity", "info")),
+                    confidence=confidence,
+                    mitre_atlas=item.get("mitre_atlas", []),
+                    details=item.get("details", {}),
                 )
+            )
 
-            except httpx.TimeoutException:
-                # Graceful degradation — never block on SDK timeout
-                return ShieldVerdict(action="pass", severity="clean", blocked=False)
-            except httpx.ConnectError:
-                return ShieldVerdict(action="pass", severity="clean", blocked=False)
+        return ShieldVerdict(
+            action=action,
+            severity=severity,
+            blocked=blocked,
+            tenant_id=str(data.get("tenant_id", "")),
+            detections=detections,
+        )
 
     def inspect_sync(
         self,
@@ -142,27 +174,29 @@ class Shield:
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # Inside an existing event loop (FastAPI, Jupyter, etc.)
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as pool:
-                    future = pool.submit(
-                        asyncio.run,
-                        self.inspect(prompt, completion, model),
-                    )
+                    future = pool.submit(asyncio.run, self.inspect(prompt, completion, model))
                     return future.result()
-            else:
-                return loop.run_until_complete(
-                    self.inspect(prompt, completion, model)
-                )
+            return loop.run_until_complete(self.inspect(prompt, completion, model))
         except RuntimeError:
             return asyncio.run(self.inspect(prompt, completion, model))
 
     async def health(self) -> dict:
-        """Check AI Shield API health."""
+        """Check service health without claiming that a missing URL is reachable."""
+        if not self.base_url:
+            return {"status": "unconfigured"}
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
-                r = await client.get(f"{self.base_url}/health", headers=self._headers)
-                return r.json()
-        except Exception as e:
-            return {"status": "unreachable", "error": str(e)}
+                response = await client.get(f"{self.base_url}/health")
+                response.raise_for_status()
+                result = response.json()
+                return result if isinstance(result, dict) else {"status": "invalid_response"}
+        except Exception as exc:
+            return {"status": "unreachable", "error_type": type(exc).__name__}
+
+
+AithyrexClient = Shield
