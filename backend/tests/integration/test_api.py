@@ -433,3 +433,31 @@ def test_openapi_publishes_versioned_detection_and_error_contracts():
     assert prompt_response["content"]["application/json"]["schema"]["$ref"].endswith("/PromptDetectionResponse")
     assert agent_response["content"]["application/json"]["schema"]["$ref"].endswith("/AgentDetectionResponse")
     assert "APIErrorV1" in spec["components"]["schemas"]
+
+
+def test_preflight_does_not_block_on_advisory_only_threatfade_signal(client):
+    from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldVerdict
+
+    advisory_verdict = ShieldVerdict(
+        action=Action.LOG,
+        severity=Severity.MEDIUM,
+        blocked=False,
+        results=[DetectionResult(
+            detector="c2_behaviour", detected=True, severity=Severity.MEDIUM, confidence=0.0,
+            details={"advisory_only": True, "confidence_calibrated": False},
+        )],
+    )
+    with patch(
+        "backend.api.routes.detect.engine.inspect",
+        new=AsyncMock(return_value=advisory_verdict),
+    ):
+        response = client.post(
+            "/api/v1/detect/prompt",
+            json={"prompt": "encoded payload"},
+            headers=AUTH_HEADER,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["blocked"] is False
+    assert body["action"] == "log"
+    assert body["finding"]["evidence"][0]["details"]["advisory_only"] is True

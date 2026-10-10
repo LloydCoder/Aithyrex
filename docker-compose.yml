@@ -5,7 +5,7 @@ services:
   # ── PostgreSQL 16 ─────────────────────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: ai-shield-postgres
+    container_name: aithyrex-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: aishield
@@ -24,7 +24,7 @@ services:
   # ── Redis 7 ───────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: ai-shield-redis
+    container_name: aithyrex-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -36,12 +36,12 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── AI Shield API ─────────────────────────────────────────────────────────
+  # ── Aithyrex API ─────────────────────────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ai-shield-api
+    container_name: aithyrex-api
     restart: unless-stopped
     ports:
       - "8002:8002"

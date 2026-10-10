@@ -1,30 +1,16 @@
-"""
-AI Shield — Parliament Ensemble
-=================================
-Multi-model AI consensus layer for ambiguous threat evaluation.
+"""Aithyrex Parliament: advisory escalation for ambiguous detection findings.
 
-Architecture confirmed from TwinGuard session (April 2026):
-  "Two AI models must independently agree that an action is safe
-   before it executes. Neither model alone can authorise a BLOCK."
+The ensemble receives detector metadata only; it must not receive raw customer
+prompts/completions and it is not an authorization or execution authority.
 
-Members:
-  Member 1: Claude Sonnet   (Anthropic API)
-  Member 2: Grok-3          (xAI API)
-  Member 3: ThreatFade      (deterministic oracle — Z-score score)
-
-Voting rules:
-  2 of 3 vote BLOCK  → BLOCK  (consensus required to block)
-  1 of 3 vote BLOCK  → ALERT  (minority concern — escalate)
-  0 of 3 vote BLOCK  → PASS   (consensus it's safe)
-
-When Parliament is invoked:
-  MEDIUM confidence detections → Parliament evaluates
-  HIGH confidence but single detector fired → Parliament evaluates
-  CRITICAL or multiple detector agreement → bypass Parliament (too slow)
-  CLEAN → bypass Parliament (nothing to evaluate)
-
-Parliament runs Claude and Grok calls in PARALLEL — never sequential.
-Target latency: < 2 seconds total for both API calls.
+Decision rules:
+- Existing BLOCK or CRITICAL findings are immutable and bypass deliberation.
+- ThreatFade abstains unless an AI-text risk score has explicit calibration approval.
+- Two active BLOCK votes may escalate to BLOCK; one active BLOCK vote escalates to ALERT.
+- ALLOW votes never erase or downgrade an existing detector finding.
+- If all members abstain or fail, preserve the original detector verdict.
+- Aithyrex findings remain signals; Tinlance Agent Platform owns authorization,
+  approvals, policy and governed execution.
 """
 
 from __future__ import annotations
@@ -69,7 +55,11 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
     if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
         return False
 
-    if not any(r.detected for r in verdict.results):
+    actionable = [
+        result for result in verdict.results
+        if result.detected and not result.details.get("advisory_only", False)
+    ]
+    if not actionable:
         return False
 
     # Critical findings and existing BLOCK verdicts are never delegated to Parliament.
@@ -89,7 +79,7 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
 
     # HIGH but only ONE detector fired → Parliament evaluates
     if verdict.severity == Severity.HIGH:
-        fired = [r for r in verdict.results if r.detected]
+        fired = actionable
         if len(fired) == 1:
             return True
 
@@ -110,10 +100,10 @@ def _build_detection_report(verdict: ShieldVerdict) -> str:
 
 class ParliamentEnsemble:
     """
-    The AI Council.
+    The advisory AI ensemble.
 
-    Evaluates ambiguous ShieldVerdicts using dual AI model consensus
-    plus ThreatFade as a deterministic third vote.
+    Evaluates ambiguous detector verdicts using two external model opinions.
+    ThreatFade is an abstaining third member until AI-text calibration is approved.
 
     Usage:
         parliament = ParliamentEnsemble()
@@ -130,6 +120,7 @@ class ParliamentEnsemble:
         prompt: str,
         completion: str | None = None,
         threatfade_z_score: float | None = None,
+        threatfade_validated: bool = False,
     ) -> ParliamentVerdict:
         """
         Run Parliament Ensemble on an ambiguous ShieldVerdict.
@@ -178,7 +169,7 @@ class ParliamentEnsemble:
         )
 
         # ThreatFade is the 3rd vote — deterministic from Z-score
-        threatfade_vote = self._threatfade_vote(threatfade_z_score)
+        threatfade_vote = self._threatfade_vote(threatfade_z_score, validated=threatfade_validated)
 
         # Wait for both AI members — return_exceptions prevents one failure crashing both
         results_raw = await asyncio.gather(
@@ -268,15 +259,13 @@ class ParliamentEnsemble:
             overrode_detector=overrode,
         )
 
-    def _threatfade_vote(self, z_score: float | None) -> MemberVerdict:
-        """
-        Convert a validated ThreatFade Z-score to a Parliament vote.
-        Missing telemetry abstains; it must never be interpreted as a clean signal.
-        ThreatFade is the deterministic oracle — no API call needed.
-
-        Provisional network-derived thresholds are not validated for AI text.
-        This vote can alert on high signals but cannot infer that low scores are safe.
-        """
+    def _threatfade_vote(
+        self,
+        z_score: float | None,
+        *,
+        validated: bool = False,
+    ) -> MemberVerdict:
+        """Only calibrated AI-text scores may vote; network-derived scores otherwise abstain."""
         if z_score is None:
             return MemberVerdict(
                 member="threatfade",
@@ -284,27 +273,26 @@ class ParliamentEnsemble:
                 confidence=0.0,
                 reasoning="ThreatFade telemetry unavailable; no safety conclusion",
             )
-        if z_score >= 10.0:
-            return MemberVerdict(
-                member="threatfade",
-                vote=Vote.ALERT,
-                confidence=0.0,
-                reasoning="High provisional ThreatFade score; AI-text threshold is not validated",
-            )
-        elif z_score >= 5.0:
-            return MemberVerdict(
-                member="threatfade",
-                vote=Vote.ALERT,
-                confidence=0.0,
-                reasoning="Elevated provisional ThreatFade score; AI-text threshold is not validated",
-            )
-        else:
+        if not validated:
             return MemberVerdict(
                 member="threatfade",
                 vote=Vote.ABSTAIN,
                 confidence=0.0,
-                reasoning="Low network-derived score does not establish a safe AI interaction",
+                reasoning="AI-text calibration gate not satisfied; raw ThreatFade score is advisory only",
             )
+        if z_score >= 5.0:
+            return MemberVerdict(
+                member="threatfade",
+                vote=Vote.ALERT,
+                confidence=0.0,
+                reasoning="Calibrated ThreatFade AI-text threshold exceeded",
+            )
+        return MemberVerdict(
+            member="threatfade",
+            vote=Vote.ABSTAIN,
+            confidence=0.0,
+            reasoning="Low score is not evidence that the AI interaction is safe",
+        )
 
 
 # Module-level singleton

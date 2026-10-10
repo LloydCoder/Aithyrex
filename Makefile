@@ -2,7 +2,7 @@
 
 # ── Development ───────────────────────────────────────────────────────────────
 dev:
-	@echo "🛡️  Starting AI Shield development environment..."
+	@echo "🛡️  Starting Aithyrex development environment..."
 	docker compose up --build
 
 dev-bg:
@@ -49,7 +49,7 @@ test-cov:
 
 # ── Sprint 1 Demo ─────────────────────────────────────────────────────────────
 demo:
-	@echo "🛡️  AI Shield — Sprint 1 Demo"
+	@echo "🛡️  Aithyrex — Sprint 1 Demo"
 	@echo "================================"
 	bash scripts/demo.sh
 
@@ -93,7 +93,7 @@ fullstack:
 # ── Help ─────────────────────────────────────────────────────────────────────
 help:
 	@echo ""
-	@echo "AI Shield — Available commands:"
+	@echo "Aithyrex — Available commands:"
 	@echo ""
 	@echo "  make dev          Start full dev environment (Docker)"
 	@echo "  make test         Run unit tests"
