@@ -18,7 +18,7 @@ Create an evidence-backed release-readiness gate, threat model, independent revi
 ## Implemented controls
 
 - Add a versioned evidence manifest with explicit release-blocking gate IDs, owners, acceptance criteria, evidence references and honest statuses.
-- Add a fail-closed evaluator that requires a valid candidate SHA matching the manifest and checked-out Git HEAD, workflow evidence tied to that exact SHA, unique gate IDs, passed blocking gates, and valid evidence references. It validates repository evidence paths remain within the repository (including symlink resolution) and does not accept arbitrary workflow hosts.
+- Add a fail-closed evaluator that requires a valid candidate SHA matching the manifest and checked-out Git HEAD, workflow and external review/deployment/metrics evidence tied to that exact SHA, unique gate IDs, passed blocking gates, and valid evidence references. It validates repository evidence paths remain within the repository (including symlink resolution) and does not accept arbitrary workflow hosts.
 - Treat the committed JSON as a fail-closed template and require a protected external evidence bundle after the candidate SHA is frozen, avoiding a self-referential commit hash.
 - Add unit tests for blocked current state, matching candidate success, SHA mismatch, missing evidence, path traversal, malformed manifest values and duplicate gate IDs.
 - Add a release-readiness guide, scoped threat model, independent review protocol, and explicit controlled-launch sequence.
