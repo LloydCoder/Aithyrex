@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 VALID_STATUSES = {"passed", "blocked", "not_started", "waived"}
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 REQUIRED_TOP_LEVEL = {"schema_version", "project", "release_candidate_sha", "gates"}
 
 
@@ -139,6 +140,9 @@ def evaluate_release_readiness(
                     evidence_errors.append(f"evidence item {index + 1} must include a candidate_sha")
                 elif evidence_sha != candidate_sha:
                     evidence_errors.append(f"evidence item {index + 1} candidate_sha does not match candidate SHA")
+                digest = item.get("sha256")
+                if not isinstance(digest, str) or not SHA256_PATTERN.fullmatch(digest):
+                    evidence_errors.append(f"evidence item {index + 1} must include a 64-character SHA-256 digest")
 
         if status == "passed" and not evidence:
             evidence_errors.append("passed gate has no evidence")
