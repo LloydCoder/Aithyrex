@@ -1,6 +1,6 @@
 import hashlib
 import time
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -82,3 +82,16 @@ async def test_assertion_contracts_have_separate_replay_namespaces():
     await guard.consume("context", "tenant-1", "same-jti", expires_at)
 
     assert redis.calls[0][0] != redis.calls[1][0]
+
+
+@pytest.mark.asyncio
+async def test_close_releases_redis_pool():
+    guard = AssertionReplayGuard()
+    redis = MagicMock()
+    redis.aclose = AsyncMock()
+    guard._redis = redis
+
+    await guard.close()
+
+    redis.aclose.assert_awaited_once()
+    assert guard._redis is None

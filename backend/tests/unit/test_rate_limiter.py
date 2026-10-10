@@ -69,3 +69,16 @@ async def test_rate_limiter_is_tenant_scoped():
     await limiter.enforce("tenant-A")
     await limiter.enforce("tenant-B")
     assert redis.calls[0][1] != redis.calls[1][1]
+
+
+@pytest.mark.asyncio
+async def test_close_releases_redis_pool():
+    limiter = RateLimiter()
+    redis = MagicMock()
+    redis.aclose = AsyncMock()
+    limiter._redis = redis
+
+    await limiter.close()
+
+    redis.aclose.assert_awaited_once()
+    assert limiter._redis is None

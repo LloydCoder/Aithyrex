@@ -64,3 +64,16 @@ async def test_redis_unavailable_raises_instead_of_returning_zero():
     service._get_redis = AsyncMock(side_effect=RuntimeError("unavailable"))
     with pytest.raises(RuntimeError, match="unavailable"):
         await service.reserve_inference("tenant-1", "free")
+
+
+@pytest.mark.asyncio
+async def test_close_releases_redis_pool():
+    service = UsageCounterService()
+    redis = MagicMock()
+    redis.aclose = AsyncMock()
+    service._redis = redis
+
+    await service.close()
+
+    redis.aclose.assert_awaited_once()
+    assert service._redis is None

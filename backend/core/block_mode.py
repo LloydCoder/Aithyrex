@@ -45,7 +45,7 @@ class BlockModeService:
                     decode_responses=True,
                 )
             except Exception as e:
-                logger.warning("block_mode_redis_unavailable", error=str(e))
+                logger.warning("block_mode_redis_unavailable", error_type=type(e).__name__)
                 return None
         return self._redis
 
