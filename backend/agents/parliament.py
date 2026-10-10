@@ -145,6 +145,17 @@ class ParliamentEnsemble:
         """
         start = time.monotonic()
 
+        # Hard detector decisions are immutable, even if evaluate() is called
+        # directly instead of through should_invoke_parliament().
+        if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
+            return ParliamentVerdict(
+                action=verdict.action,
+                severity=verdict.severity,
+                blocked=verdict.blocked or verdict.action == Action.BLOCK,
+                latency_ms=round((time.monotonic() - start) * 1000, 1),
+                overrode_detector=False,
+            )
+
         # Build prompt for both members
         detection_report = _build_detection_report(verdict)
         # Never transmit customer prompts/completions to external model providers.
