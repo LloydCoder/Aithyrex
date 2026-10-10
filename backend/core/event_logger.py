@@ -119,7 +119,7 @@ class EventLogger:
 
         except Exception as e:
             # DB errors never crash the detection pipeline
-            logger.error("event_log_failed", error=str(e), tenant_id=tenant_id)
+            logger.error("event_log_failed", error_type=type(e).__name__, tenant_id=tenant_id)
             return None
 
     async def log_finding(self, finding, tenant_id: str, model: str) -> str | None:
