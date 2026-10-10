@@ -64,6 +64,15 @@ def decode_platform_action_assertion(token: str) -> dict[str, Any]:
                 "message": "Platform action assertion is invalid or expired.",
             },
         ) from exc
+    except (jwt.PyJWTError, ValueError) as exc:
+        # A malformed trust anchor is configuration failure, not an accepted token.
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "platform_action_auth_misconfigured",
+                "message": "Platform action assertion verification is misconfigured.",
+            },
+        ) from exc
 
     if not isinstance(claims, dict):
         raise HTTPException(status_code=401, detail="Invalid Platform action assertion")
