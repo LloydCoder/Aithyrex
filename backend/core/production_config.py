@@ -8,8 +8,7 @@ from __future__ import annotations
 import ipaddress
 from urllib.parse import parse_qs, urlparse
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import asymmetric, serialization
 
 
 _DEFAULT_SECRETS = {"", "change-me", "password", "changeme", "secret", "aishield_dev", "dev-secret-change-in-production"}
@@ -42,7 +41,7 @@ def production_configuration_errors(settings) -> list[str]:
     else:
         try:
             parsed_clerk_key = serialization.load_pem_public_key(clerk_key.encode("utf-8"))
-            if not isinstance(parsed_clerk_key, rsa.RSAPublicKey):
+            if not isinstance(parsed_clerk_key, asymmetric.RSAPublicKey):
                 errors.append("CLERK_JWT_KEY (RSA public key PEM required)")
         except Exception:
             errors.append("CLERK_JWT_KEY (valid RSA public key PEM required)")
