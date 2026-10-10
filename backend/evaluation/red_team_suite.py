@@ -7,11 +7,11 @@ without network access or production credentials.
 from __future__ import annotations
 
 import argparse
-from contextlib import redirect_stdout
 import asyncio
 import hashlib
 import json
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any
 
