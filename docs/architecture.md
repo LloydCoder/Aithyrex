@@ -161,3 +161,12 @@ This is a bundle analyzer, not a durable event stream. It reports matched rule I
 Detection evidence, high/critical alert records, and SIEM/alert/compliance delivery intents are committed in one PostgreSQL transaction before a tenant-bound detection response returns. The lifespan-owned worker claims outbox rows using leases and `SKIP LOCKED`, retries failures with bounded exponential backoff, and dead-letters after 12 attempts. Context and sequence findings use the same persistence path.
 
 Delivery is at-least-once, not exactly-once. If persistence fails, the response exposes degraded state. Production requires `OUTBOX_WORKER_ENABLED=true` and Alembic revision `002_durable_delivery_outbox`. See [Delivery Outbox Contract](DELIVERY_OUTBOX_CONTRACT.md).
+
+## 9. SDK and framework integration boundary
+
+The Python SDK propagates a UUID X-Request-ID for each inspection and fails closed on invalid or mismatched response correlation identifiers. See [SDK and Gateway Integration Contract](SDK_GATEWAY_CONTRACT.md) for supported behavior and limitations.
+
+Provider wrappers can preflight supported text before an upstream call and inspect supported output before returning it. They do not authorize tool calls, execute actions, mediate all provider streaming, or prove that downstream tool side effects are prevented. LangChain and LlamaIndex callbacks/observers are defense-in-depth only; the LlamaIndex observer inspects prompt and completion events independently to avoid cross-request state contamination. The legacy AutoGen/CrewAI wrappers are explicitly unsupported and refuse construction rather than implying protection.
+
+For any actual tool/MCP operation, the Tinlance Agent Platform must enforce identity, policy, approval and authorization at the execution boundary. Aithyrex findings remain advisory signals.
+

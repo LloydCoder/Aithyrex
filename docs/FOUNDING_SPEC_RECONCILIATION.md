@@ -390,3 +390,45 @@ All four CI jobs and both security jobs passed at that revision. The suite repor
 A documentation-only evidence amendment follows; the final PR head must pass fresh CI and Security Scan before merge.
 
 **Phase 11 status:** implementation is complete for database-backed evidence and at-least-once delivery intents. It does not claim exactly-once external delivery, dead-letter replay/metrics, durable NIS2/DORA high-cluster aggregation, or durable capture while PostgreSQL is unavailable.
+
+
+
+## 16. Phase 12 SDK and gateway integration hardening
+
+**Branch:** `godmode/phase-12-sdk-gateway-hardening`  
+**Contract:** [SDK and Gateway Integration Contract](SDK_GATEWAY_CONTRACT.md)
+
+### Scope
+
+- Add per-inspection UUID request correlation to the Python SDK, send X-Request-ID, expose the trace ID on SDK verdicts, and reject invalid or mismatched response correlation identifiers.
+- Keep missing configuration, insecure remote HTTP, transport failures, malformed responses, and trace-integrity failures in the blocked/degraded state.
+- Remove the legacy LlamaIndex observer's silent exception swallowing and remove the hard-coded former-product API hostname.
+- Route legacy LangChain/LlamaIndex import paths to canonical implementations. Disable legacy AutoGen/CrewAI wrappers that could silently continue after inspection errors and had no proven pre-side-effect coverage.
+- Add regression tests for request correlation, mismatched trace IDs, blocked OpenAI preflight preventing provider invocation, LlamaIndex retrieval extraction failures, concurrent-safe prompt/completion handling, and unsupported legacy adapters.
+- Define supported integration behavior and limitations without claiming provider-wide or MCP/tool-execution mediation.
+
+### Acceptance evidence required
+
+- Unit and API integration tests pass.
+- Ruff, Bandit, Semgrep, frontend checks, Docker build, dependency audit and secret scan pass.
+- Review confirms the SDK sends a UUID trace header on every inspection and fails closed on malformed/mismatched returned trace identifiers.
+- Review confirms unsupported adapters cannot be mistaken for supported security boundaries.
+- Final branch head and merged main each have fresh green CI and Security Scan workflows.
+
+### Explicit limitations
+
+SDK-level trace IDs are correlation metadata, not identity or authorization. OpenAI and Anthropic wrappers do not support streaming; unsupported multimodal payloads are rejected. LangChain/LlamaIndex hooks are defense-in-depth and framework-version-dependent. AutoGen/CrewAI are explicitly unsupported until a separately tested adapter proves pre-side-effect mediation. No live provider, production deployment, or end-to-end Tinlance Agent Platform integration is claimed by unit tests.
+
+### Phase 12 final-head verification and forensic conclusion
+
+**Verified implementation revision:** `a650f8d17c19c14ca36b520ef455a6c41b57e175`  
+**CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38029826242 — success  
+**Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38029826252 — success
+
+- Unit tests: **243 passed**.
+- API/integration tests: **54 passed**.
+- Bandit, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit, and TruffleHog secret scan: **passed**.
+- Forensic review verified UUID trace IDs are present even on configuration failures; each configured SDK request sends X-Request-ID; invalid or mismatched response correlation fails closed; OpenAI preflight blocks before provider invocation; LlamaIndex retrieval extraction failures no longer disappear silently; LlamaIndex callback pairing no longer relies on mutable shared prompt state; legacy LangChain/LlamaIndex import paths delegate to canonical implementations; and unsupported AutoGen/CrewAI adapters refuse construction instead of implying protection.
+
+**Phase 12 implementation and CI acceptance: passed for the declared scope.** This does not certify live provider/framework compatibility, production deployment, detection accuracy, streaming, multimodal coverage, complete tool/MCP pre-side-effect mediation, or a live Tinlance Agent Platform integration. These remain explicit integration and assurance gates, not silently inferred from unit tests.
+

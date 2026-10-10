@@ -38,3 +38,8 @@ Configure credentials through environment variables. Never commit secrets. Produ
 Every phase requires code changes where needed, automated tests, blocking CI, a forensic review of the resulting diff and test evidence, reconciled documentation, and an explicit acceptance decision. Green CI is necessary but not sufficient for release readiness.
 
 See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md) for the founding specification, known blockers, acceptance gates, and phased remediation record.
+
+### SDK and framework integrations
+
+See [SDK and Gateway Integration Contract](docs/SDK_GATEWAY_CONTRACT.md) for supported provider behavior, request trace correlation, fail-closed semantics, and explicitly unsupported paths. Framework callbacks are defense-in-depth, not an execution authorization boundary.
+

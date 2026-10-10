@@ -1,5 +1,5 @@
 """
-AI Shield — Unit Tests: New Components (Sprint 4 additions)
+Aithyrex — Unit Tests: New Components (legacy integration compatibility)
 ===========================================================
 Tests MITRE report generator, Olvrix bridge, and integration middleware.
 """
@@ -180,11 +180,19 @@ class TestLlamaIndexMiddleware:
         obs = AIShieldObserver(api_key="", raise_on_block=False)
         obs.on_llm_start({}, [])   # Should not raise
 
-    def test_observer_handles_llm_start_with_prompt(self):
+    def test_observer_inspects_prompt_without_shared_state(self):
         from integrations.llamaindex_middleware import AIShieldObserver
         obs = AIShieldObserver(api_key="", raise_on_block=False)
-        obs.on_llm_start({}, ["What is the capital of France?"])
-        assert obs._last_prompt == "What is the capital of France?"
+        with patch.object(obs, "_check") as check:
+            obs.on_llm_start({}, ["What is the capital of France?"])
+        check.assert_called_once_with(prompt="What is the capital of France?")
+
+    def test_observer_inspects_completion_without_cross_request_pairing(self):
+        from integrations.llamaindex_middleware import AIShieldObserver
+        obs = AIShieldObserver(api_key="", raise_on_block=False)
+        with patch.object(obs, "_check") as check:
+            obs.on_llm_end(type("Response", (), {"text": "answer"})())
+        check.assert_called_once_with(prompt="", completion="answer")
 
     def test_observer_handles_retrieve_empty(self):
         from integrations.llamaindex_middleware import AIShieldObserver
@@ -195,22 +203,14 @@ class TestLlamaIndexMiddleware:
 # ── AutoGen Middleware ─────────────────────────────────────────────────────────
 class TestAutoGenMiddleware:
 
-    def test_shielded_agent_initializes_without_autogen(self):
+    def test_unsupported_autogen_adapter_refuses_construction(self):
         from integrations.autogen_middleware import ShieldedConversableAgent
-        # Should not raise even if autogen is not installed
-        agent = ShieldedConversableAgent(
-            name="test-agent",
-            shield_api_key="",
-            raise_on_block=False,
-        )
-        assert agent.name == "test-agent"
 
-    def test_shielded_crew_task_initializes_without_crewai(self):
+        with pytest.raises(NotImplementedError, match="not supported"):
+            ShieldedConversableAgent(name="test-agent", raise_on_block=False)
+
+    def test_unsupported_crewai_adapter_refuses_construction(self):
         from integrations.autogen_middleware import ShieldedCrewTask
-        # Should not raise even if crewai is not installed
-        task = ShieldedCrewTask(
-            description="Normal task description",
-            shield_api_key="",
-            raise_on_block=False,
-        )
-        assert task is not None
+
+        with pytest.raises(NotImplementedError, match="not supported"):
+            ShieldedCrewTask(description="Normal task description", raise_on_block=False)

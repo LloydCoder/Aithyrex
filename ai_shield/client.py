@@ -7,6 +7,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import urlparse
+from uuid import UUID, uuid4
 
 
 @dataclass
@@ -28,12 +29,13 @@ class ShieldVerdict:
     tenant_id: str = ""
     degraded: bool = False
     error_code: str | None = None
+    trace_id: str | None = None
 
     def detected_by(self, detector_name: str) -> bool:
         return any(d.detector == detector_name and d.detected for d in self.detections)
 
 
-def _blocked(error_code: str) -> ShieldVerdict:
+def _blocked(error_code: str, trace_id: str | None = None) -> ShieldVerdict:
     """Conservative verdict for any missing configuration or failed inspection."""
     return ShieldVerdict(
         action="block",
@@ -41,6 +43,7 @@ def _blocked(error_code: str) -> ShieldVerdict:
         blocked=True,
         degraded=True,
         error_code=error_code,
+        trace_id=trace_id,
     )
 
 
@@ -76,20 +79,23 @@ class Shield:
         model: Optional[str] = None,
     ) -> ShieldVerdict:
         """Inspect content. Configuration, transport and schema errors fail closed."""
+        request_id = str(uuid4())
         if not self.base_url:
-            return _blocked("api_url_not_configured")
+            return _blocked("api_url_not_configured", request_id)
         if not self.token:
-            return _blocked("session_token_not_configured")
+            return _blocked("session_token_not_configured", request_id)
 
         try:
             import httpx
         except ImportError:
-            return _blocked("httpx_not_installed")
+            return _blocked("httpx_not_installed", request_id)
 
         parsed = urlparse(self.base_url)
         local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
         if parsed.scheme != "https" and not local_http:
-            return _blocked("insecure_api_url")
+            return _blocked("insecure_api_url", request_id)
+
+        request_headers = {**self._headers, "X-Request-ID": request_id}
 
         payload: dict = {"prompt": prompt}
         if completion is not None:
@@ -101,24 +107,24 @@ class Shield:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/api/v1/detect/llm",
-                    headers=self._headers,
+                    headers=request_headers,
                     json=payload,
                 )
                 response.raise_for_status()
                 data = response.json()
         except httpx.TimeoutException:
-            return _blocked("inspection_timeout")
+            return _blocked("inspection_timeout", request_id)
         except httpx.ConnectError:
-            return _blocked("inspection_unreachable")
+            return _blocked("inspection_unreachable", request_id)
         except httpx.HTTPStatusError as exc:
-            return _blocked(f"inspection_http_{exc.response.status_code}")
+            return _blocked(f"inspection_http_{exc.response.status_code}", request_id)
         except (httpx.HTTPError, ValueError):
-            return _blocked("inspection_transport_or_json_error")
+            return _blocked("inspection_transport_or_json_error", request_id)
         except Exception:
-            return _blocked("inspection_unexpected_error")
+            return _blocked("inspection_unexpected_error", request_id)
 
         if not isinstance(data, dict):
-            return _blocked("invalid_response_schema")
+            return _blocked("invalid_response_schema", request_id)
         action = data.get("action")
         severity = data.get("severity")
         blocked = data.get("blocked")
@@ -129,22 +135,36 @@ class Shield:
             or not isinstance(blocked, bool)
             or not isinstance(raw_detections, list)
         ):
-            return _blocked("invalid_response_schema")
+            return _blocked("invalid_response_schema", request_id)
+        response_trace_id = data.get("trace_id")
+        header_trace_id = response.headers.get("X-Request-ID")
+        for candidate in (response_trace_id, header_trace_id):
+            if candidate is not None:
+                try:
+                    UUID(str(candidate))
+                except (ValueError, TypeError, AttributeError):
+                    return _blocked("invalid_trace_id", request_id)
+        if response_trace_id and header_trace_id and str(response_trace_id) != str(header_trace_id):
+            return _blocked("trace_id_mismatch", request_id)
+        trace_id = str(response_trace_id or header_trace_id or request_id)
+        if trace_id != request_id:
+            return _blocked("trace_id_mismatch", request_id)
+
         if action == "block":
             blocked = True
 
         detections: list[Detection] = []
         for item in raw_detections:
             if not isinstance(item, dict):
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             if not isinstance(item.get("detector"), str) or not isinstance(item.get("detected"), bool):
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             try:
                 confidence = float(item.get("confidence", 0.0))
             except (TypeError, ValueError):
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             if not 0.0 <= confidence <= 1.0:
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             detections.append(
                 Detection(
                     detector=item["detector"],
@@ -162,6 +182,7 @@ class Shield:
             blocked=blocked,
             tenant_id=str(data.get("tenant_id", "")),
             detections=detections,
+            trace_id=trace_id,
         )
 
     def inspect_sync(
