@@ -135,7 +135,7 @@ Phase 0–4 implementation and verification gates are satisfied for the scope st
 
 Residual risks intentionally remain for later phases: versioned finding/trace/provenance contracts; AI-specific ThreatFade statistical validation; broader threat-evaluation corpora; exact action binding and pre-side-effect Platform mediation; RAG/context lineage; multi-step behavior correlation; durable evidence delivery; provider/framework streaming coverage; cross-repository TSIC conformance; red-team evaluation; verified compliance exports; production deployment/recovery drills; and independent assurance.
 
-The branch is not merged at the time of this ledger revision. The PR must remain open until the documentation-updated head has green CI/security workflows and the phase audit is accepted.
+Historical status note: the Phase 0–4 pull request was merged into `main` on 2026-10-10 (PR #1). The merge establishes the implementation baseline only; it does not claim production deployment or completion of later phases.
 
 ## 7. Phase 5 implementation and forensic verification
 
@@ -166,7 +166,7 @@ The branch is not merged at the time of this ledger revision. The PR must remain
 
 Phase 5 implementation and CI gates are green for the contract and traceability scope above. The finding model is a canonical schema, **not** durable storage, a transactional outbox, proof of downstream delivery, or proof of cross-service trace propagation. Those remain later-phase requirements. W3C Trace Context/OpenTelemetry export, persisted finding IDs, schema-registry publication, idempotent event delivery and consumer conformance are not claimed complete.
 
-The documentation-only update must also pass CI/security workflows before this phase PR is merged.
+Historical status note: Phase 5 was merged into `main` on 2026-10-10 (PR #2) after its CI and security workflows passed. Phase 6 remains a separate pull request.
 
 ## 8. Research baseline
 
@@ -182,3 +182,36 @@ The documentation-only update must also pass CI/security workflows before this p
 - No claim of legal/regulatory filing from a generated report, webhook request or dashboard toast.
 - No claim of live integration from an adapter class, URL setting, or mocked unit test alone.
 - No release while required CI/security workflows are failing, skipped, or configured to silently continue after failure.
+
+
+## 10. Phase 6 implementation and forensic audit
+
+**Phase branch:** `godmode/phase-06-threatfade-validation`  
+**Pull request:** https://github.com/LloydCoder/Aithyrex/pull/3
+
+### Implemented
+
+- Hardened the ThreatFade HTTP bridge with a bounded two-attempt retry for transient transport and HTTP 429/5xx failures, a per-attempt timeout, a maximum input size, strict numeric/enum/boolean response validation, and explicit degraded responses.
+- Kept ThreatFade-derived C2/covert-channel positives `advisory_only`; they remain visible in evidence but do not independently drive a BLOCK/ALERT decision or provide a Parliament vote without explicit AI-text calibration.
+- Added regression tests for retry behavior, malformed/upstream-degraded responses, advisory-only aggregation, and decision integrity.
+- Added an offline JSONL evaluator with per-source confusion metrics, Wilson 95% confidence bounds, strict schema/data-hygiene validation, minimum benign/malicious sample counts, optional explicit risk-probability calibration metrics (Brier score and 10-bin ECE), candidate/baseline comparison on identical sample IDs, corpus SHA-256 fingerprints, and caller-declared provenance/reviewer fields.
+- The evaluator never approves a release. Caller-supplied provenance and review references are not independently verified; `release_gate.release_approved` is always false.
+
+### CI evidence observed during the implementation review
+
+- Initial Phase 6 CI run: https://github.com/LloydCoder/Aithyrex/actions/runs/38024098882
+- Initial Phase 6 Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38024098898
+- Initial run passed 201 unit tests and 35 integration tests; Bandit, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend build, dependency audit and secret scan passed. Docker build was still running at the time of this intermediate observation. The final PR head, including subsequent evaluation/provenance hardening and this ledger update, must be checked separately; these earlier results do not certify the final head.
+
+### Forensic conclusion and remaining gate
+
+**Implementation status: in progress pending final-head CI and review. Empirical AI-text validation: NOT PASSED.** No representative, independently labeled AI-interaction corpus is present in the repository. Unit fixtures are synthetic and establish evaluator mechanics only; they do not establish detector recall, precision, false-positive rate, probability calibration, or suitability for enforcement. The code therefore intentionally keeps ThreatFade C2/covert-channel signals advisory-only and does not activate enforcement based on the evaluator.
+
+Before Phase 6 can be accepted as empirically complete, run the evaluator against a versioned, representative corpus covering prompt, completion and tool-output sources; supply the same-sample baseline; provide label provenance and measured inter-labeler agreement; include explicit risk probabilities if calibration is to be claimed; inspect subgroup/source results; and obtain an independent review. If that corpus or its provenance cannot be supplied, the statistical acceptance gate remains open regardless of green CI.
+
+### Residual-risk controls
+
+- Network-traffic performance is not evidence of AI-text detection performance.
+- A numerical threshold pass on synthetic or unrepresentative data must not be reported as product effectiveness.
+- Upstream ThreatFade availability does not itself imply calibration; missing/malformed/degraded upstream telemetry remains a distinct state.
+- No downstream integration, production deployment, or legal/compliance filing is claimed by this phase.
