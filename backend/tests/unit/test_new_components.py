@@ -195,22 +195,14 @@ class TestLlamaIndexMiddleware:
 # ── AutoGen Middleware ─────────────────────────────────────────────────────────
 class TestAutoGenMiddleware:
 
-    def test_shielded_agent_initializes_without_autogen(self):
+    def test_unsupported_autogen_adapter_refuses_construction(self):
         from integrations.autogen_middleware import ShieldedConversableAgent
-        # Should not raise even if autogen is not installed
-        agent = ShieldedConversableAgent(
-            name="test-agent",
-            shield_api_key="",
-            raise_on_block=False,
-        )
-        assert agent.name == "test-agent"
 
-    def test_shielded_crew_task_initializes_without_crewai(self):
+        with pytest.raises(NotImplementedError, match="not supported"):
+            ShieldedConversableAgent(name="test-agent", raise_on_block=False)
+
+    def test_unsupported_crewai_adapter_refuses_construction(self):
         from integrations.autogen_middleware import ShieldedCrewTask
-        # Should not raise even if crewai is not installed
-        task = ShieldedCrewTask(
-            description="Normal task description",
-            shield_api_key="",
-            raise_on_block=False,
-        )
-        assert task is not None
+
+        with pytest.raises(NotImplementedError, match="not supported"):
+            ShieldedCrewTask(description="Normal task description", raise_on_block=False)
