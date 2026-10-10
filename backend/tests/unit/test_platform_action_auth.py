@@ -103,6 +103,18 @@ def test_expired_assertion_is_rejected(monkeypatch, signing_keys):
     assert error.value.status_code == 401
 
 
+def test_assertion_lifetime_is_bounded(monkeypatch, signing_keys):
+    private_key, public_key = signing_keys
+    _configure(monkeypatch, public_key)
+    now = int(time.time())
+    token = jwt.encode(_claims(iat=now, exp=now + 3_600), private_key, algorithm="RS256")
+
+    with pytest.raises(HTTPException) as error:
+        decode_platform_action_assertion(token)
+
+    assert error.value.status_code == 401
+
+
 def test_malformed_payload_hash_is_rejected(monkeypatch, signing_keys):
     private_key, public_key = signing_keys
     _configure(monkeypatch, public_key)
