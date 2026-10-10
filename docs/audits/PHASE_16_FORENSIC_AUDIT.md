@@ -2,7 +2,7 @@
 
 **Phase:** 16 — operations and deployment hardening  
 **Branch:** `godmode/phase-16-operations-deployment`  
-**Audit status:** implementation in progress; final acceptance requires the final PR-head CI and Security Scan to pass.
+**Audit status:** code-level forensic review complete for implementation commit `bd36c38995ec71b0b8cfdcb9ae0f7dda09529785`. CI and Security Scan passed on that implementation revision; this audit/ledger amendment must also pass fresh CI and Security Scan before merge.
 
 ## Scope
 
@@ -28,11 +28,22 @@ Harden production configuration validation, process/dependency health semantics,
 - Expand the operations runbook with probe semantics, proposed-but-unmeasured SLOs, telemetry/privacy rules, alerts, key rotation, backup/restore, deployment/rollback, incident procedures, and explicit non-claims.
 - Add regression tests for URL parsing, RSA trust-anchor parsing, loopback/default credentials, wildcard hosts, HTTPS origins, database pool bounds, liveness/readiness semantics, probe timeouts, health-error redaction, and shutdown cleanup.
 
+## Reviewed implementation evidence
+
+- Reviewed implementation commit: `bd36c38995ec71b0b8cfdcb9ae0f7dda09529785`
+- CI on reviewed implementation: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883848 — success
+- Security Scan on reviewed implementation: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883811 — success
+- The implementation CI includes unit/integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend audit/type-check/lint/build, a built-wheel content check for backend entry points, and Docker build. Security Scan covers dependency audit and secret scanning.
+
 ## Acceptance gate
 
 - Unit and integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, Docker build, dependency audit, and secret scan pass on the final PR head.
 - Forensic review verifies URL parsing is structural (not substring-based), no secret values are included in validation errors, readiness is bounded, liveness does not call dependencies, error payloads are sanitized, and shutdown cleanup continues after worker errors.
-- Merge only after both CI and Security Scan are green; then verify post-merge workflows.
+- Code-level acceptance is granted for the reviewed implementation revision. Merge only after both CI and Security Scan are green on the final audit/ledger documentation head; then verify post-merge workflows.
+
+## Acceptance decision
+
+**Phase 16 implementation accepted for the declared operations-hardening scope, contingent on green CI and Security Scan for the final documentation head and green post-merge workflows.** This is not a production-readiness certification.
 
 ## Residual gates
 

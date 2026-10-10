@@ -551,9 +551,16 @@ PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after fin
 - Expand the operations runbook with health probes, proposed-but-unmeasured SLOs, alerting, privacy-safe observability, key rotation, backup/restore, deployment/rollback and incident handling.
 - Add unit tests for production URL validation, Clerk RSA parsing, duplicate TLS parameters, loopback dependencies, database pool bounds, liveness/readiness, timeouts, health error redaction and shutdown cleanup.
 
+### Reviewed implementation evidence
+
+- Reviewed implementation commit: `bd36c38995ec71b0b8cfdcb9ae0f7dda09529785`
+- CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883848 — success
+- Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883811 — success
+- CI now verifies that a built wheel contains `backend/main.py`, health routes and the production config module.
+
 ### Acceptance gate
 
-Final PR head must pass unit/integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, Docker build, dependency audit and secret scan. The Phase 16 forensic audit must be reconciled with final CI evidence before merge; post-merge workflows must also be checked.
+The final audit/ledger documentation head must also pass unit/integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, wheel packaging verification, Docker build, dependency audit and secret scan. After merge, verify post-merge workflows.
 
 ### Explicit non-claims
 
