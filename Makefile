@@ -29,7 +29,7 @@ migrate-down:
 	alembic downgrade -1
 
 shell-db:
-	docker compose exec postgres psql -U aithyrex -d aithyrex
+	docker compose exec postgres psql -U aishield -d aishield
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 test:
