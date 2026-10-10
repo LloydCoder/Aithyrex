@@ -3,11 +3,11 @@
 **Repository:** [LloydCoder/Aithyrex](https://github.com/LloydCoder/Aithyrex)  
 **Phase branch:** `godmode/phase-14-red-team-evaluation`  
 **Scope:** deterministic offline red-team regression gate, corpus integrity, prompt-injection regression, CLI output contract, CI enforcement and documentation accuracy.  
-**Audit status:** forensic findings F14-01 through F14-06 are implemented; final acceptance is pending fresh CI and Security Scan on the current head.
+**Audit status:** ACCEPTED for the declared deterministic synthetic-regression scope on code revision `2f4cb7889843bfbc4048f7f1654e0bd89c07f604`. The documentation-only acceptance update must also pass fresh CI and Security Scan before merge.
 
 ## Evidence baseline
 
-The code-and-gate revision `d99bc21541f7f3c119242d6578b3147b24f5a55d` passed CI at [run 38031686577](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686577) and Security Scan at [run 38031686570](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686570). These runs include the explicit blocking offline red-team CLI gate, unit/integration tests, static analysis, frontend build/audit, Docker build, dependency audit and secret scan. The audit-ledger documentation update is a separate docs-only commit and must also pass the latest-head workflows before merge.
+The final implementation revision `2f4cb7889843bfbc4048f7f1654e0bd89c07f604` passed CI at [run 38031935795](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935795) and Security Scan at [run 38031935796](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935796). Both workflows completed successfully after the custom-corpus classification, identifier-safety, bounded-read and exception-redaction fixes. The documentation-only acceptance update is a separate commit and must also pass its own latest-head workflows before merge.
 
 ## Findings and remediation
 
@@ -77,10 +77,10 @@ References:
 
 ## Final acceptance record
 
-- **Verified implementation revision:** `d99bc21541f7f3c119242d6578b3147b24f5a55d`
-- **CI:** [run 38031686577](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686577) — all four CI jobs passed, including the explicit offline red-team evaluation gate and Docker build.
-- **Security Scan:** [run 38031686570](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686570) — dependency vulnerability audit and TruffleHog secret scan passed.
-- **Tests:** 265 unit tests and 57 API/integration tests passed.
+- **Verified implementation revision:** `2f4cb7889843bfbc4048f7f1654e0bd89c07f604`
+- **CI:** [run 38031935795](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935795) — all four CI jobs passed, including the explicit offline red-team evaluation gate and Docker build.
+- **Security Scan:** [run 38031935796](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935796) — dependency vulnerability audit and TruffleHog secret scan passed.
+- **Tests:** 268 unit tests and 57 API/integration tests passed.
 - **Red-team result:** `pass`; 32 synthetic cases (20 malicious, 12 benign); malicious recall `1.0`; benign false-positive rate `0.0`; expected-detector coverage `1.0`; zero missed expected-detector assertions; dataset SHA-256 `9ed9300af83c23065306adf44daca2cc80ba398ff96559d48b8d68fed742a108`; `release_approved=false`.
 - **Forensic disposition:** ACCEPTED for the deterministic synthetic regression scope only. These metrics describe this small synthetic corpus, not production detection effectiveness.
 
