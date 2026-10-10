@@ -410,3 +410,13 @@ def test_http_error_contract_preserves_legacy_detail_and_trace_id(client):
     assert body["schema_version"] == "aithyrex.error.v1"
     assert body["detail"] == "Missing authorization token"
     assert response.headers["X-Request-ID"] == body["trace_id"]
+
+
+def test_unknown_route_uses_versioned_error_contract(client):
+    response = client.get("/route-that-does-not-exist")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["schema_version"] == "aithyrex.error.v1"
+    assert body["error_code"] == "http_404"
+    assert body["detail"] == "Not Found"
+    assert response.headers["X-Request-ID"] == body["trace_id"]
