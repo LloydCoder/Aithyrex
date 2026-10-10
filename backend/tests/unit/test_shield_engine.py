@@ -39,6 +39,27 @@ def engine():
     return ShieldEngine()
 
 
+
+@pytest.mark.asyncio
+async def test_detector_exception_fails_closed(engine):
+    class FailingDetector:
+        name = "failing_detector"
+
+        async def detect(self, prompt, completion=None):
+            raise RuntimeError("simulated detector failure")
+
+    engine._detectors = [FailingDetector()]
+    verdict = await engine.inspect(prompt="benign-looking input")
+
+    assert verdict.action == Action.BLOCK
+    assert verdict.blocked is True
+    assert verdict.severity == Severity.HIGH
+    assert verdict.results[0].detector == "failing_detector"
+    assert verdict.results[0].details == {
+        "degraded": True,
+        "reason": "detector_exception",
+    }
+
 # ── Clean inputs pass through ─────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_clean_prompt_returns_pass(engine):
