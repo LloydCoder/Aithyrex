@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import structlog
+from structlog.contextvars import bound_contextvars
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -159,7 +160,7 @@ async def request_context_middleware(request: Request, call_next):
         trace_id = str(uuid4())
     request.state.trace_id = trace_id
     try:
-        with structlog.contextvars.bound_contextvars(trace_id=trace_id):
+        with bound_contextvars(trace_id=trace_id):
             response = await call_next(request)
     except Exception as exc:
         logger.exception(
