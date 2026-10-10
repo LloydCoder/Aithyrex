@@ -80,7 +80,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if settings.APP_ENV == "production":
+if settings.APP_ENV.lower() in {"prod", "production"}:
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
