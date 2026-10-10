@@ -28,18 +28,18 @@ _ZERO_WIDTH_AND_BIDI = dict.fromkeys(
 
 # Stable rule IDs are evidence metadata. Never put raw matched prompt fragments in logs.
 _DIRECT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("ignore_previous_instructions", re.compile(r"ignore\\s+(all\\s+)?(previous|prior|above)\\s+instructions?", re.IGNORECASE)),
-    ("disregard_system_prompt", re.compile(r"disregard\\s+(your\\s+)?(previous|prior|system)\\s+(prompt|instructions?)", re.IGNORECASE)),
-    ("persona_override", re.compile(r"you\\s+are\\s+now\\s+(a\\s+)?(?!an?\\s+AI|an?\\s+assistant)", re.IGNORECASE)),
-    ("roleplay_override", re.compile(r"act\\s+as\\s+(if\\s+you\\s+(are|were)\\s+)?(?!an?\\s+AI|an?\\s+assistant)", re.IGNORECASE)),
-    ("new_persona", re.compile(r"new\\s+persona[:\\s]", re.IGNORECASE)),
-    ("system_tag", re.compile(r"<\\s*system\\s*>|\\[system\\]", re.IGNORECASE)),
-    ("jailbreak_keyword", re.compile(r"\\bjailbreak\\b", re.IGNORECASE)),
-    ("dan_mode", re.compile(r"\\bDAN\\s+mode\\b", re.IGNORECASE)),
-    ("developer_mode_override", re.compile(r"developer\\s+mode\\s+(enabled|on|activated)", re.IGNORECASE)),
-    ("reveal_hidden_prompt", re.compile(r"(reveal|show|print|repeat|expose|dump)\\s+(the\\s+)?(hidden\\s+|system\\s+|developer\\s+)?(prompt|instructions?|messages?)", re.IGNORECASE)),
-    ("disable_safety_controls", re.compile(r"(bypass|ignore|disable|override)\\s+(all\\s+)?(safety|content|security)\\s+(rules?|filters?|polic(?:y|ies)|guardrails?)", re.IGNORECASE)),
-    ("exfiltrate_credentials", re.compile(r"(send|exfiltrate|upload|forward|reveal)\\s+(all\\s+)?(secrets?|credentials?|api\\s+keys?|tokens?)", re.IGNORECASE)),
+    ("ignore_previous_instructions", re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?", re.IGNORECASE)),
+    ("disregard_system_prompt", re.compile(r"disregard\s+(your\s+)?(previous|prior|system)\s+(prompt|instructions?)", re.IGNORECASE)),
+    ("persona_override", re.compile(r"you\s+are\s+now\s+(a\s+)?(?!an?\s+AI|an?\s+assistant)", re.IGNORECASE)),
+    ("roleplay_override", re.compile(r"act\s+as\s+(if\s+you\s+(are|were)\s+)?(?!an?\s+AI|an?\s+assistant)", re.IGNORECASE)),
+    ("new_persona", re.compile(r"new\s+persona[:\s]", re.IGNORECASE)),
+    ("system_tag", re.compile(r"<\s*system\s*>|\[system\]", re.IGNORECASE)),
+    ("jailbreak_keyword", re.compile(r"\bjailbreak\b", re.IGNORECASE)),
+    ("dan_mode", re.compile(r"\bDAN\s+mode\b", re.IGNORECASE)),
+    ("developer_mode_override", re.compile(r"developer\s+mode\s+(enabled|on|activated)", re.IGNORECASE)),
+    ("reveal_hidden_prompt", re.compile(r"(reveal|show|print|repeat|expose|dump)\s+(the\s+)?(hidden\s+|system\s+|developer\s+)?(prompt|instructions?|messages?)", re.IGNORECASE)),
+    ("disable_safety_controls", re.compile(r"(bypass|ignore|disable|override)\s+(all\s+)?(safety|content|security)\s+(rules?|filters?|polic(?:y|ies)|guardrails?)", re.IGNORECASE)),
+    ("exfiltrate_credentials", re.compile(r"(send|exfiltrate|upload|forward|reveal)\s+(all\s+)?(secrets?|credentials?|api\s+keys?|tokens?)", re.IGNORECASE)),
 ]
 _BASE64_CANDIDATE = re.compile(r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{24,4096}={0,2}(?![A-Za-z0-9+/])")
 _HEX_CANDIDATE = re.compile(r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{48,8192}(?![0-9A-Fa-f])")
