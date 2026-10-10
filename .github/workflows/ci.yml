@@ -24,6 +24,34 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r backend/requirements.txt
       - name: Run unit tests
         run: pytest backend/tests/unit/ -v --tb=short
+      - name: Run offline red-team evaluation gate
+        shell: bash
+        run: |
+          python -m backend.evaluation.red_team_suite > "$RUNNER_TEMP/aithyrex-red-team-report.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          report_path = Path(os.environ["RUNNER_TEMP"]) / "aithyrex-red-team-report.json"
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          summary = {
+              "status": report.get("status"),
+              "dataset_sha256": report.get("provenance", {}).get("dataset_sha256"),
+              "dataset_classification": report.get("provenance", {}).get("dataset_classification"),
+              "metrics": report.get("metrics"),
+              "release_approved": report.get("release_gate", {}).get("release_approved"),
+          }
+          print(json.dumps(summary, sort_keys=True))
+          if summary["status"] != "pass":
+              raise SystemExit("Offline red-team regression gate failed")
+          if summary["dataset_classification"] != "synthetic_only":
+              raise SystemExit("Unexpected red-team dataset classification")
+          if summary["release_approved"] is not False:
+              raise SystemExit("Regression suite must never approve a release")
+          if not isinstance(summary["dataset_sha256"], str) or len(summary["dataset_sha256"]) != 64:
+              raise SystemExit("Missing or invalid dataset SHA-256")
+          PY
       - name: Run integration tests
         run: pytest backend/tests/integration/ -v --tb=short
 

@@ -432,6 +432,8 @@ SDK-level trace IDs are correlation metadata, not identity or authorization. Ope
 
 **Phase 12 implementation and CI acceptance: passed for the declared scope.** This does not certify live provider/framework compatibility, production deployment, detection accuracy, streaming, multimodal coverage, complete tool/MCP pre-side-effect mediation, or a live Tinlance Agent Platform integration. These remain explicit integration and assurance gates, not silently inferred from unit tests.
 
+**Canonical namespace follow-up:** PR [#11](https://github.com/LloydCoder/Aithyrex/pull/11) was merged as `b756b1ec5225200606bc815e431d727a04d2696a`. `aithyrex/` now owns the SDK client and OpenAI/Anthropic wrapper implementations; `ai_shield/` remains a compatibility import namespace. The merged main revision passed [CI run 38031612801](https://github.com/LloydCoder/Aithyrex/actions/runs/38031612801) and [Security Scan run 38031612771](https://github.com/LloydCoder/Aithyrex/actions/runs/38031612771). SDK behavior remains bounded by the limitations in `SDK_GATEWAY_CONTRACT.md`.
+
 ## 17. Phase 13 Tinlance integration and TSIC conformance
 
 **Branch:** `godmode/phase-13-platform-replay-conformance`  
@@ -471,4 +473,29 @@ This phase proves receiver-side behavior and a versioned contract manifest, not 
 **Phase 13 implementation and CI acceptance: passed for receiver-side conformance.** This does not claim a live Tinlance Agent Platform deployment, production Redis HA/persistence, automated key rotation, end-to-end executor mediation, or independent certification. These remain explicit external gates.
 
 
+## 18. Phase 14 AI security evaluation and red-team regression
+
+**Branch:** `godmode/phase-14-red-team-evaluation`  
+**Methodology:** [Red-Team Evaluation](RED_TEAM_EVALUATION.md)  
+**Dataset manifest:** [red_team_v1.manifest.json](../backend/evaluation/datasets/red_team_v1.manifest.json)
+
+### Scope
+
+- Add an offline, synthetic-only adversarial corpus covering direct/encoded/Unicode prompt injection, safety overrides, RAG and tool-output injection, prompt extraction, context overflow, and fake credential-shaped values.
+- Add a deterministic evaluator for prompt-injection, credential-leak and data-poisoning detectors with overall, per-source and per-family metrics.
+- Hash the exact corpus, validate its schema and provenance, redact raw test text from reports, and fail the gate when expected detector assertions are missed or recall/FPR thresholds regress.
+- Keep ThreatFade-dependent covert-channel/C2 paths out of this offline gate because network-traffic metrics do not establish AI-text detection accuracy.
+- Explicitly prevent the suite from setting release approval or implying production detection calibration; document alignment with OWASP AISVS 1.0 and MITRE ATLAS.
+
+### Acceptance gates
+
+- The 32-case corpus runs offline with no provider credentials or external network calls.
+- Unit tests verify dataset schema, manifest consistency, content-free reports, threshold enforcement and the default regression gate.
+- CI and Security Scan are green on final branch head, followed by forensic review and post-merge verification.
+
+### Explicit limitations
+
+The suite is a deterministic regression layer, not an exhaustive adversarial benchmark, live-model red team, calibrated production evaluation, or independent certification. A representative labeled corpus, detector calibration, streaming/multimodal tests, framework/tool lifecycle tests and independent review remain separate gates.
+
+**Phase 14 status:** accepted for the declared deterministic synthetic-regression scope at revision `2f4cb7889843bfbc4048f7f1654e0bd89c07f604`. CI [run 38031935795](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935795) and Security Scan [run 38031935796](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935796) both passed, including the standalone blocking red-team CLI gate, 268 unit tests, 57 API/integration tests, frontend build/audit, Docker build, dependency audit and secret scan. See [the Phase 14 forensic audit](audits/PHASE_14_FORENSIC_AUDIT.md). Acceptance is limited to synthetic regression behavior; representative production effectiveness and independent assurance remain open. The final docs-only commit must also pass fresh CI and Security Scan before merge.
 

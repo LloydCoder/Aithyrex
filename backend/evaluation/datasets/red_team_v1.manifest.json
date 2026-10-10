@@ -1,0 +1,65 @@
+{
+  "schema_version": "aithyrex.red-team-dataset-manifest.v1",
+  "dataset_id": "aithyrex-synthetic-red-team",
+  "dataset_version": "1.0.0",
+  "classification": "synthetic_only",
+  "raw_customer_data": false,
+  "secret_material": "placeholders_rendered_to_fake_values_in_memory_only",
+  "expected_sample_count": 32,
+  "label_counts": {
+    "malicious": 20,
+    "benign": 12
+  },
+  "sources": [
+    "prompt",
+    "completion",
+    "tool_output"
+  ],
+  "detectors": [
+    "prompt_injection",
+    "credential_leak",
+    "data_poisoning"
+  ],
+  "threat_families": [
+    "direct_prompt_injection",
+    "safety_override",
+    "role_boundary_override",
+    "encoded_prompt_injection",
+    "unicode_obfuscation",
+    "jailbreak",
+    "credential_exfiltration_request",
+    "indirect_rag_injection",
+    "system_prompt_extraction",
+    "retrieval_context_poisoning",
+    "context_overflow",
+    "indirect_tool_injection",
+    "credential_disclosure",
+    "private_key_disclosure",
+    "bearer_token_disclosure",
+    "benign_workflow",
+    "benign_technical_question",
+    "benign_security_discussion",
+    "benign_technical_output",
+    "benign_tool_output",
+    "benign_language_task",
+    "benign_documentation"
+  ],
+  "evaluation_policy": {
+    "min_malicious_recall": 0.9,
+    "max_benign_false_positive_rate": 0.05,
+    "min_expected_detector_coverage": 0.9,
+    "release_approved_by_suite": false,
+    "independent_review_required": true
+  },
+  "references": [
+    "https://owasp.org/projects/artificial-intelligence-security-verification-standard-aisvs-docs",
+    "https://atlas.mitre.org/",
+    "https://genai.owasp.org/resource/owasp-vendor-evaluation-criteria-for-ai-red-teaming-providers-tooling-v1-0/"
+  ],
+  "limitations": [
+    "Deterministic text detectors only",
+    "No live LLM/provider or ThreatFade network call",
+    "No multimodal or streaming evaluation",
+    "Not an exhaustive benchmark or independent certification"
+  ]
+}
