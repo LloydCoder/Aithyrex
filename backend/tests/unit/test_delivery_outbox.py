@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -94,7 +93,7 @@ async def test_event_and_delivery_intents_commit_in_one_transaction(monkeypatch)
     from backend.models.models import Alert, DeliveryOutbox, DetectionEvent
 
     assert event_id is not None
-    assert awaitable_called(session.commit)
+    assert session.commit.await_count == 1
     event_rows = [row for row in session.added if isinstance(row, DetectionEvent)]
     alert_rows = [row for row in session.added if isinstance(row, Alert)]
     outbox_rows = [row for row in session.added if isinstance(row, DeliveryOutbox)]
@@ -105,7 +104,3 @@ async def test_event_and_delivery_intents_commit_in_one_transaction(monkeypatch)
     }
     assert all(row.event_id == event_rows[0].id for row in outbox_rows)
     assert len({row.dedupe_key for row in outbox_rows}) == 3
-
-
-def awaitable_called(mock):
-    return mock.await_count == 1
