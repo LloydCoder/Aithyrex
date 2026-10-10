@@ -15,7 +15,7 @@ python -m backend.evaluation.red_team_suite
 pytest -q backend/tests/unit/test_red_team_suite.py
 ```
 
-Override thresholds or dataset path when conducting a controlled experiment:
+Override thresholds or dataset path when conducting a controlled experiment. The default committed corpus is labeled `synthetic_only`; any alternate path is labeled `custom_unverified` unless it is exactly the canonical corpus path, so arbitrary data is never silently described as synthetic:
 
 ```bash
 python -m backend.evaluation.red_team_suite \

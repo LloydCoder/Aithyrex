@@ -35,6 +35,12 @@ The code-and-gate revision `d99bc21541f7f3c119242d6578b3147b24f5a55d` passed CI 
 - **Fix:** added a blocking CI step that runs the CLI, validates the JSON report, requires a 64-character SHA-256 digest and `synthetic_only` classification, and rejects any attempt by the suite to approve a release.
 - **Acceptance:** the final-head CI must show this step passing, alongside unit/integration tests, Ruff, Bandit, Semgrep, frontend audit/build, Docker build, dependency audit and secret scan.
 
+### F14-05 — Custom datasets could be mislabeled synthetic and identifiers could leak text
+
+- **Observed:** the CLI supports an alternate dataset path, while the report previously hard-coded `synthetic_only`. A custom dataset could therefore be misrepresented. Unbounded/free-form case IDs and family names could also leak arbitrary text into the otherwise content-free report.
+- **Fix:** only the canonical default corpus path receives `synthetic_only`; alternate datasets are labeled `custom_unverified`. The loader validates the classification and SHA-256, constrains dataset bytes/case count, validates safe identifier slugs and source/label types, and avoids echoing duplicate IDs in validation errors. Added regression tests for custom classification and identifier privacy.
+- **Acceptance:** latest-head unit tests and the direct CLI gate must pass.
+
 ## Corpus and acceptance policy
 
 - Dataset: `aithyrex-synthetic-red-team` version `1.0.0`; 32 synthetic cases (20 malicious, 12 benign).
