@@ -1,0 +1,37 @@
+# Aithyrex
+
+> Agentic AI Runtime Security — AI can act. Aithyrex watches.
+
+Aithyrex is Tinlance's AI-interaction threat detection service. It inspects supported LLM prompts, completions and related telemetry for suspicious patterns and emits findings with provenance.
+
+## Important boundary and release status
+
+Aithyrex findings are signals, not authorization grants. Tinlance Agent Platform remains authoritative for identity, tenant binding, authorization, policy, approvals, governed execution, sandboxing, secrets, budgets and authoritative audit/evidence.
+
+**Release status: BLOCKED.** The fail-closed release manifest requires independent AI-text effectiveness evaluation, independent security review, controlled production deployment/rollback, a successful backup/restore drill, measured SLOs and authorized legal/compliance review.
+
+## Start here
+
+- [README](README.md): overview, local quickstart, configuration and architecture boundaries.
+- [Contributing](CONTRIBUTING.md): development setup, checks and pull-request expectations.
+- [Security policy](SECURITY.md): private vulnerability reporting.
+- [Support](SUPPORT.md): usage and defect-reporting guidance.
+- [Code of Conduct](CODE_OF_CONDUCT.md): community expectations.
+
+## Technical documentation
+
+- [Founding specification reconciliation](docs/FOUNDING_SPEC_RECONCILIATION.md): capability inventory, phase evidence, residual risks and boundaries.
+- [Architecture](docs/architecture.md): architecture notes.
+- [Operations runbook](docs/OPERATIONS.md): configuration, operations, monitoring, recovery and deployment constraints.
+- [Threat model](docs/assurance/THREAT_MODEL.md): threats and security assumptions.
+- [Release readiness](docs/assurance/RELEASE_READINESS.md): release gates and evidence rules.
+- [Independent review protocol](docs/assurance/INDEPENDENT_REVIEW_PROTOCOL.md): review scope and evidence expectations.
+- [Red-team evaluation](docs/RED_TEAM_EVALUATION.md): synthetic regression methodology and limitations.
+- [SDK and gateway contract](docs/SDK_GATEWAY_CONTRACT.md): supported integration behavior and unsupported paths.
+- [Billing webhook security](docs/BILLING_WEBHOOK_SECURITY.md): signature validation, deduplication and ordering.
+- [TSIC conformance](docs/TSIC_CONFORMANCE.md): cross-repository contracts.
+- [Repository maintenance checklist](docs/REPOSITORY_MAINTENANCE.md): ongoing upkeep.
+
+## Safe interpretation
+
+Do not infer real-world detection accuracy, zero false positives, complete threat coverage, certification, legal compliance, successful production deployment or achieved SLOs from source-code presence, synthetic fixtures or green CI alone. ThreatFade network-traffic metrics do not validate AI-text detection.
