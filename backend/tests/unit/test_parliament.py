@@ -144,7 +144,7 @@ class TestParliamentVoting:
         with patch.object(ensemble.gateway, "call_claude",
                           new=AsyncMock(return_value=member_vote("claude", Vote.BLOCK))), \
              patch.object(ensemble.gateway, "call_grok",
-                          new=AsyncMock(return_value=member_vote("grok", Vote.ALLOW))):
+                          new=AsyncMock(return_value=member_vote("grok", Vote.BLOCK))):
 
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=11.0)
 
@@ -169,8 +169,8 @@ class TestParliamentVoting:
         assert result.consensus is False
 
     @pytest.mark.asyncio
-    async def test_0_of_3_block_clears_false_positive(self, ensemble):
-        """Two model ALLOW votes with ThreatFade abstaining yield PASS for this advisory stage."""
+    async def test_allow_votes_cannot_downgrade_detector_finding(self, ensemble):
+        """Advisory allow votes cannot erase a positive detector finding."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
@@ -180,10 +180,10 @@ class TestParliamentVoting:
 
             result = await ensemble.evaluate(verdict, "test prompt", threatfade_z_score=0.3)
 
-        assert result.action == Action.PASS
-        assert result.severity == Severity.CLEAN
-        assert result.consensus is True
-        assert result.overrode_detector is True
+        assert result.action == verdict.action
+        assert result.severity == verdict.severity
+        assert result.consensus is False
+        assert result.overrode_detector is False
 
     @pytest.mark.asyncio
     async def test_all_abstain_uses_detector_verdict(self, ensemble):
