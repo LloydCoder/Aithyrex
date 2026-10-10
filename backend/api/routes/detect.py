@@ -179,7 +179,11 @@ async def detect_prompt(
         verdict.severity in (Severity.HIGH, Severity.CRITICAL, Severity.MEDIUM)
     )
 
-    if verdict.blocked or (should_block and any(r.detected for r in verdict.results)):
+    actionable_detections = [
+        result for result in verdict.results
+        if result.detected and not result.details.get("advisory_only", False)
+    ]
+    if verdict.blocked or (should_block and actionable_detections):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={

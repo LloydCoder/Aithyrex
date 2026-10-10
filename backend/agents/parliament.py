@@ -130,6 +130,7 @@ class ParliamentEnsemble:
         prompt: str,
         completion: str | None = None,
         threatfade_z_score: float | None = None,
+        threatfade_validated: bool = False,
     ) -> ParliamentVerdict:
         """
         Run Parliament Ensemble on an ambiguous ShieldVerdict.
@@ -178,7 +179,7 @@ class ParliamentEnsemble:
         )
 
         # ThreatFade is the 3rd vote — deterministic from Z-score
-        threatfade_vote = self._threatfade_vote(threatfade_z_score)
+        threatfade_vote = self._threatfade_vote(threatfade_z_score, validated=threatfade_validated)
 
         # Wait for both AI members — return_exceptions prevents one failure crashing both
         results_raw = await asyncio.gather(
@@ -268,15 +269,13 @@ class ParliamentEnsemble:
             overrode_detector=overrode,
         )
 
-    def _threatfade_vote(self, z_score: float | None) -> MemberVerdict:
-        """
-        Convert a validated ThreatFade Z-score to a Parliament vote.
-        Missing telemetry abstains; it must never be interpreted as a clean signal.
-        ThreatFade is the deterministic oracle — no API call needed.
-
-        Provisional network-derived thresholds are not validated for AI text.
-        This vote can alert on high signals but cannot infer that low scores are safe.
-        """
+    def _threatfade_vote(
+        self,
+        z_score: float | None,
+        *,
+        validated: bool = False,
+    ) -> MemberVerdict:
+        """Only calibrated AI-text scores may vote; network-derived scores otherwise abstain."""
         if z_score is None:
             return MemberVerdict(
                 member="threatfade",
@@ -284,27 +283,26 @@ class ParliamentEnsemble:
                 confidence=0.0,
                 reasoning="ThreatFade telemetry unavailable; no safety conclusion",
             )
-        if z_score >= 10.0:
-            return MemberVerdict(
-                member="threatfade",
-                vote=Vote.ALERT,
-                confidence=0.0,
-                reasoning="High provisional ThreatFade score; AI-text threshold is not validated",
-            )
-        elif z_score >= 5.0:
-            return MemberVerdict(
-                member="threatfade",
-                vote=Vote.ALERT,
-                confidence=0.0,
-                reasoning="Elevated provisional ThreatFade score; AI-text threshold is not validated",
-            )
-        else:
+        if not validated:
             return MemberVerdict(
                 member="threatfade",
                 vote=Vote.ABSTAIN,
                 confidence=0.0,
-                reasoning="Low network-derived score does not establish a safe AI interaction",
+                reasoning="AI-text calibration gate not satisfied; raw ThreatFade score is advisory only",
             )
+        if z_score >= 5.0:
+            return MemberVerdict(
+                member="threatfade",
+                vote=Vote.ALERT,
+                confidence=0.0,
+                reasoning="Calibrated ThreatFade AI-text threshold exceeded",
+            )
+        return MemberVerdict(
+            member="threatfade",
+            vote=Vote.ABSTAIN,
+            confidence=0.0,
+            reasoning="Low score is not evidence that the AI interaction is safe",
+        )
 
 
 # Module-level singleton

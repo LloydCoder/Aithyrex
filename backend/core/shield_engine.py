@@ -246,16 +246,24 @@ class ShieldEngine:
             try:
                 # Extract ThreatFade Z-score from results for 3rd vote
                 tf_z_score = None
+                tf_validated = False
                 for r in results:
-                    if r.detector in ("covert_channel", "c2_behaviour") and not r.details.get("degraded"):
+                    if (
+                        r.detector in ("covert_channel", "c2_behaviour")
+                        and not r.details.get("degraded")
+                        and r.details.get("confidence_calibrated") is True
+                        and not r.details.get("advisory_only", False)
+                    ):
                         observed_z = float(r.details.get("z_outlier", 0.0))
                         tf_z_score = observed_z if tf_z_score is None else max(tf_z_score, observed_z)
+                        tf_validated = True
 
                 parliament_verdict = await parliament.evaluate(
                     verdict=verdict,
                     prompt=prompt,
                     completion=completion,
                     threatfade_z_score=tf_z_score,
+                    threatfade_validated=tf_validated,
                 )
 
                 # Parliament is advisory: it may escalate, never downgrade a detector verdict.
@@ -339,41 +347,38 @@ class ShieldEngine:
         return verdict
 
     def _aggregate(self, results: list[DetectionResult]) -> ShieldVerdict:
-        """
-        Aggregate detector results into a single verdict.
-
-        Policy:
-          - Any CRITICAL → BLOCK
-          - Any HIGH → ALERT
-          - MEDIUM or lower → LOG
-        """
-        detections = [r for r in results if r.detected]
-
+        """Aggregate actionable detections; uncalibrated advisory signals never drive enforcement."""
+        detections = [result for result in results if result.detected]
         if not detections:
+            return ShieldVerdict(action=Action.PASS, severity=Severity.CLEAN, results=results)
+
+        severity_rank = {
+            Severity.CRITICAL: 5,
+            Severity.HIGH: 4,
+            Severity.MEDIUM: 3,
+            Severity.LOW: 2,
+            Severity.INFO: 1,
+            Severity.CLEAN: 0,
+        }
+        actionable = [
+            result for result in detections
+            if not result.details.get("advisory_only", False)
+        ]
+        if not actionable:
+            highest_advisory = max(detections, key=lambda result: severity_rank.get(result.severity, 0))
             return ShieldVerdict(
-                action=Action.PASS,
-                severity=Severity.CLEAN,
+                action=Action.LOG,
+                severity=highest_advisory.severity,
                 results=results,
+                blocked=False,
             )
 
-        # Severity priority — CRITICAL is highest, CLEAN is lowest
-        SEVERITY_RANK = {
-            Severity.CRITICAL: 5,
-            Severity.HIGH:     4,
-            Severity.MEDIUM:   3,
-            Severity.LOW:      2,
-            Severity.INFO:     1,
-            Severity.CLEAN:    0,
-        }
-
-        highest = max(detections, key=lambda r: SEVERITY_RANK.get(r.severity, 0))
-
+        highest = max(actionable, key=lambda result: severity_rank.get(result.severity, 0))
         action = Action.LOG
         if highest.severity == Severity.CRITICAL:
             action = Action.BLOCK
         elif highest.severity == Severity.HIGH:
             action = Action.ALERT
-
         return ShieldVerdict(
             action=action,
             severity=highest.severity,

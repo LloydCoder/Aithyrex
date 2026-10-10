@@ -99,6 +99,9 @@ class C2BehaviourDetector:
                 "rules_matched": tf_result.get("rules_matched"),
                 "degraded": False,
                 "confidence_calibrated": False,
+                "advisory_only": True,
+                "threatfade_ttp": mitre_ttp,
+                "mitre_attack": ["T1071.001", "T1095"],
             },
-            mitre_atlas=[mitre_ttp, "T1071.001", "T1095"],
+            mitre_atlas=["AML.T0043"],
         )

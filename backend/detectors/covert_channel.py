@@ -124,6 +124,8 @@ class CovertChannelDetector:
                 "threatfade_confidence": tf_confidence,
                 "degraded": bool(tf_result.get("degraded") or tf_result.get("fallback")),
                 "confidence_calibrated": False,
+                "advisory_only": True,
+                "mitre_attack": ["T1027"],
             },
-            mitre_atlas=["AML.T0048", "T1027"],
+            mitre_atlas=["AML.T0048"],
         )
