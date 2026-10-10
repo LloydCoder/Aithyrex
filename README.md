@@ -54,6 +54,10 @@ Every phase requires code changes where needed, automated tests, blocking CI, a 
 
 See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md) for the founding specification, phase-by-phase implementation and forensic audit record, known residual risks, and outstanding release gates.
 
+### Billing webhook safety
+
+See [Billing Webhook Security](docs/BILLING_WEBHOOK_SECURITY.md) for provider signature verification, transactional deduplication, stale-event ordering, and required database migrations. CI does not prove live provider configuration or production billing behavior.
+
 ### SDK and framework integrations
 
 See [SDK and Gateway Integration Contract](docs/SDK_GATEWAY_CONTRACT.md) for supported provider behavior, request trace correlation, fail-closed semantics, and explicitly unsupported paths. Framework callbacks are defense-in-depth, not an execution authorization boundary.
