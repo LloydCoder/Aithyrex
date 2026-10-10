@@ -520,13 +520,15 @@ The final branch head must pass unit/integration tests, Ruff, Bandit, Semgrep, f
 
 ### Phase 15 implementation and forensic acceptance
 
-**Implementation revision:** `1fc7e84cb3d2b4bd8c75f77436666f8aa1f96574`  
+**Reviewed implementation revision:** `e35247d95d52010ce75af3ad3eeb0bf3dd26fb72`  
 **Forensic audit:** [Phase 15 forensic audit](audits/PHASE_15_FORENSIC_AUDIT.md)  
-**CI on implementation revision:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767051 — success  
-**Security Scan on implementation revision:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767087 — success
+**Original implementation CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767051 — success  
+**Original implementation Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767087 — success  
+**CSV-hardening CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509266 — in progress at audit amendment time  
+**CSV-hardening Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509272 — success
 
-The final implementation revision passed the four CI jobs and both security jobs. The phase-specific forensic review verified server-side Enterprise entitlement, same-predicate tenant/event scoping, indistinguishable missing/cross-tenant 404s, database outage semantics, allow-listed content minimization, deterministic evidence digest, CSV formula mitigation, no-store headers, explicit non-submission fields and route/test coverage.
+The forensic review found an additional CSV formula-injection edge case: leading spaces could precede a spreadsheet formula marker. The sanitizer now checks the first non-whitespace character, and regression tests cover direct, whitespace-prefixed and tab-prefixed formulas. The implementation review also verified server-side Enterprise entitlement, same-predicate tenant/event scoping, indistinguishable missing/cross-tenant 404s, database outage semantics, allow-listed content minimization, deterministic evidence digest, no-store headers, explicit non-submission fields and route/test coverage.
 
-A documentation-only audit/ledger amendment is being validated separately on the PR head. Merge is permitted only after the latest documentation revision also has green CI and Security Scan, followed by post-merge workflow verification.
+The audit and ledger documentation have been amended after the code change. The current final PR head must pass fresh CI and Security Scan before merge, followed by post-merge workflow verification.
 
 **Phase 15 acceptance scope:** technical evidence exports only. The digest is not a signature or immutable-storage guarantee. The endpoint does not determine legal applicability, calculate statutory deadlines, submit a filing, or prove delivery. `/summary` remains 501. Phase 6's representative labeled AI-text effectiveness gate remains open and is not bypassed by this phase.
