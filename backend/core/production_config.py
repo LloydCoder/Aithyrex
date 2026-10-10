@@ -11,7 +11,6 @@ from urllib.parse import parse_qs, urlparse
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
-
 _DEFAULT_SECRETS = {"", "change-me", "password", "changeme", "secret", "aishield_dev", "dev-secret-change-in-production"}
 _LOCAL_HOSTS = {"localhost", "localhost.localdomain", "host.docker.internal"}
 
