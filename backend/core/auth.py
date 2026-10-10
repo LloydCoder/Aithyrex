@@ -98,6 +98,8 @@ async def get_current_tenant(
         if tenant.plan not in {"free", "starter", "pro", "enterprise"}:
             logger.error("invalid_server_side_tenant_plan", tenant_id=str(tenant.id))
             raise HTTPException(status_code=503, detail="Tenant entitlement state is invalid")
+        from backend.core.rate_limiter import rate_limiter
+        await rate_limiter.enforce(str(tenant.id))
         return TokenPayload(
             tenant_id=str(tenant.id),
             user_id=user_id,
