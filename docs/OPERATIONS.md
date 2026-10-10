@@ -47,6 +47,8 @@ Use an authorized database administration process to set the tenant's active fla
 
 The application validates production configuration at startup. This check validates configuration shape, not remote reachability, secret rotation, backup freshness, high availability, or deployment correctness.
 
+Database connection budget: `(DB_POOL_SIZE + DB_MAX_OVERFLOW) × API worker/process count` is the approximate maximum application pool capacity. Keep this below the database's connection limit with explicit headroom for migrations, administration, monitoring, and other services. Set pool timeout/recycle values for the deployment's proxy and database policy; do not increase pools without measuring saturation and database capacity.
+
 ## Proposed service objectives — not yet measured
 
 Use these as initial targets to validate with real traffic before treating them as contractual SLOs:
