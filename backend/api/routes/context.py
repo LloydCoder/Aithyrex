@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 import structlog
