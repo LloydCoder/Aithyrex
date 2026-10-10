@@ -43,7 +43,7 @@ class EventLogger:
         try:
             from backend.core.shield_engine import Severity
             from backend.models.database import AsyncSessionFactory
-            from backend.models.models import Alert, DetectionEvent
+            from backend.models.models import Alert, DeliveryOutbox, DetectionEvent
 
             event_id = uuid.uuid4()
 
