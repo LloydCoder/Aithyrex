@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
+from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 REQUIRED_SOURCES = ("prompt", "completion", "tool_output")
 LABELS = {"benign", "malicious"}
-ALLOWED_FIELDS = {"sample_id", "source", "label", "detected", "score", "z_outlier"}
+ALLOWED_FIELDS = {"sample_id", "source", "label", "detected", "score", "z_outlier", "risk_probability"}
 
 
 def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
@@ -47,11 +49,13 @@ def _validate_records(records: list[dict[str, Any]]) -> None:
             raise ValueError(f"Record {index} source must be one of {REQUIRED_SOURCES}")
         if not isinstance(record.get("detected"), bool):
             raise ValueError(f"Record {index} detected must be a boolean")
-        for field in ("score", "z_outlier"):
+        for field in ("score", "z_outlier", "risk_probability"):
             if field in record:
                 value = record[field]
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                     raise ValueError(f"Record {index} has invalid {field}")
+                if field == "risk_probability" and not 0.0 <= float(value) <= 1.0:
+                    raise ValueError(f"Record {index} risk_probability must be between 0 and 1")
 
 
 def _source_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -64,14 +68,50 @@ def _source_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     recall = tp / len(malicious) if malicious else None
     fpr = fp / len(benign) if benign else None
     precision = tp / (tp + fp) if tp + fp else 0.0
+
+    # Only an explicitly named probability field can be evaluated for calibration.
+    # ThreatFade's generic score/Z-score is not assumed to be a probability.
+    calibrated = [r for r in records if "risk_probability" in r]
+    calibration: dict[str, Any] = {"status": "not_evaluated", "sample_count": len(calibrated)}
+    if records and len(calibrated) == len(records):
+        probabilities = [float(r["risk_probability"]) for r in records]
+        outcomes = [1.0 if r["label"] == "malicious" else 0.0 for r in records]
+        brier = sum((p - y) ** 2 for p, y in zip(probabilities, outcomes, strict=True)) / len(records)
+        bins = 10
+        weighted_error = 0.0
+        bin_rows = []
+        for bin_index in range(bins):
+            lower = bin_index / bins
+            upper = (bin_index + 1) / bins
+            members = [
+                (p, y) for p, y in zip(probabilities, outcomes, strict=True)
+                if lower <= p < upper or (bin_index == bins - 1 and p == 1.0)
+            ]
+            if not members:
+                continue
+            mean_probability = sum(p for p, _ in members) / len(members)
+            observed_rate = sum(y for _, y in members) / len(members)
+            weighted_error += len(members) / len(records) * abs(mean_probability - observed_rate)
+            bin_rows.append({
+                "lower_bound": lower, "upper_bound": upper, "sample_count": len(members),
+                "mean_probability": mean_probability, "observed_positive_rate": observed_rate,
+            })
+        calibration = {
+            "status": "evaluated",
+            "sample_count": len(records),
+            "brier_score": brier,
+            "expected_calibration_error_10_bins": weighted_error,
+            "bins": bin_rows,
+        }
+
     return {
         "benign_samples": len(benign), "malicious_samples": len(malicious),
         "true_positive": tp, "false_negative": fn, "false_positive": fp, "true_negative": tn,
         "precision": precision, "recall": recall, "false_positive_rate": fpr,
         "recall_wilson_95": list(wilson_interval(tp, len(malicious))) if malicious else None,
         "false_positive_rate_wilson_95": list(wilson_interval(fp, len(benign))) if benign else None,
+        "calibration": calibration,
     }
-
 
 def evaluate_records(
     records: list[dict[str, Any]],
@@ -145,6 +185,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("corpus", type=Path, help="Labeled JSONL predictions; raw prompt/completion text is prohibited")
     parser.add_argument("--output", type=Path, help="Optional path for the metrics-only JSON report")
+    parser.add_argument("--baseline", type=Path, help="Optional baseline predictions on the exact same sample IDs")
+    parser.add_argument("--dataset-id", help="Stable, non-sensitive dataset identifier")
+    parser.add_argument("--dataset-version", help="Immutable dataset version or release identifier")
+    parser.add_argument("--labeling-method", help="Documented labeling protocol/version")
     parser.add_argument("--min-per-class-per-source", type=int, default=100)
     parser.add_argument("--max-fpr", type=float, default=0.05)
     parser.add_argument("--min-recall", type=float, default=0.90)
@@ -153,6 +197,63 @@ def main(argv: list[str] | None = None) -> int:
         records = load_jsonl(args.corpus)
         report = evaluate_records(records, min_per_class_per_source=args.min_per_class_per_source,
                                   max_false_positive_rate=args.max_fpr, min_recall=args.min_recall)
+        corpus_bytes = args.corpus.read_bytes()
+        report["provenance"] = {
+            "dataset_id": args.dataset_id or "unspecified",
+            "dataset_version": args.dataset_version or "unspecified",
+            "labeling_method": args.labeling_method or "unspecified",
+            "prediction_corpus_sha256": hashlib.sha256(corpus_bytes).hexdigest(),
+            "prediction_corpus_bytes": len(corpus_bytes),
+            "evaluated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "evaluator": "aithyrex.threatfade-ai-evaluation.v1",
+        }
+        baseline_complete = False
+        if args.baseline:
+            baseline_records = load_jsonl(args.baseline)
+            _validate_records(baseline_records)
+            current = {r["sample_id"]: r for r in records}
+            baseline = {r["sample_id"]: r for r in baseline_records}
+            if set(current) != set(baseline):
+                raise ValueError("Baseline and candidate must contain identical sample IDs")
+            if any(current[key]["source"] != baseline[key]["source"] or current[key]["label"] != baseline[key]["label"] for key in current):
+                raise ValueError("Baseline and candidate labels/source must match for every sample")
+            baseline_complete = True
+            report["baseline"] = {
+                "prediction_corpus_sha256": hashlib.sha256(args.baseline.read_bytes()).hexdigest(),
+                "by_source": {
+                    source: _source_metrics([r for r in baseline_records if r["source"] == source])
+                    for source in REQUIRED_SOURCES
+                },
+            }
+            report["candidate_minus_baseline"] = {
+                source: {
+                    metric: report["by_source"][source][metric] - report["baseline"]["by_source"][source][metric]
+                    for metric in ("precision", "recall", "false_positive_rate")
+                    if report["by_source"][source][metric] is not None and report["baseline"]["by_source"][source][metric] is not None
+                }
+                for source in REQUIRED_SOURCES
+            }
+        else:
+            report["baseline"] = {"status": "not_provided"}
+        provenance_complete = all((args.dataset_id, args.dataset_version, args.labeling_method))
+        calibration_complete = all(
+            report["by_source"][source]["calibration"]["status"] == "evaluated"
+            for source in REQUIRED_SOURCES
+        )
+        missing_evidence = []
+        if not provenance_complete:
+            missing_evidence.append("dataset_id_version_and_labeling_method")
+        if not baseline_complete:
+            missing_evidence.append("same-sample_baseline")
+        if not calibration_complete:
+            missing_evidence.append("explicit_risk_probability_for_every_sample")
+        if report["status"] != "pass":
+            missing_evidence.append("statistical_thresholds_passed")
+        report["release_gate"] = {
+            "eligible": not missing_evidence,
+            "missing_evidence": missing_evidence,
+            "note": "Numeric pass is not release approval; an independent review and representative labeled corpus are still required.",
+        }
     except (OSError, ValueError) as exc:
         print(json.dumps({"status": "invalid_corpus", "error": str(exc)}), file=sys.stderr)
         return 2
