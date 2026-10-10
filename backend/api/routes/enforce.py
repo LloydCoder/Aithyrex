@@ -25,8 +25,8 @@ router = APIRouter()
 
 # ── Request schemas ───────────────────────────────────────────────────────────
 class BlockRequest(BaseModel):
-    target_type: str = Field(pattern=r"^(model|agent)$")
-    target_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
+    target_type: str = Field(pattern=r"^(model|agent)\Z")
+    target_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*\Z")
     reason: str = Field(default="", max_length=500)
     ttl_hours: int = Field(default=24, ge=1, le=720)
 
