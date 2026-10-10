@@ -739,3 +739,12 @@ class TestContextInspection:
         )
         assert response.status_code == 403
         assert response.json()["error_code"] == "platform_context_binding_mismatch"
+
+    def test_oversized_context_item_is_rejected_without_echoing_content(self, client):
+        payload = {
+            "agent_id": "agent-42", "context_id": "ctx-large",
+            "items": [{"source_type": "memory", "source_id": "memory-1", "content": "Z" * 20_001}],
+        }
+        response = client.post("/api/v1/detect/context", json=payload)
+        assert response.status_code == 422
+        assert "Z" * 100 not in response.text
