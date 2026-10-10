@@ -43,7 +43,7 @@ Missing assertion returns 401; signed sequence mismatch returns 403; invalid/ove
 ## Known limitations
 
 - This is caller-supplied sequence analysis, not a persistent event stream or cross-request state store.
-- No durable replay deduplication, cross-agent graph correlation, or production Platform wiring is claimed.
+- Signed sequence assertions use the atomic tenant/contract-scoped Redis replay guard. Replays return HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Retrying after assertion consumption requires a fresh assertion. Cross-agent graph correlation and production Platform wiring are not claimed.
 - Event truth and source authorization depend on the trusted Platform assertion issuer.
 - Correlation rules are not empirically calibrated; false positives and false negatives are expected until evaluated against a labeled, representative corpus.
 - Correlation output never authorizes or blocks an action.
