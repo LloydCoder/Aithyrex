@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
-_DEFAULT_SECRETS = {"", "change-me", "password", "changeme", "secret", "aishield_dev", "dev-secret-change-in-production"}
+_DEFAULT_SECRETS = {"", "change-me", "replace-me", "password", "changeme", "secret", "test-key", "example", "your-api-key", "aishield_dev", "dev-secret-change-in-production"}
 _LOCAL_HOSTS = {"localhost", "localhost.localdomain", "host.docker.internal"}
 
 
@@ -54,8 +54,17 @@ def production_configuration_errors(settings) -> list[str]:
         or issuer.password
     ):
         errors.append("CLERK_JWT_ISSUER (remote HTTPS issuer URL required)")
-    if not getattr(settings, "CLERK_AUTHORIZED_PARTIES", None):
-        errors.append("CLERK_AUTHORIZED_PARTIES (explicit allow-list required)")
+    authorized_parties = list(getattr(settings, "CLERK_AUTHORIZED_PARTIES", []) or [])
+    if not authorized_parties or any(
+        urlparse(str(party)).scheme != "https"
+        or not urlparse(str(party)).hostname
+        or _is_local_host(urlparse(str(party)).hostname)
+        or "*" in (urlparse(str(party)).hostname or "")
+        or urlparse(str(party)).username
+        or urlparse(str(party)).password
+        for party in authorized_parties
+    ):
+        errors.append("CLERK_AUTHORIZED_PARTIES (explicit remote HTTPS allow-list required)")
 
     threatfade = urlparse(str(getattr(settings, "THREATFADE_API_URL", "") or ""))
     if (
@@ -95,8 +104,13 @@ def production_configuration_errors(settings) -> list[str]:
         errors.append("REDIS_URL (remote TLS Redis endpoint with non-default authentication required)")
 
     hosts = list(getattr(settings, "ALLOWED_HOSTS", []) or [])
-    if not hosts or any(not str(host).strip() or "*" in str(host) for host in hosts):
-        errors.append("ALLOWED_HOSTS (explicit host allow-list required)")
+    if not hosts or any(
+        not str(host).strip()
+        or "*" in str(host)
+        or _is_local_host(urlparse("//" + str(host).lstrip(".")).hostname)
+        for host in hosts
+    ):
+        errors.append("ALLOWED_HOSTS (explicit remote host allow-list required)")
 
     origins = list(getattr(settings, "ALLOWED_ORIGINS", []) or [])
     if not origins or any(
@@ -104,6 +118,7 @@ def production_configuration_errors(settings) -> list[str]:
         or not urlparse(str(origin)).hostname
         or urlparse(str(origin)).username
         or urlparse(str(origin)).password
+        or _is_local_host(urlparse(str(origin)).hostname)
         or "*" in (urlparse(str(origin)).hostname or "")
         for origin in origins
     ):
