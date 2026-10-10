@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
-from backend.core.contracts import DetectorEvidenceV1, FindingV1
+from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
 from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVerdict
 
 router = APIRouter()
@@ -49,6 +49,24 @@ class DetectionResponse(BaseModel):
     inferences_used: int = 0
 
 
+class PromptDetectionResponse(BaseModel):
+    schema_version: Literal["aithyrex.detection-response.v1"] = "aithyrex.detection-response.v1"
+    trace_id: str
+    finding_id: str
+    degraded: bool = False
+    finding: FindingV1
+    action: str
+    blocked: bool
+    severity: str
+    tenant_id: str
+
+
+class AgentDetectionResponse(PromptDetectionResponse):
+    agent_id: str
+    turns_analysed: int
+    detections: list[dict]
+
+
 def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> FindingV1:
     evidence = [
         DetectorEvidenceV1(
@@ -75,7 +93,15 @@ def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> Fin
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-@router.post("/llm", response_model=DetectionResponse)
+@router.post(
+    "/llm",
+    response_model=DetectionResponse,
+    responses={
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        429: {"model": APIErrorV1, "description": "Tenant rate limit exceeded"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_llm(
     req: LLMInspectRequest,
     request: Request,
@@ -118,7 +144,15 @@ async def detect_llm(
     )
 
 
-@router.post("/prompt")
+@router.post(
+    "/prompt",
+    response_model=PromptDetectionResponse,
+    responses={
+        403: {"model": APIErrorV1, "description": "Prompt blocked by detection policy"},
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_prompt(
     req: LLMInspectRequest,
     request: Request,
@@ -177,7 +211,14 @@ async def detect_prompt(
     }
 
 
-@router.post("/agent")
+@router.post(
+    "/agent",
+    response_model=AgentDetectionResponse,
+    responses={
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_agent(
     req: AgentInspectRequest,
     request: Request,
@@ -207,6 +248,7 @@ async def detect_agent(
         "finding": finding.model_dump(mode="json"),
         "degraded": finding.degraded,
         "agent_id": req.agent_id,
+        "tenant_id": tenant.tenant_id,
         "action": verdict.action,
         "severity": verdict.severity,
         "blocked": verdict.blocked,
