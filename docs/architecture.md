@@ -138,3 +138,12 @@ This endpoint is deliberately **not** an authorization or execution endpoint:
 - The response is always advisory (`action=log`, `blocked=false`, `authorization_performed=false`, `execution_performed=false`). The Platform must make and enforce its own decision.
 
 See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The contract is implemented and tested locally; live cross-repository integration, replay persistence and automated key rotation are not claimed.
+
+
+## Signed context provenance signal (Phase 9)
+
+Aithyrex exposes `POST /api/v1/detect/context` for a Platform-signed context bundle containing retrieved documents, tool output, memory, user input, or model output. The assertion binds the agent, context identifier, tenant, and SHA-256 of the canonical bundle, including each source identifier/type and content. Content and provenance metadata are bounded before scanning.
+
+The response carries source identifiers, source types, content hashes, and an explicit `trust_boundary=untrusted` marker. A signature establishes integrity and the signer's assertion; it does not make retrieved/tool/model content safe, prove that source access was authorized, or grant execution permission. The response is advisory-only and never authorizes or executes an action.
+
+The current phase scans the bundle as a whole and retains per-source hashes; it does not claim precise per-source detector attribution, a live Platform integration, or RAG retrieval authorization. The Platform remains responsible for access control, policy, approval, and governed execution. See [Context Provenance Contract](CONTEXT_PROVENANCE_CONTRACT.md).
