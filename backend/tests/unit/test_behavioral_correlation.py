@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 from backend.core.behavioral_correlation import BehaviorEvent, correlate_events
 
-
 BASE = datetime(2026, 10, 10, 10, 0, tzinfo=timezone.utc)
 
 
