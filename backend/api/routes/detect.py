@@ -5,18 +5,19 @@ POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
 POST /detect/agent    — analyse agentic AI communication stream
 
-All routes require Clerk auth. Plan extracted from JWT for tier enforcement.
+All routes require verified Clerk auth and server-side tenant entitlements.
 """
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
-from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
+from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
+from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVerdict
 
 router = APIRouter()
 engine = ShieldEngine()
@@ -35,6 +36,11 @@ class AgentInspectRequest(BaseModel):
 
 
 class DetectionResponse(BaseModel):
+    schema_version: Literal["aithyrex.detection-response.v1"] = "aithyrex.detection-response.v1"
+    trace_id: str
+    finding_id: str
+    degraded: bool = False
+    finding: FindingV1
     action: str
     severity: str
     blocked: bool
@@ -43,10 +49,62 @@ class DetectionResponse(BaseModel):
     inferences_used: int = 0
 
 
+class PromptDetectionResponse(BaseModel):
+    schema_version: Literal["aithyrex.detection-response.v1"] = "aithyrex.detection-response.v1"
+    trace_id: str
+    finding_id: str
+    degraded: bool = False
+    finding: FindingV1
+    action: str
+    blocked: bool
+    severity: str
+    tenant_id: str
+
+
+class AgentDetectionResponse(PromptDetectionResponse):
+    agent_id: str
+    turns_analysed: int
+    detections: list[dict]
+
+
+def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> FindingV1:
+    evidence = [
+        DetectorEvidenceV1(
+            detector=result.detector,
+            detected=result.detected,
+            severity=result.severity.value if hasattr(result.severity, "value") else str(result.severity),
+            confidence=result.confidence,
+            mitre_atlas=result.mitre_atlas,
+            details=result.details,
+        )
+        for result in verdict.results
+    ]
+    degraded = any(bool(result.details.get("degraded")) for result in verdict.results)
+    return FindingV1(
+        trace_id=trace_id,
+        tenant_id=tenant_id,
+        action=verdict.action.value if hasattr(verdict.action, "value") else str(verdict.action),
+        severity=verdict.severity.value if hasattr(verdict.severity, "value") else str(verdict.severity),
+        blocked=verdict.blocked,
+        degraded=degraded,
+        evidence=evidence,
+        provenance={"component": "aithyrex-api"},
+    )
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
-@router.post("/llm", response_model=DetectionResponse)
+@router.post(
+    "/llm",
+    response_model=DetectionResponse,
+    responses={
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        429: {"model": APIErrorV1, "description": "Tenant rate limit exceeded"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_llm(
     req: LLMInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
@@ -61,7 +119,12 @@ async def detect_llm(
         plan=tenant.plan,
     )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return DetectionResponse(
+        trace_id=request.state.trace_id,
+        finding_id=str(finding.finding_id),
+        degraded=finding.degraded,
+        finding=finding,
         action=verdict.action,
         severity=verdict.severity,
         blocked=verdict.blocked,
@@ -81,9 +144,18 @@ async def detect_llm(
     )
 
 
-@router.post("/prompt")
+@router.post(
+    "/prompt",
+    response_model=PromptDetectionResponse,
+    responses={
+        403: {"model": APIErrorV1, "description": "Prompt blocked by detection policy"},
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_prompt(
     req: LLMInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
@@ -97,9 +169,10 @@ async def detect_prompt(
         plan=tenant.plan,
     )
 
-    # Pre-flight: block on any detection (ALERT or BLOCK)
-    # This is stricter than /detect/llm which only hard-blocks on CRITICAL
-    from backend.core.shield_engine import Severity
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
+
+    # Pre-flight: block on any detection (ALERT or BLOCK).
+    # This is stricter than /detect/llm, which preserves the detector action.
     should_block = (
         verdict.blocked or
         verdict.action == Action.ALERT or
@@ -116,26 +189,44 @@ async def detect_prompt(
                 "detectors_fired": [
                     r.detector for r in verdict.results if r.detected
                 ],
+                "error_code": "detection_blocked",
                 "message": "Aithyrex blocked this prompt.",
+                "trace_id": request.state.trace_id,
+                "finding_id": str(finding.finding_id),
+                "finding": finding.model_dump(mode="json"),
             },
         )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return {
+        "schema_version": "aithyrex.detection-response.v1",
+        "trace_id": request.state.trace_id,
+        "finding_id": str(finding.finding_id),
+        "finding": finding.model_dump(mode="json"),
+        "degraded": finding.degraded,
+        "action": verdict.action,
         "blocked": False,
         "severity": verdict.severity,
         "tenant_id": tenant.tenant_id,
     }
 
 
-@router.post("/agent")
+@router.post(
+    "/agent",
+    response_model=AgentDetectionResponse,
+    responses={
+        422: {"model": APIErrorV1, "description": "Invalid request"},
+        503: {"model": APIErrorV1, "description": "Required dependency unavailable"},
+    },
+)
 async def detect_agent(
     req: AgentInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
-    Analyse a full agentic AI message stream.
-    Inspects each turn for injection and C2 indicators.
-    Sprint 2: full per-turn inspection.
+    Analyze supported string content from an agent message list.
+    This does not mediate tool calls, MCP operations, or per-turn side effects.
     """
     # Sprint 1 — inspect the concatenated conversation
     full_text = " ".join(
@@ -149,8 +240,15 @@ async def detect_agent(
         plan=tenant.plan,
     )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return {
+        "schema_version": "aithyrex.detection-response.v1",
+        "trace_id": request.state.trace_id,
+        "finding_id": str(finding.finding_id),
+        "finding": finding.model_dump(mode="json"),
+        "degraded": finding.degraded,
         "agent_id": req.agent_id,
+        "tenant_id": tenant.tenant_id,
         "action": verdict.action,
         "severity": verdict.severity,
         "blocked": verdict.blocked,

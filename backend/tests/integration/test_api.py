@@ -156,6 +156,8 @@ class TestDetectPrompt:
         assert resp.status_code == 403
         detail = resp.json()["detail"]
         assert detail["blocked"] is True
+        assert detail["finding"]["schema_version"] == "aithyrex.finding.v1"
+        assert detail["finding"]["trace_id"] == resp.json()["trace_id"]
 
     def test_injection_detail_has_detectors(self, client):
         resp = client.post(
@@ -355,3 +357,79 @@ class TestDetectAgent:
             headers=AUTH_HEADER,
         )
         assert resp.status_code == 200
+
+
+
+def test_detection_response_has_versioned_finding_and_trace_id(client):
+    request_id = "12345678-1234-4234-8234-123456789abc"
+    response = client.post(
+        "/api/v1/detect/llm",
+        json={"prompt": "What is the capital of France?"},
+        headers={**AUTH_HEADER, "X-Request-ID": request_id},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "aithyrex.detection-response.v1"
+    assert body["trace_id"] == request_id
+    assert response.headers["X-Request-ID"] == request_id
+    assert body["finding_id"] == body["finding"]["finding_id"]
+    assert body["finding"]["schema_version"] == "aithyrex.finding.v1"
+    assert body["finding"]["trace_id"] == request_id
+    assert body["finding"]["tenant_id"] == body["tenant_id"]
+
+
+def test_invalid_request_id_is_replaced_with_uuid(client):
+    from uuid import UUID
+
+    response = client.get("/health", headers={"X-Request-ID": "not-a-uuid"})
+    assert response.status_code == 200
+    UUID(response.headers["X-Request-ID"])
+
+
+def test_validation_error_contract_does_not_echo_prompt(client):
+    secret_marker = "DO_NOT_ECHO_THIS_PROMPT"
+    response = client.post(
+        "/api/v1/detect/llm",
+        json={"prompt": secret_marker * 6_000},
+        headers=AUTH_HEADER,
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["schema_version"] == "aithyrex.error.v1"
+    assert body["error_code"] == "validation_error"
+    assert secret_marker not in response.text
+    assert "input" not in response.text
+    assert response.headers["X-Request-ID"] == body["trace_id"]
+
+
+def test_http_error_contract_preserves_legacy_detail_and_trace_id(client):
+    response = client.post(
+        "/api/v1/detect/llm",
+        json={"prompt": "hello"},
+    )
+    assert response.status_code in (401, 403)
+    body = response.json()
+    assert body["schema_version"] == "aithyrex.error.v1"
+    assert body["detail"] == "Missing authorization token"
+    assert response.headers["X-Request-ID"] == body["trace_id"]
+
+
+def test_unknown_route_uses_versioned_error_contract(client):
+    response = client.get("/route-that-does-not-exist")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["schema_version"] == "aithyrex.error.v1"
+    assert body["error_code"] == "http_404"
+    assert body["detail"] == "Not Found"
+    assert response.headers["X-Request-ID"] == body["trace_id"]
+
+
+def test_openapi_publishes_versioned_detection_and_error_contracts():
+    from backend.main import app
+
+    spec = app.openapi()
+    prompt_response = spec["paths"]["/api/v1/detect/prompt"]["post"]["responses"]["200"]
+    agent_response = spec["paths"]["/api/v1/detect/agent"]["post"]["responses"]["200"]
+    assert prompt_response["content"]["application/json"]["schema"]["$ref"].endswith("/PromptDetectionResponse")
+    assert agent_response["content"]["application/json"]["schema"]["$ref"].endswith("/AgentDetectionResponse")
+    assert "APIErrorV1" in spec["components"]["schemas"]
