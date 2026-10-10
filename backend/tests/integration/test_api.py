@@ -582,6 +582,20 @@ class TestDetectAgentAction:
         assert body["finding"]["action"] == "log"
         assert body["finding"]["blocked"] is False
 
+    def test_replayed_action_assertion_is_rejected(self, client, monkeypatch):
+        payload = {
+            "agent_id": "agent-42", "action_id": "action-replay", "tool_name": "send_email",
+            "arguments": {"to": "person@example.com"}, "context": "draft review",
+        }
+        assertion = _signed_platform_action_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Action-Assertion": assertion}
+        first = client.post("/api/v1/detect/action", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/action", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
+
     def test_usage_limit_rejects_inspection_without_authorizing_action(self, client, monkeypatch):
         payload = {
             "agent_id": "agent-42", "action_id": "action-quota", "tool_name": "send_email",
@@ -746,6 +760,17 @@ class TestContextInspection:
         assert body["finding"]["blocked"] is False
         assert "Ignore all previous instructions" not in response.text
 
+    def test_replayed_context_assertion_is_rejected(self, client, monkeypatch):
+        payload = self._payload()
+        assertion = _signed_platform_context_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Context-Assertion": assertion}
+        first = client.post("/api/v1/detect/context", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/context", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
+
     def test_context_tampering_is_rejected(self, client, monkeypatch):
         payload = self._payload()
         assertion = _signed_platform_context_assertion(monkeypatch, payload)
@@ -852,6 +877,17 @@ class TestBehavioralSequenceAPI:
         assert body["authorization_performed"] is False
         assert body["execution_performed"] is False
         assert body["finding"]["blocked"] is False
+
+    def test_replayed_sequence_assertion_is_rejected(self, client, monkeypatch):
+        payload = _sequence_payload()
+        assertion = _signed_platform_sequence_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Sequence-Assertion": assertion}
+        first = client.post("/api/v1/detect/sequence", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/sequence", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
 
     def test_sequence_tampering_is_rejected(self, client, monkeypatch):
         payload = _sequence_payload()
