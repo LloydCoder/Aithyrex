@@ -793,7 +793,7 @@ def _signed_platform_sequence_assertion(monkeypatch, payload):
 def _sequence_payload():
     from datetime import datetime, timedelta, timezone
 
-    start = datetime.now(timezone.utc).replace(microsecond=0)
+    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(minutes=2)
     return {
         "agent_id": "agent-42",
         "sequence_id": "sequence-integration-1",
