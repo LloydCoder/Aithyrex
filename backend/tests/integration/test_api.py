@@ -408,5 +408,5 @@ def test_http_error_contract_preserves_legacy_detail_and_trace_id(client):
     assert response.status_code in (401, 403)
     body = response.json()
     assert body["schema_version"] == "aithyrex.error.v1"
-    assert body["detail"] == "Not authenticated"
+    assert body["detail"] == "Missing authorization token"
     assert response.headers["X-Request-ID"] == body["trace_id"]
