@@ -61,7 +61,11 @@ class BlockModeService:
         if not redis:
             return False
         key = f"shield:block:model:{tenant_id}:{model_id}"
-        await redis.setex(key, ttl, reason or "1")
+        try:
+            await redis.setex(key, ttl, reason or "1")
+        except Exception as exc:
+            logger.error("model_block_write_failed", tenant_id=tenant_id, error_type=type(exc).__name__)
+            return False
         logger.warning("model_blocked", tenant_id=tenant_id, model_id=model_id, ttl=ttl)
         return True
 
@@ -76,7 +80,11 @@ class BlockModeService:
         if not redis:
             return False
         key = f"shield:block:agent:{tenant_id}:{agent_id}"
-        await redis.setex(key, ttl, reason or "1")
+        try:
+            await redis.setex(key, ttl, reason or "1")
+        except Exception as exc:
+            logger.error("agent_block_write_failed", tenant_id=tenant_id, error_type=type(exc).__name__)
+            return False
         logger.warning("agent_blocked", tenant_id=tenant_id, agent_id=agent_id, ttl=ttl)
         return True
 
@@ -85,7 +93,11 @@ class BlockModeService:
         if not redis:
             return False
         key = f"shield:block:model:{tenant_id}:{model_id}"
-        await redis.delete(key)
+        try:
+            await redis.delete(key)
+        except Exception as exc:
+            logger.error("model_unblock_failed", tenant_id=tenant_id, error_type=type(exc).__name__)
+            return False
         logger.info("model_unblocked", tenant_id=tenant_id, model_id=model_id)
         return True
 
@@ -94,7 +106,11 @@ class BlockModeService:
         if not redis:
             return False
         key = f"shield:block:agent:{tenant_id}:{agent_id}"
-        await redis.delete(key)
+        try:
+            await redis.delete(key)
+        except Exception as exc:
+            logger.error("agent_unblock_failed", tenant_id=tenant_id, error_type=type(exc).__name__)
+            return False
         return True
 
     # ── Allow operations ──────────────────────────────────────────────────────
@@ -152,12 +168,16 @@ class BlockModeService:
         tenant_id: str,
         model_id: str,
     ) -> bool:
-        """Check if model is on allowlist — bypasses detection."""
+        """Legacy storage lookup only; enforcement must never use it to bypass detection."""
         redis = await self._get_redis()
         if not redis:
             return False
         key = f"shield:allow:{tenant_id}:{model_id}"
-        return bool(await redis.get(key))
+        try:
+            return bool(await redis.get(key))
+        except Exception as exc:
+            logger.error("legacy_allowlist_read_failed", tenant_id=tenant_id, error_type=type(exc).__name__)
+            return False
 
     async def list_blocked(self, tenant_id: str) -> list[dict]:
         """List all blocked models and agents for a tenant."""
