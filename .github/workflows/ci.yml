@@ -68,10 +68,7 @@ jobs:
       - name: Bandit SAST scan
         run: bandit -r backend/ -ll -x backend/tests/
       - name: Ruff lint (blocking)
-        run: |
-          ruff check --fix backend/ || true
-          git diff -- backend/core/production_config.py backend/tests/unit/test_production_config.py
-          ruff check backend/
+        run: ruff check backend/
       - name: Semgrep scan
         run: semgrep --config=auto backend/ --error
 
