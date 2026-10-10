@@ -471,4 +471,29 @@ This phase proves receiver-side behavior and a versioned contract manifest, not 
 **Phase 13 implementation and CI acceptance: passed for receiver-side conformance.** This does not claim a live Tinlance Agent Platform deployment, production Redis HA/persistence, automated key rotation, end-to-end executor mediation, or independent certification. These remain explicit external gates.
 
 
+## 18. Phase 14 AI security evaluation and red-team regression
+
+**Branch:** `godmode/phase-14-red-team-evaluation`  
+**Methodology:** [Red-Team Evaluation](RED_TEAM_EVALUATION.md)  
+**Dataset manifest:** [red_team_v1.manifest.json](../backend/evaluation/datasets/red_team_v1.manifest.json)
+
+### Scope
+
+- Add an offline, synthetic-only adversarial corpus covering direct/encoded/Unicode prompt injection, safety overrides, RAG and tool-output injection, prompt extraction, context overflow, and fake credential-shaped values.
+- Add a deterministic evaluator for prompt-injection, credential-leak and data-poisoning detectors with overall, per-source and per-family metrics.
+- Hash the exact corpus, validate its schema and provenance, redact raw test text from reports, and fail the gate when expected detector assertions are missed or recall/FPR thresholds regress.
+- Keep ThreatFade-dependent covert-channel/C2 paths out of this offline gate because network-traffic metrics do not establish AI-text detection accuracy.
+- Explicitly prevent the suite from setting release approval or implying production detection calibration; document alignment with OWASP AISVS 1.0 and MITRE ATLAS.
+
+### Acceptance gates
+
+- The 32-case corpus runs offline with no provider credentials or external network calls.
+- Unit tests verify dataset schema, manifest consistency, content-free reports, threshold enforcement and the default regression gate.
+- CI and Security Scan are green on final branch head, followed by forensic review and post-merge verification.
+
+### Explicit limitations
+
+The suite is a deterministic regression layer, not an exhaustive adversarial benchmark, live-model red team, calibrated production evaluation, or independent certification. A representative labeled corpus, detector calibration, streaming/multimodal tests, framework/tool lifecycle tests and independent review remain separate gates.
+
+**Phase 14 status:** implementation is in progress until final-head CI, Security Scan and forensic review pass.
 
