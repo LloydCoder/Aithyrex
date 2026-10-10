@@ -111,3 +111,15 @@ def test_duplicate_gate_ids_block_release():
     report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
     assert report["ready"] is False
     assert any("duplicate gate id" in issue for issue in report["issues"])
+
+
+def test_cli_reports_current_manifest_as_blocked(monkeypatch, capsys):
+    import sys
+
+    from scripts.assurance.check_release_readiness import main
+
+    monkeypatch.setattr(sys, "argv", ["check_release_readiness.py", "--candidate-sha", VALID_SHA])
+    exit_code = main()
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Aithyrex release BLOCKED" in captured.out
