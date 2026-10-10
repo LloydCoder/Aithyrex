@@ -64,9 +64,26 @@ _EXTRACTION_PATTERNS: list[re.Pattern] = [
     ]
 ]
 
+# Stable rule IDs stay separate from the regex implementation and matched content.
+_RAG_RULE_IDS = [
+    "rag_attention_ai", "rag_note_to_ai", "rag_system_override",
+    "rag_ai_ignore_instruction", "rag_instructions_cancelled", "rag_new_task",
+    "rag_from_now_on", "rag_inject_marker", "rag_override_marker", "rag_html_ai_instruction",
+]
+_EXTRACTION_RULE_IDS = [
+    "extract_repeat_system_prompt", "extract_initial_original_prompt",
+    "extract_training_internal_data", "extract_training_data_query",
+    "extract_training_text_reproduction", "extract_recite_prompt",
+    "extract_show_system_prompt", "extract_confidential_instructions",
+    "extract_exact_instructions", "extract_copy_system_prompt",
+]
+_TOOL_RULE_IDS = [
+    "tool_result_instruction", "function_output_instruction",
+    "api_response_instruction", "search_result_instruction",
+]
+
 # Context overflow — repetition attacks
-_OVERFLOW_MIN_REPEAT = 8      # Repeated chunk seen this many times = suspicious
-_OVERFLOW_CHUNK_SIZE = 20     # Characters per chunk to check
+_OVERFLOW_CHUNK_SIZE = 20
 
 # Suspicious tool output injection markers
 _TOOL_INJECTION_PATTERNS: list[re.Pattern] = [
@@ -79,14 +96,14 @@ _TOOL_INJECTION_PATTERNS: list[re.Pattern] = [
 ]
 
 
-def _check_context_overflow(text: str) -> tuple[bool, str]:
+def _check_context_overflow(text: str) -> tuple[bool, int]:
     """
     Detect repetition-based context overflow attacks.
     Attackers flood the context with repeated content to push
     the system prompt out of the model's effective context window.
     """
     if len(text) < 500:
-        return False, ""
+        return False, 0
 
     # Sample chunks across the text and count repeats
     chunks: dict[str, int] = {}
@@ -97,10 +114,9 @@ def _check_context_overflow(text: str) -> tuple[bool, str]:
 
     max_repeats = max(chunks.values()) if chunks else 0
     if max_repeats >= _OVERFLOW_REPEAT_THRESHOLD:
-        repeated = max(chunks, key=lambda k: chunks[k])
-        return True, f"chunk repeated {max_repeats}x: '{repeated[:30]}...'"
+        return True, max_repeats
 
-    return False, ""
+    return False, max_repeats
 
 
 _OVERFLOW_REPEAT_THRESHOLD = 12
@@ -130,45 +146,39 @@ class DataPoisoningDetector:
         target = prompt + (" " + completion if completion else "")
 
         # ── Layer 1: RAG context poisoning ───────────────────────────────
-        for pattern in _RAG_POISON_PATTERNS:
-            match = pattern.search(target)
-            if match:
+        for rule_id, pattern in zip(_RAG_RULE_IDS, _RAG_POISON_PATTERNS, strict=True):
+            if pattern.search(target):
                 indicators.append({
                     "type": "rag_poisoning",
-                    "pattern": pattern.pattern[:60],
-                    "match": match.group(0)[:80],
+                    "rule_id": rule_id,
                     "severity": Severity.HIGH,
                 })
 
         # ── Layer 2: Training data extraction ────────────────────────────
-        for pattern in _EXTRACTION_PATTERNS:
-            match = pattern.search(prompt)   # Extraction attempts are in prompt
-            if match:
+        for rule_id, pattern in zip(_EXTRACTION_RULE_IDS, _EXTRACTION_PATTERNS, strict=True):
+            if pattern.search(prompt):   # Extraction attempts are in prompt
                 indicators.append({
                     "type": "training_extraction",
-                    "pattern": pattern.pattern[:60],
-                    "match": match.group(0)[:80],
+                    "rule_id": rule_id,
                     "severity": Severity.MEDIUM,
                 })
 
         # ── Layer 3: Context overflow ─────────────────────────────────────
-        overflowed, overflow_detail = _check_context_overflow(prompt)
+        overflowed, repeat_count = _check_context_overflow(prompt)
         if overflowed:
             indicators.append({
                 "type": "context_overflow",
-                "detail": overflow_detail,
+                "repeat_count": repeat_count,
                 "severity": Severity.HIGH,
             })
 
         # ── Layer 4: Tool output injection ────────────────────────────────
         if completion:
-            for pattern in _TOOL_INJECTION_PATTERNS:
-                match = pattern.search(completion)
-                if match:
+            for rule_id, pattern in zip(_TOOL_RULE_IDS, _TOOL_INJECTION_PATTERNS, strict=True):
+                if pattern.search(completion):
                     indicators.append({
                         "type": "tool_output_injection",
-                        "pattern": pattern.pattern[:60],
-                        "match": match.group(0)[:80],
+                        "rule_id": rule_id,
                         "severity": Severity.HIGH,
                     })
 
@@ -178,6 +188,7 @@ class DataPoisoningDetector:
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
+                details={"confidence_calibrated": False},
             )
 
         # Determine highest severity
@@ -188,8 +199,8 @@ class DataPoisoningDetector:
             Severity.MEDIUM
         )
 
-        # Confidence scales with indicator count
-        confidence = min(0.95, 0.45 + len(indicators) * 0.15)
+        # Rule counts are not calibrated probabilities.
+        confidence = 0.0
 
         logger.warning(
             "data_poisoning_detected",
@@ -206,6 +217,7 @@ class DataPoisoningDetector:
             details={
                 "indicators": indicators,
                 "count": len(indicators),
+                "confidence_calibrated": False,
             },
             mitre_atlas=["AML.T0020", "AML.T0040", "AML.T0051"],
         )
