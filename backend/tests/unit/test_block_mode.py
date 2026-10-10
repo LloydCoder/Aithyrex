@@ -132,3 +132,14 @@ async def test_list_blocked_preserves_colons_in_model_and_agent_ids(service, moc
     items = await service.list_blocked("tenant-1")
 
     assert {item["id"] for item in items} == {"provider:model:alpha", "agent:worker-1"}
+
+@pytest.mark.asyncio
+async def test_block_model_returns_false_when_redis_write_fails(service, mock_redis):
+    mock_redis.setex.side_effect = RuntimeError("redis write failed")
+    assert await service.block_model("tenant-1", "provider:model") is False
+
+
+@pytest.mark.asyncio
+async def test_unblock_model_returns_false_when_redis_delete_fails(service, mock_redis):
+    mock_redis.delete.side_effect = RuntimeError("redis delete failed")
+    assert await service.unblock_model("tenant-1", "provider:model") is False
