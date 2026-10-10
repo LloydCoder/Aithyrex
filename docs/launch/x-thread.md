@@ -53,4 +53,4 @@ Follow the engineering work: https://github.com/LloydCoder/Aithyrex
 
 Aithyrex (formerly AI Shield) | Tinlance Limited | Apache-2.0
 
-Publication remains blocked until the CI/security workflows, evaluation evidence and independent review are complete.
+CI and security workflows are currently green for the audited repository revision. Publication remains blocked until independent AI-text evaluation, independent security review, and the other release gates in docs/assurance/release-evidence.json are satisfied.

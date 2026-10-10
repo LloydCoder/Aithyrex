@@ -19,7 +19,7 @@ Aithyrex findings are signals, not authorization grants. Aithyrex must not creat
 
 ## Security and assurance status
 
-This repository is under active remediation. A capability is not production-ready merely because code or a test exists. Claims about detection accuracy, false-positive rates, standards coverage, uptime, automatic regulatory filing, and live integrations require reproducible evidence scoped to the tested dataset, environment, version, and date.
+The Phase 0–17 engineering implementation sequence is complete for its documented acceptance scope. This is not a production-readiness attestation: the release remains BLOCKED pending independent AI-text effectiveness evaluation, independent security review, controlled production deployment/rollback, backup/restore evidence, measured SLOs, and authorized legal/compliance review. A capability is not production-ready merely because code or a test exists. Claims about detection accuracy, false-positive rates, standards coverage, uptime, automatic regulatory filing, and live integrations require reproducible evidence scoped to the tested dataset, environment, version, and date.
 
 ThreatFade results obtained from network traffic must not be presented as validation of AI-text detection unless a separate, representative AI-traffic evaluation establishes that claim.
 
@@ -52,7 +52,7 @@ See [Release Readiness](docs/assurance/RELEASE_READINESS.md), [Threat Model](doc
 
 Every phase requires code changes where needed, automated tests, blocking CI, a forensic review of the resulting diff and test evidence, reconciled documentation, and an explicit acceptance decision. Green CI is necessary but not sufficient for release readiness.
 
-See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md) for the founding specification, known blockers, acceptance gates, and phased remediation record.
+See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md) for the founding specification, phase-by-phase implementation and forensic audit record, known residual risks, and outstanding release gates.
 
 ### SDK and framework integrations
 
