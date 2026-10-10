@@ -47,7 +47,7 @@ class UsageCounterService:
                 import redis.asyncio as aioredis
 
                 from backend.core.config import settings
-                self._redis = await aioredis.from_url(
+                self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
@@ -56,6 +56,18 @@ class UsageCounterService:
                 logger.error("redis_unavailable", error_type=type(e).__name__)
                 raise RuntimeError("usage counter unavailable") from e
         return self._redis
+
+    async def close(self) -> None:
+        """Close the Redis connection pool during application shutdown."""
+        redis = self._redis
+        self._redis = None
+        if redis is None:
+            return
+        close = getattr(redis, "aclose", None) or getattr(redis, "close", None)
+        if close is not None:
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
 
     def _key(self, tenant_id: str) -> str:
         now = datetime.now(timezone.utc)
