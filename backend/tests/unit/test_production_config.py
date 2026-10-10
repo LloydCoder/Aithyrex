@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -18,7 +16,7 @@ async def test_production_rejects_http_threatfade_and_missing_api_key(monkeypatc
         "THREATFADE_API_URL": "http://threatfade.internal",
         "THREATFADE_API_KEY": "",
         "APP_SECRET_KEY": "x" * 40,
-        "DATABASE_URL": "postgresql+asyncpg://user:strong-password@db.internal:5432/app?ssl=require",
+        "DATABASE_URL": "postgresql+asyncpg://user:secret123@db.internal:5432/app?ssl=require",
         "REDIS_URL": "rediss://redis.internal:6379/0",
         "ALLOWED_HOSTS": ["api.example.com"],
         "ALLOWED_ORIGINS": ["https://app.example.com"],
@@ -44,7 +42,7 @@ async def test_production_configuration_requires_trusted_hosts(monkeypatch):
         "THREATFADE_API_URL": "https://threatfade.internal",
         "THREATFADE_API_KEY": "test-key",
         "APP_SECRET_KEY": "x" * 40,
-        "DATABASE_URL": "postgresql+asyncpg://user:strong-password@db.internal:5432/app?ssl=require",
+        "DATABASE_URL": "postgresql+asyncpg://user:secret123@db.internal:5432/app?ssl=require",
         "REDIS_URL": "rediss://redis.internal:6379/0",
         "ALLOWED_HOSTS": ["*"],
         "ALLOWED_ORIGINS": ["https://app.example.com"],
