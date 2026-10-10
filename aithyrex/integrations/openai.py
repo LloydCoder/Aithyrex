@@ -5,7 +5,7 @@ Lightweight wrapper for the OpenAI SDK.
 Calls the Aithyrex API for each request — no local models.
 
 Usage:
-    from ai_shield.integrations.openai import wrap
+    from aithyrex.integrations.openai import wrap
     import openai
 
     client = wrap(openai.OpenAI(api_key="..."), api_key="your-shield-key")
