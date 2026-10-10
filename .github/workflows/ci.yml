@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: aithyrex-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Tests
