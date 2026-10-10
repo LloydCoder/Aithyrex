@@ -14,7 +14,7 @@ Evaluate a candidate from the repository root with:
 
     python scripts/assurance/check_release_readiness.py --manifest docs/assurance/release-evidence.json --candidate-sha "$GITHUB_SHA" --json
 
-The command also verifies that the supplied candidate SHA matches the checked-out Git HEAD and that each workflow evidence item names that same candidate SHA. The command exits non-zero while any release-blocking gate is unresolved. Do not run this as a blocking default CI step until the external evidence has been produced; CI tests the gate's fail-closed behavior instead. The current manifest intentionally remains blocked.
+The command also verifies that the supplied candidate SHA matches the checked-out Git HEAD, each workflow evidence item names that same candidate SHA, and external review/deployment/metrics artifacts carry the candidate SHA plus a SHA-256 digest. It validates manifest structure and references; it does not cryptographically verify reviewer signatures, inspect dataset quality, or independently prove that a deployment/restore occurred. Human review must verify artifact contents and signatures. The command exits non-zero while any release-blocking gate is unresolved. Do not run this as a blocking default CI step until the external evidence has been produced; CI tests the gate's fail-closed behavior instead. The current manifest intentionally remains blocked.
 
 ## Gate ownership and evidence
 
