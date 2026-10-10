@@ -54,3 +54,4 @@ async def test_production_configuration_requires_trusted_hosts(monkeypatch):
         async with lifespan(FastAPI()):
             pass
     assert "ALLOWED_HOSTS" in str(exc.value)
+    assert "OUTBOX_WORKER_ENABLED" in str(exc.value)
