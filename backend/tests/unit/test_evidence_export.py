@@ -87,6 +87,7 @@ def test_csv_export_neutralizes_formula_prefixes():
     event = sample_event(model='=HYPERLINK("https://attacker.invalid")')
     envelope = build_export_envelope(event, tenant_id="tenant-safe")
     csv_text = render_csv(envelope)
+    assert "HYPERLINK" not in csv_text
     assert _csv_safe('=HYPERLINK("https://attacker.invalid")').startswith("'=HYPERLINK")
     assert envelope["evidence"]["model"] is None
 

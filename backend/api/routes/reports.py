@@ -1,7 +1,9 @@
 """Tenant-scoped report endpoints and privacy-safe compliance evidence exports."""
 from __future__ import annotations
+
 from typing import Annotated, Literal
 from uuid import UUID
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
@@ -39,7 +41,12 @@ async def _export_evidence(event_id: str, export_format: ExportFormat, tenant: T
         raise HTTPException(status_code=503, detail="Tenant evidence scope unavailable") from None
 
     try:
-        from backend.compliance.evidence_export import build_export_envelope, render_csv, render_json, render_markdown
+        from backend.compliance.evidence_export import (
+            build_export_envelope,
+            render_csv,
+            render_json,
+            render_markdown,
+        )
         from backend.models.database import AsyncSessionFactory
         from backend.models.models import DetectionEvent
 
