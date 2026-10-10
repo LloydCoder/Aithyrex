@@ -59,8 +59,6 @@ def test_canonical_import_namespace_exports_client():
 async def test_successful_inspection_propagates_and_validates_request_id():
     from uuid import UUID
 
-    import httpx
-
     response = MagicMock()
     response.raise_for_status = MagicMock()
     response.headers = {}
@@ -91,7 +89,6 @@ async def test_successful_inspection_propagates_and_validates_request_id():
 
 @pytest.mark.asyncio
 async def test_trace_id_mismatch_fails_closed():
-    import httpx
     from uuid import uuid4
 
     request_id = str(uuid4())
