@@ -20,9 +20,9 @@ Harden production configuration validation, process/dependency health semantics,
 
 ## Implemented controls
 
-- Add a pure production configuration validator that parses URLs and validates actual scheme, host, credentials, TLS query parameters, trusted hosts, HTTPS origins, and durable outbox-worker configuration. Errors identify configuration variable names only and never echo secret values.
+- Add a production configuration validator that parses URLs and validates actual scheme, host, credentials, TLS query parameters, a parseable RSA Clerk JWT public key, trusted hosts, HTTPS origins, bounded SQLAlchemy pool settings, and durable outbox-worker configuration. Errors identify configuration variable names only and never echo secret values.
 - Add \`/health/live\` (process-only) and \`/health/ready\` (HTTP 503 when any required dependency is unhealthy), keep legacy \`/health\` response semantics for compatibility, bound each dependency probe, and remove Redis exception text.
-- Dispose the SQLAlchemy engine during shutdown and log outbox-worker shutdown failures without skipping remaining resource cleanup.
+- Dispose the SQLAlchemy engine during shutdown, make pool capacity/timeout/recycle settings configurable and bounded, log request duration/outcome, and log outbox-worker shutdown failures without skipping remaining resource cleanup.
 - Label Compose and \`.env.example\` as local-development-only, and add a container liveness healthcheck.
 - Expand the operations runbook with probe semantics, proposed-but-unmeasured SLOs, telemetry/privacy rules, alerts, key rotation, backup/restore, deployment/rollback, incident procedures, and explicit non-claims.
 - Add regression tests for URL parsing, loopback/default credentials, wildcard hosts, HTTPS origins, liveness/readiness semantics, probe timeouts, and health-error redaction.
