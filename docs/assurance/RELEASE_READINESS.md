@@ -8,11 +8,13 @@ This document distinguishes repository implementation evidence from external ass
 
 A release is eligible only when all release-blocking gates in release-evidence.json are marked passed, each gate has valid evidence, and the manifest's release_candidate_sha exactly matches the candidate commit SHA. No verbal assurance, green CI alone, or unverified URL may substitute for evidence.
 
+The committed release-evidence.json is a fail-closed template, not a candidate attestation. Do not set its SHA to the commit containing the same file; that would be self-referential. After the candidate SHA is frozen, create a separate protected evidence bundle outside the candidate tree from this template, populate the candidate SHA and evidence references, and evaluate that external manifest against the checked-out candidate. Preserve the bundle and its digest as release records. The template in the repository remains blocked until such a bundle exists.
+
 Evaluate a candidate from the repository root with:
 
     python scripts/assurance/check_release_readiness.py --manifest docs/assurance/release-evidence.json --candidate-sha "$GITHUB_SHA" --json
 
-The command exits non-zero while any release-blocking gate is unresolved. Do not run this as a blocking default CI step until the external evidence has been produced; CI tests the gate's fail-closed behavior instead. The current manifest intentionally remains blocked.
+The command also verifies that the supplied candidate SHA matches the checked-out Git HEAD and that each workflow evidence item names that same candidate SHA. The command exits non-zero while any release-blocking gate is unresolved. Do not run this as a blocking default CI step until the external evidence has been produced; CI tests the gate's fail-closed behavior instead. The current manifest intentionally remains blocked.
 
 ## Gate ownership and evidence
 
