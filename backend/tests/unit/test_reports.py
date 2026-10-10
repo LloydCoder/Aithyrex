@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
-from fastapi import HTTPException
 import pytest
+from fastapi import HTTPException
 
 from backend.api.routes.reports import (
     _export_evidence,

@@ -8,6 +8,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy import select
+
 from backend.core.auth import TokenPayload, get_current_tenant
 
 logger = structlog.get_logger(__name__)
