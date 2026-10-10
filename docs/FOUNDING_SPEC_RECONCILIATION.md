@@ -404,7 +404,7 @@ A documentation-only evidence amendment follows; the final PR head must pass fre
 - Keep missing configuration, insecure remote HTTP, transport failures, malformed responses, and trace-integrity failures in the blocked/degraded state.
 - Remove the legacy LlamaIndex observer's silent exception swallowing and remove the hard-coded former-product API hostname.
 - Route legacy LangChain/LlamaIndex import paths to canonical implementations. Disable legacy AutoGen/CrewAI wrappers that could silently continue after inspection errors and had no proven pre-side-effect coverage.
-- Add regression tests for request correlation, mismatched trace IDs, blocked OpenAI preflight preventing provider invocation, LlamaIndex retrieval extraction failures, and unsupported legacy adapters.
+- Add regression tests for request correlation, mismatched trace IDs, blocked OpenAI preflight preventing provider invocation, LlamaIndex retrieval extraction failures, concurrent-safe prompt/completion handling, and unsupported legacy adapters.
 - Define supported integration behavior and limitations without claiming provider-wide or MCP/tool-execution mediation.
 
 ### Acceptance evidence required
