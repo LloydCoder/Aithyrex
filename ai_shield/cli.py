@@ -115,7 +115,7 @@ def _cmd_inspect(args: list[str]) -> None:
     async def run():
         print("\nInspecting prompt...")
         verdict = await shield.inspect(prompt=prompt)
-        status = "BLOCKED" if verdict.blocked else "PASSED"
+        status = _result_status(verdict)
         print(f"  Result:   {status}")
         print(f"  Action:   {verdict.action.upper()}")
         print(f"  Severity: {verdict.severity.upper()}")
@@ -125,10 +125,23 @@ def _cmd_inspect(args: list[str]) -> None:
             print("  Detectors fired:")
             for detection in verdict.detections:
                 print(f"    {detection.detector} ({detection.severity}, {detection.confidence:.0%} confidence)")
-        if verdict.blocked:
+        if verdict.blocked or verdict.degraded or verdict.action in {"block", "alert"}:
             sys.exit(1)
 
     asyncio.run(run())
+
+
+def _result_status(verdict) -> str:
+    """Never label an alert or unavailable inspection as a successful pass."""
+    if verdict.degraded:
+        return "DEGRADED"
+    if verdict.blocked or verdict.action == "block":
+        return "BLOCKED"
+    if verdict.action == "alert":
+        return "ALERT"
+    if verdict.action == "log":
+        return "LOGGED"
+    return "PASSED"
 
 
 def _get_flag(args: list[str], flag: str) -> str:
