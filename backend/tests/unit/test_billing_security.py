@@ -309,3 +309,9 @@ async def test_paddle_webhook_stale_subscription_snapshot_is_ignored(monkeypatch
     assert result == {"status": "stale", "event": "subscription.updated"}
     assert current_event.status == "stale"
     update.assert_not_awaited()
+
+
+def test_paddle_event_key_rejects_non_string_event_id():
+    from backend.core.billing import derive_webhook_event_key
+
+    assert derive_webhook_event_key("paddle", b"{}", 123) is None
