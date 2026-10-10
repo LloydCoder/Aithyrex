@@ -104,9 +104,13 @@ def evaluate_release_readiness(
                     evidence_errors.append(f"evidence item {index + 1} must be a GitHub HTTPS URL")
             elif evidence_type == "repo_file":
                 relative_path = Path(reference)
+                root_resolved = repo_root.resolve()
+                resolved_path = (repo_root / relative_path).resolve()
                 if relative_path.is_absolute() or ".." in relative_path.parts:
                     evidence_errors.append(f"evidence path must stay inside the repository: {reference}")
-                elif not (repo_root / relative_path).is_file():
+                elif root_resolved not in resolved_path.parents:
+                    evidence_errors.append(f"evidence path resolves outside the repository: {reference}")
+                elif not resolved_path.is_file():
                     evidence_errors.append(f"evidence file does not exist: {reference}")
             elif not isinstance(evidence_type, str) or evidence_type not in {
                 "review",
