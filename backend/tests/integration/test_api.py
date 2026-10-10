@@ -567,6 +567,24 @@ class TestDetectAgentAction:
         assert body["finding"]["action"] == "log"
         assert body["finding"]["blocked"] is False
 
+    def test_usage_limit_rejects_inspection_without_authorizing_action(self, client, monkeypatch):
+        payload = {
+            "agent_id": "agent-42", "action_id": "action-quota", "tool_name": "send_email",
+            "arguments": {"to": "person@example.com"}, "context": "draft review",
+        }
+        assertion = _signed_platform_action_assertion(monkeypatch, payload)
+        with patch(
+            "backend.core.usage_counter.UsageCounterService.reserve_inference",
+            new=AsyncMock(return_value=(False, 500, 500)),
+        ):
+            response = client.post(
+                "/api/v1/detect/action",
+                json=payload,
+                headers={"X-Platform-Action-Assertion": assertion},
+            )
+        assert response.status_code == 429
+        assert "blocked" not in response.text
+
     def test_payload_tampering_does_not_match_signed_assertion(self, client, monkeypatch):
         signed_payload = {
             "agent_id": "agent-42", "action_id": "action-3", "tool_name": "send_email",
