@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "project": "Aithyrex",
+  "release_candidate_sha": null,
+  "release_policy": {
+    "mode": "fail_closed",
+    "all_release_blocking_gates_required": true,
+    "independent_review_required": true,
+    "production_deployment_evidence_required": true,
+    "ai_text_effectiveness_evaluation_required": true
+  },
+  "gates": [
+    {
+      "id": "BASELINE_CI",
+      "name": "Repository CI and packaging baseline",
+      "status": "passed",
+      "release_blocking": true,
+      "owner": "Engineering",
+      "acceptance_criteria": [
+        "Unit and integration tests pass",
+        "Static analysis and frontend build pass",
+        "Wheel contains backend entry point and critical modules",
+        "Docker image builds"
+      ],
+      "evidence": [
+        {
+          "type": "workflow",
+          "reference": "https://github.com/LloydCoder/Aithyrex/actions/runs/38035296042",
+          "commit_sha": "1184c95f93b16c1e6684bb35e320ab6a952fb411",
+          "note": "Historical main-branch baseline; rerun against the actual release candidate."
+        }
+      ]
+    },
+    {
+      "id": "BASELINE_SECURITY_SCAN",
+      "name": "Dependency and secret scanning baseline",
+      "status": "passed",
+      "release_blocking": true,
+      "owner": "Security Engineering",
+      "acceptance_criteria": [
+        "Dependency vulnerability audit passes",
+        "Secret scanning passes"
+      ],
+      "evidence": [
+        {
+          "type": "workflow",
+          "reference": "https://github.com/LloydCoder/Aithyrex/actions/runs/38035296044",
+          "commit_sha": "1184c95f93b16c1e6684bb35e320ab6a952fb411",
+          "note": "Historical main-branch baseline; rerun against the actual release candidate."
+        }
+      ]
+    },
+    {
+      "id": "INTERNAL_FORENSIC_AUDITS",
+      "name": "Phase implementation forensic audits",
+      "status": "passed",
+      "release_blocking": true,
+      "owner": "Engineering",
+      "acceptance_criteria": [
+        "Phase 15 and Phase 16 forensic audits are present and distinguish implementation evidence from external readiness"
+      ],
+      "evidence": [
+        {
+          "type": "repo_file",
+          "reference": "docs/audits/PHASE_15_FORENSIC_AUDIT.md"
+        },
+        {
+          "type": "repo_file",
+          "reference": "docs/audits/PHASE_16_FORENSIC_AUDIT.md"
+        }
+      ]
+    },
+    {
+      "id": "AI_TEXT_EFFECTIVENESS",
+      "name": "Representative, independently labeled AI-text effectiveness evaluation",
+      "status": "blocked",
+      "release_blocking": true,
+      "owner": "Security Engineering and Independent Evaluator",
+      "acceptance_criteria": [
+        "Versioned dataset manifest with SHA-256 hashes and documented collection/labeling methodology",
+        "Held-out evaluation data that is not used for detector tuning",
+        "Coverage for prompt injection, credential exfiltration, covert-channel behavior, AI-text C2-like behavior, data poisoning, and benign hard negatives",
+        "Results stratified by detector, model/provider, language, attack family, and benign/attack class",
+        "Precision, recall, false-positive rate, confidence intervals, sample sizes, and error analysis reported",
+        "Independent reviewer signs the evaluation report"
+      ],
+      "evidence": [],
+      "blocker": "No qualifying independently labeled AI-text evaluation corpus and report is recorded in the repository evidence ledger. Network/ThreatFade tests are not a substitute for AI-text validation."
+    },
+    {
+      "id": "INDEPENDENT_SECURITY_REVIEW",
+      "name": "Independent security assessment",
+      "status": "not_started",
+      "release_blocking": true,
+      "owner": "Independent Reviewer",
+      "acceptance_criteria": [
+        "Reviewer is independent of implementation and has declared conflicts of interest",
+        "Review covers threat model, authorization boundaries, fail-closed behavior, multi-tenant isolation, evidence integrity, detector evaluation, dependency and deployment controls",
+        "Findings have severity, reproduction evidence, owners, and verified closure or an explicitly accepted risk",
+        "Reviewer signs a final report tied to the release candidate SHA"
+      ],
+      "evidence": [],
+      "blocker": "No signed independent assessment tied to a release candidate SHA is recorded."
+    },
+    {
+      "id": "PRODUCTION_DEPLOYMENT",
+      "name": "Controlled production deployment and rollback drill",
+      "status": "not_started",
+      "release_blocking": true,
+      "owner": "Platform Operations",
+      "acceptance_criteria": [
+        "Immutable image digest and environment identity recorded",
+        "Production configuration and TLS checks pass",
+        "Two-tenant isolation smoke tests pass",
+        "Readiness, alert routing, outbox delivery, rollback and post-deploy verification are evidenced",
+        "No claim of deployment is based solely on CI"
+      ],
+      "evidence": [],
+      "blocker": "No production deployment attestation or rollback-drill evidence is recorded."
+    },
+    {
+      "id": "BACKUP_RESTORE_DRILL",
+      "name": "Database restore and recovery verification",
+      "status": "not_started",
+      "release_blocking": true,
+      "owner": "Platform Operations",
+      "acceptance_criteria": [
+        "Encrypted backup restored into an isolated environment",
+        "Migration state, tenant isolation, event/outbox integrity, and application startup verified",
+        "Measured RPO/RTO, recovery gaps, operator and timestamp recorded",
+        "Drill artifacts contain no raw prompts, completions, or secrets"
+      ],
+      "evidence": [],
+      "blocker": "No successful restore drill is evidenced."
+    },
+    {
+      "id": "SLO_MEASUREMENT",
+      "name": "Operational SLO measurement",
+      "status": "not_started",
+      "release_blocking": true,
+      "owner": "SRE",
+      "acceptance_criteria": [
+        "Metrics use a documented source, measurement window, exclusions and sample size",
+        "Availability, latency, dependency degradation, and outbox delivery are measured under representative traffic",
+        "Thresholds and alert response are reviewed before launch"
+      ],
+      "evidence": [],
+      "blocker": "The SLOs in docs/OPERATIONS.md are proposed targets, not observed production measurements."
+    },
+    {
+      "id": "REGULATORY_CLAIMS_REVIEW",
+      "name": "Review of regulatory and certification claims",
+      "status": "not_started",
+      "release_blocking": true,
+      "owner": "Legal/Compliance Owner",
+      "acceptance_criteria": [
+        "Applicability and product claims are reviewed by an authorized legal/compliance owner",
+        "Evidence exports are not described as regulator submissions or legal determinations",
+        "Any certification claim has current external evidence and defined scope"
+      ],
+      "evidence": [],
+      "blocker": "No legal/compliance approval tied to a release candidate is recorded."
+    }
+  ]
+}
