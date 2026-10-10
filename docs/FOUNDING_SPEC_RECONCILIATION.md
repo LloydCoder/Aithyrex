@@ -41,18 +41,20 @@ Security flow: observe → detect/correlate → submit a finding or recommendati
 | Dashboard and billing | `frontend/` and `backend/core/billing.py` | Demo data must be labeled; UI must not report unperformed exports/filings; provider signatures and entitlements must be authoritative.
 | Framework SDKs | `ai_shield/`, `integrations/` | Test sync/async/streaming, tool-call mediation, provider versions, error paths and pre-side-effect enforcement.
 
-## 4. Known blockers from baseline inspection
+## 4. Baseline blockers and disposition
 
-1. Previous CI run `37912754190` failed dependency installation because `numpy==2.1.1` conflicts with `langchain==0.2.16`, which requires NumPy <2 on Python 3.12.
-2. The same CI run failed Ruff with 68 findings (25 import-order, 24 unused-import, 1 redefinition, 3 f-string-without-placeholder, 1 multiple-import finding). These must be fixed rather than silently treated as clean.
-3. Previous security run `37912754282` failed dependency audit before producing a vulnerability assessment because dependency resolution failed.
-4. The previous TruffleHog invocation used identical base/head commits and therefore scanned no commit range. The scan configuration must distinguish PR/push ranges from full-history scans.
-5. Authentication previously accepted arbitrary bearer tokens when Clerk secret configuration was empty. The remediation branch replaces this with explicit JWT verification trust anchors and fail-closed behavior; production startup must require those settings.
-6. Parliament previously allowed consensus/override paths to downgrade detector verdicts. It is being constrained to advisory escalation only, with missing ThreatFade telemetry abstaining.
-7. ThreatFade outages previously returned a clean-shaped fallback. The remediation branch marks such responses degraded and blocks when required telemetry is unavailable.
-8. Redis usage failure previously returned zero usage, and model allowlisting bypassed all detection. Both behaviors are being removed or constrained.
-9. Billing previously accepted missing webhook secrets and used a non-Paddle-specific signature calculation. Signature validation and unknown-price behavior are being corrected.
-10. Background `asyncio.create_task()` delivery, dashboard demo behavior, WebSocket authentication, tenant isolation, SDK pre-side-effect mediation, and durable evidence remain explicit later-phase audit targets.
+The baseline findings below were verified against the repository and CI evidence. Phase 0–4 changes address the listed code/CI blockers; the final acceptance gate is the current head's green workflow evidence in Section 6.
+
+1. **Dependency resolution:** the original NumPy 2.1.1 / LangChain 0.2.16 conflict was resolved by pinning NumPy 1.26.4. Dependency installation and the dependency vulnerability audit now pass.
+2. **Static analysis:** the original Ruff findings were fixed rather than ignored. Ruff is blocking in CI and currently passes; Bandit and Semgrep also pass.
+3. **Secret scanning:** the prior TruffleHog identical-base/head configuration is replaced with event-aware ranges for PR/push events and a full-history mode for scheduled/manual scans. The current secret scan passes.
+4. **Authentication and tenancy:** arbitrary-token fallback was removed. Clerk JWT signature/claim verification is explicit, active organization tenancy and server-side plan resolution are required, production configuration validates trust anchors and TLS-backed dependencies, and authenticated API calls use tenant-scoped Redis rate limiting.
+5. **Decision integrity:** Parliament is advisory. Existing BLOCK/CRITICAL decisions are immutable, ALLOW votes cannot erase detector findings, and missing/invalid votes or required ThreatFade telemetry do not prove safety.
+6. **Detector and dependency failures:** ThreatFade transport/schema failures are explicitly degraded. Detector exceptions and invalid detector results become high-severity degraded findings and fail closed. Block-state and usage-accounting outages fail closed; inference reservations use atomic Redis accounting.
+7. **Enforcement boundaries:** the model allowlist enforcement endpoint is disabled; block/unblock request identifiers, reasons and TTLs are bounded. Failed block-state writes are not reported as successful.
+8. **Billing:** absent webhook secrets/signatures are rejected, Paddle's timestamped signature format is verified, and unknown product/price identifiers cannot grant paid entitlements. Provider replay protection and durable idempotent processing remain later-phase work.
+9. **Frontend truthfulness:** synthetic dashboard metrics/alerts and simulated reporting actions were removed. Unimplemented live feeds, billing data, exports and filings are explicitly shown as unavailable rather than successful.
+10. **Explicit later-phase work:** durable outbox/retry/idempotency, service-to-service identity for product integrations, live tenant-scoped event publishing, persisted finding/report queries, and verified pre-side-effect mediation for tool/MCP/streaming paths are not claimed complete in Phase 0–4.
 
 ## 5. Phase sequence and acceptance gates
 
@@ -94,21 +96,46 @@ Each phase is completed only after code/tests/docs are reconciled, required work
 - **Phase 16 — Operations and deployment.** Production configuration validation, secrets rotation, observability, SLOs, incident runbooks, backups, recovery and tenant-safe dashboards. Acceptance: tested deployment/recovery evidence.
 - **Phase 17 — Independent assurance and controlled launch.** Full code/docs/workflow audit, threat model review, supply-chain evidence, release gates, rollback drill and accepted residual-risk register. Acceptance: independent phase audit and signed release decision.
 
-## 6. Current remediation branch status
+## 6. Phase 0–4 implementation and forensic verification
 
-Branch: `godmode/phase-00-04-hardening`.
+**Branch:** `godmode/phase-00-04-hardening`  
+**Verified implementation revision:** `c64f07309c05ac6c362378dc5745f01f70040155`  
+**CI workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022062023  
+**Security workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022061811
 
-Changes made so far on this branch:
-- Resolved the declared NumPy/LangChain version conflict by pinning NumPy 1.26.4.
-- Added PR scanning and event-specific/full-history TruffleHog range selection; pinned checkout/setup-python and TruffleHog actions to full SHAs.
-- Rewrote the repository README around canonical product boundaries and evidence-qualified claims.
-- Added explicit Clerk JWT verification trust anchors and removed the implicit arbitrary-token fallback; production startup checks are being added.
-- Marked ThreatFade outage responses as degraded; propagated degraded state into detectors.
-- Changed Parliament behavior toward abstention for missing ThreatFade telemetry and escalation-only decision integration.
-- Removed blanket allowlist detection bypass and made block-state/usage-accounting outages fail closed.
-- Replaced permissive webhook secret behavior and corrected Paddle timestamped signature verification; unknown Paddle prices map to Free.
+### Implemented in this phase
 
-These changes are not yet considered phase-complete until the full CI/security workflows run and their logs are inspected. This branch is not merged. Any finding in the current working diff can invalidate the stated status.
+- Reconciled the README, architecture contract, operator runbook, CLI/client language, and launch material with canonical Aithyrex naming and Tinlance boundaries.
+- Fixed the dependency conflict; made Ruff, Bandit, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend build, tests, Docker build, and secret/dependency scanning blocking checks.
+- Added Clerk JWT trust-anchor validation, active organization/tenant resolution, server-side entitlements, production startup gates, HTTPS ThreatFade requirements, and tenant-scoped atomic rate limiting.
+- Made Parliament advisory-only and protected deterministic BLOCK/CRITICAL decisions from downgrade; made detector exceptions, invalid detector output, required ThreatFade telemetry loss, Redis usage failures and block-state failures fail closed.
+- Added bounded inspection/enforcement inputs, atomic usage reservation, hardened webhook signatures and unknown-price handling, and explicit failure semantics for block-state writes.
+- Removed misleading dashboard demo data and made unsupported reporting/live-feed capabilities visibly unavailable.
+- Added regression coverage for authentication, rate limiting, production configuration, detector exceptions, Parliament integrity, billing signatures, enforcement bounds, block-state failures, and oversized requests.
+
+### Verification evidence
+
+The verified implementation revision passed all required jobs:
+
+- Unit tests: **179 passed**.
+- API integration tests: **28 passed**.
+- Bandit SAST: passed.
+- Ruff lint: passed.
+- Semgrep: passed.
+- Frontend dependency audit, TypeScript check, ESLint and production build: passed.
+- Docker image build: passed.
+- Dependency vulnerability audit: passed.
+- TruffleHog secret scan: passed.
+
+The CI run above reported all four CI jobs successful; the separate security workflow reported both jobs successful. The subsequent ledger-only update must also pass CI before this PR is merged.
+
+### Phase 0–4 forensic conclusion
+
+Phase 0–4 implementation and verification gates are satisfied for the scope stated here. This is **not** a claim that Phases 5–17 are complete, that all product integrations are live, that the system is deployed to production, or that the product is 100% secure.
+
+Residual risks intentionally remain for later phases: versioned finding/trace/provenance contracts; AI-specific ThreatFade statistical validation; broader threat-evaluation corpora; exact action binding and pre-side-effect Platform mediation; RAG/context lineage; multi-step behavior correlation; durable evidence delivery; provider/framework streaming coverage; cross-repository TSIC conformance; red-team evaluation; verified compliance exports; production deployment/recovery drills; and independent assurance.
+
+The branch is not merged at the time of this ledger revision. The PR must remain open until the documentation-updated head has green CI/security workflows and the phase audit is accepted.
 
 ## 7. Research baseline
 
