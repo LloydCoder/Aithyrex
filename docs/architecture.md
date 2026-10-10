@@ -147,3 +147,10 @@ Aithyrex exposes `POST /api/v1/detect/context` for a Platform-signed context bun
 The response carries source identifiers, source types, content hashes, and an explicit `trust_boundary=untrusted` marker. A signature establishes integrity and the signer's assertion; it does not make retrieved/tool/model content safe, prove that source access was authorized, or grant execution permission. The response is advisory-only and never authorizes or executes an action.
 
 The current phase scans the bundle as a whole and retains per-source hashes; it does not claim precise per-source detector attribution, a live Platform integration, or RAG retrieval authorization. The Platform remains responsible for access control, policy, approval, and governed execution. See [Context Provenance Contract](CONTEXT_PROVENANCE_CONTRACT.md).
+
+
+## Signed behavioral sequence correlation (Phase 10)
+
+Aithyrex exposes `POST /api/v1/detect/sequence` to analyze ordered event metadata supplied in a short-lived Platform-signed bundle. The deterministic rules correlate credential exposure, prompt injection, sensitive-data access, external-transfer requests, tool execution, and denied-action retries within bounded windows. The request is bounded to 100 events and a one-hour sequence window, and event timestamps and identities are validated.
+
+This is a bundle analyzer, not a durable event stream. It reports matched rule IDs, event IDs, elapsed time, and uncalibrated heuristic severity. It never blocks or authorizes an action; the Platform remains the only authorization/execution authority. Source truth depends on the trusted assertion issuer. See [Behavioral Correlation Contract](BEHAVIORAL_CORRELATION_CONTRACT.md).
