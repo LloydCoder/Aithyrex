@@ -13,8 +13,8 @@ from backend.api.routes.detect import _resolve_platform_tenant
 from backend.core.behavioral_correlation import BehaviorEvent, correlate_events
 from backend.core.contracts import DetectorEvidenceV1, FindingV1
 from backend.core.platform_sequence_auth import (
-    sequence_sha256,
     decode_platform_sequence_assertion,
+    sequence_sha256,
 )
 from backend.core.rate_limiter import rate_limiter
 from backend.core.usage_counter import usage_counter
