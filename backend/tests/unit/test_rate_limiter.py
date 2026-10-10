@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -14,6 +14,20 @@ class FakeRedis:
     async def eval(self, script, numkeys, key, limit):
         self.calls.append((numkeys, key, limit))
         return self.result
+
+
+@pytest.mark.asyncio
+async def test_redis_async_from_url_factory_is_not_awaited(monkeypatch):
+    limiter = RateLimiter()
+    fake_redis = FakeRedis([1, 1])
+    factory = MagicMock(return_value=fake_redis)
+    monkeypatch.setattr("redis.asyncio.from_url", factory)
+    monkeypatch.setattr("backend.core.rate_limiter.settings.REDIS_URL", "redis://test:6379/0")
+
+    assert await limiter._get_redis() is fake_redis
+    factory.assert_called_once_with(
+        "redis://test:6379/0", encoding="utf-8", decode_responses=True
+    )
 
 
 @pytest.mark.asyncio
