@@ -3,7 +3,6 @@ from fastapi import FastAPI
 
 from backend.main import lifespan
 
-
 TEST_RSA_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsk0lt+quNzDp4+1eKPU3
 J34J8H1czcXw3L5/v6h8Yfohhr7S4D4h3YalOK5hWug5/7M0DLSjrTtF6NI9zRn0
