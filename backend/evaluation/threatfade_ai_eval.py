@@ -189,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dataset-id", help="Stable, non-sensitive dataset identifier")
     parser.add_argument("--dataset-version", help="Immutable dataset version or release identifier")
     parser.add_argument("--labeling-method", help="Documented labeling protocol/version")
+    parser.add_argument("--labeler-agreement", type=float, help="Measured inter-labeler agreement in [0, 1]")
+    parser.add_argument("--independent-review-id", help="Reference to an independent review record")
     parser.add_argument("--min-per-class-per-source", type=int, default=100)
     parser.add_argument("--max-fpr", type=float, default=0.05)
     parser.add_argument("--min-recall", type=float, default=0.90)
@@ -198,10 +200,16 @@ def main(argv: list[str] | None = None) -> int:
         report = evaluate_records(records, min_per_class_per_source=args.min_per_class_per_source,
                                   max_false_positive_rate=args.max_fpr, min_recall=args.min_recall)
         corpus_bytes = args.corpus.read_bytes()
+        if args.labeler_agreement is not None and (
+            not math.isfinite(args.labeler_agreement) or not 0.0 <= args.labeler_agreement <= 1.0
+        ):
+            raise ValueError("labeler_agreement must be a finite number between 0 and 1")
         report["provenance"] = {
             "dataset_id": args.dataset_id or "unspecified",
             "dataset_version": args.dataset_version or "unspecified",
             "labeling_method": args.labeling_method or "unspecified",
+            "labeler_agreement": args.labeler_agreement,
+            "independent_review_id": args.independent_review_id or "not_provided",
             "prediction_corpus_sha256": hashlib.sha256(corpus_bytes).hexdigest(),
             "prediction_corpus_bytes": len(corpus_bytes),
             "evaluated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -236,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             report["baseline"] = {"status": "not_provided"}
         provenance_complete = all((args.dataset_id, args.dataset_version, args.labeling_method))
+        reviewer_evidence_complete = bool(args.independent_review_id) and args.labeler_agreement is not None
         calibration_complete = all(
             report["by_source"][source]["calibration"]["status"] == "evaluated"
             for source in REQUIRED_SOURCES
@@ -243,6 +252,8 @@ def main(argv: list[str] | None = None) -> int:
         missing_evidence = []
         if not provenance_complete:
             missing_evidence.append("dataset_id_version_and_labeling_method")
+        if not reviewer_evidence_complete:
+            missing_evidence.append("labeler_agreement_and_independent_review_reference")
         if not baseline_complete:
             missing_evidence.append("same-sample_baseline")
         if not calibration_complete:
@@ -250,9 +261,10 @@ def main(argv: list[str] | None = None) -> int:
         if report["status"] != "pass":
             missing_evidence.append("statistical_thresholds_passed")
         report["release_gate"] = {
-            "eligible": not missing_evidence,
+            "evidence_complete_for_independent_review": not missing_evidence,
             "missing_evidence": missing_evidence,
-            "note": "Numeric pass is not release approval; an independent review and representative labeled corpus are still required.",
+            "release_approved": False,
+            "note": "This evaluator cannot grant release approval. Caller-supplied provenance/review references are not independently verified.",
         }
     except (OSError, ValueError) as exc:
         print(json.dumps({"status": "invalid_corpus", "error": str(exc)}), file=sys.stderr)
