@@ -385,6 +385,7 @@ async def _resolve_platform_tenant(tenant_id: str):
         401: {"model": APIErrorV1, "description": "Missing or invalid Platform assertion"},
         403: {"model": APIErrorV1, "description": "Action payload does not match signed assertion"},
         422: {"model": APIErrorV1, "description": "Invalid action inspection request"},
+        429: {"model": APIErrorV1, "description": "Tenant rate or usage limit reached"},
         503: {"model": APIErrorV1, "description": "Platform assertion or tenant state unavailable"},
     },
 )
