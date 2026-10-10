@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ai_shield.integrations.openai import ShieldedOpenAI
 from ai_shield.integrations.llamaindex import AIShieldObserver
+from ai_shield.integrations.openai import ShieldedOpenAI
 
 
 def test_openai_preflight_block_prevents_provider_call():
