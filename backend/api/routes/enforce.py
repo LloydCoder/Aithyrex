@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.block_mode import block_mode
@@ -25,14 +25,14 @@ router = APIRouter()
 
 # ── Request schemas ───────────────────────────────────────────────────────────
 class BlockRequest(BaseModel):
-    target_type: str          # "model" | "agent"
-    target_id: str
-    reason: str = ""
-    ttl_hours: int = 24       # Block duration
+    target_type: str = Field(pattern=r"^(model|agent)$")
+    target_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
+    reason: str = Field(default="", max_length=500)
+    ttl_hours: int = Field(default=24, ge=1, le=720)
 
 
 class AllowRequest(BaseModel):
-    model_id: str
+    model_id: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
 
 
 # ── Plan gate ─────────────────────────────────────────────────────────────────
