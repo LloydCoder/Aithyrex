@@ -141,7 +141,7 @@ class DeliveryOutboxWorker:
             elif delivery_type == "nis2_dora_evaluate":
                 from backend.compliance.nis2_dora import nis2_dora
 
-                succeeded = await nis2_dora.evaluate(verdict, tenant_id, plan)
+                succeeded = await nis2_dora.evaluate(verdict, tenant_id, plan, event_id=str(event_id))
                 if succeeded is False:
                     raise RuntimeError("compliance_delivery_failed")
             else:
