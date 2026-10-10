@@ -1,5 +1,5 @@
-import pytest
 from fastapi import FastAPI
+import pytest
 
 from backend.main import lifespan
 
