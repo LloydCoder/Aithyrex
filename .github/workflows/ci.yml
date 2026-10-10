@@ -54,6 +54,29 @@ jobs:
           PY
       - name: Run integration tests
         run: pytest backend/tests/integration/ -v --tb=short
+      - name: Verify installable server wheel
+        shell: bash
+        run: |
+          WHEEL_DIR="$RUNNER_TEMP/aithyrex-wheel"
+          mkdir -p "$WHEEL_DIR"
+          python -m pip wheel --no-deps . --wheel-dir "$WHEEL_DIR"
+          python - "$WHEEL_DIR" <<'PY'
+          import sys
+          import zipfile
+          from pathlib import Path
+
+          wheel_dir = Path(sys.argv[1])
+          wheels = list(wheel_dir.glob("aithyrex-*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one Aithyrex wheel, found {len(wheels)}")
+          with zipfile.ZipFile(wheels[0]) as archive:
+              names = set(archive.namelist())
+          required = {"backend/main.py", "backend/api/routes/health.py", "backend/core/production_config.py"}
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit(f"Server wheel is missing required modules: {missing}")
+          print(f"Verified server modules in {wheels[0].name}")
+          PY
 
   security:
     name: Security and Static Analysis
