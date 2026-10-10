@@ -132,3 +132,39 @@ def test_workflow_evidence_for_another_commit_blocks_release():
     report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
     assert report["ready"] is False
     assert any("commit_sha does not match candidate SHA" in issue for issue in report["issues"])
+
+
+def test_cli_accepts_complete_external_manifest_for_checked_out_sha(tmp_path, monkeypatch, capsys):
+    import subprocess
+    import sys
+
+    from scripts.assurance.check_release_readiness import main
+
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    ).stdout.strip()
+    manifest = passing_manifest()
+    manifest["release_candidate_sha"] = head
+    manifest["gates"][0]["evidence"][0]["commit_sha"] = head
+    manifest_path = tmp_path / "release-evidence.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "check_release_readiness.py",
+            "--manifest",
+            str(manifest_path),
+            "--candidate-sha",
+            head,
+        ],
+    )
+
+    exit_code = main()
+    assert exit_code == 0
+    assert "release gates passed" in capsys.readouterr().out
