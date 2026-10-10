@@ -82,6 +82,8 @@ It intentionally has no `allowed`, `denied`, or `approved` result. A degraded de
 - Action/claim mismatch: HTTP 403.
 - Missing trust configuration or unavailable tenant state: HTTP 503.
 - Invalid/oversized body: HTTP 422.
+- Tenant rate limit or usage quota: HTTP 429. The endpoint applies the existing tenant-scoped Redis rate limiter and monthly usage counter before scanning.
+- Rate/usage state unavailable: HTTP 503; the endpoint does not silently become unlimited.
 - No action is executed by this endpoint, including on detection or error.
 - The current endpoint does not persist a replay cache. `jti` is returned for downstream deduplication; replaying an assertion can duplicate a signal but cannot execute or authorize an action here. Durable idempotency is a later evidence-pipeline requirement.
 - Key rotation is configuration-based; coordinated Platform/Aithyrex rotation is required. JWKS discovery/rotation automation is not claimed.
