@@ -159,6 +159,12 @@ async def request_context_middleware(request: Request, call_next):
     except (ValueError, TypeError, AttributeError):
         trace_id = str(uuid4())
     request.state.trace_id = trace_id
+    logger.info(
+        "http_request_started",
+        trace_id=trace_id,
+        method=request.method,
+        path=request.url.path,
+    )
     try:
         with bound_contextvars(trace_id=trace_id):
             response = await call_next(request)
@@ -176,6 +182,11 @@ async def request_context_middleware(request: Request, call_next):
         )
         response = JSONResponse(status_code=500, content=body.model_dump(mode="json"))
     response.headers["X-Request-ID"] = trace_id
+    logger.info(
+        "http_request_completed",
+        trace_id=trace_id,
+        status_code=response.status_code,
+    )
     return response
 
 
