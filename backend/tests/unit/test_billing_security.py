@@ -107,7 +107,7 @@ async def test_paddle_unknown_price_is_rejected_without_entitlement_update(monke
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
-    result = __import__("asyncio").run(BillingService().handle_paddle_event(
+    result = await BillingService().handle_paddle_event(
         "subscription.updated",
         {
             "custom_data": {"clerk_org_id": "org_1"},
@@ -115,7 +115,7 @@ async def test_paddle_unknown_price_is_rejected_without_entitlement_update(monke
             "status": "active",
             "items": [{"price": {"id": "unknown-price"}}],
         },
-    ))
+    )
     assert result == {"status": "rejected", "reason": "unknown_price_id"}
     update.assert_not_awaited()
 
@@ -125,7 +125,7 @@ async def test_paddle_ambiguous_multi_item_subscription_is_rejected(monkeypatch)
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
-    result = __import__("asyncio").run(BillingService().handle_paddle_event(
+    result = await BillingService().handle_paddle_event(
         "subscription.updated",
         {
             "custom_data": {"clerk_org_id": "org_1"},
@@ -133,7 +133,7 @@ async def test_paddle_ambiguous_multi_item_subscription_is_rejected(monkeypatch)
             "status": "active",
             "items": [{"price": {"id": "pro-id"}}, {"price": {"id": "enterprise-id"}}],
         },
-    ))
+    )
     assert result == {"status": "rejected", "reason": "ambiguous_subscription_items"}
     update.assert_not_awaited()
 
@@ -143,7 +143,7 @@ async def test_paddle_canceled_subscription_downgrades_to_free(monkeypatch):
     paddle_settings(monkeypatch)
     update = AsyncMock(return_value=True)
     monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
-    result = __import__("asyncio").run(BillingService().handle_paddle_event(
+    result = await BillingService().handle_paddle_event(
         "subscription.canceled",
         {"custom_data": {"clerk_org_id": "org_1"}, "customer_id": "cus_1"},
     ))
