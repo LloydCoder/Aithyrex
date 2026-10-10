@@ -187,7 +187,22 @@ def test_external_review_evidence_with_matching_candidate_sha_is_accepted():
             "type": "review",
             "reference": "review-report-123",
             "candidate_sha": VALID_SHA,
+            "sha256": "c" * 64,
         }
     ]
     report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
     assert report["ready"] is True
+
+
+def test_external_evidence_without_sha256_digest_is_rejected():
+    manifest = passing_manifest()
+    manifest["gates"][0]["evidence"] = [
+        {
+            "type": "review",
+            "reference": "review-report-123",
+            "candidate_sha": VALID_SHA,
+        }
+    ]
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("SHA-256 digest" in issue for issue in report["issues"])
