@@ -127,4 +127,4 @@ def test_out_of_order_sequence_is_rejected(client: TestClient):
     payload["events"].reverse()
     response = client.post("/api/v1/detect/sequence", json=payload)
     assert response.status_code == 422
-    assert "timestamp" in response.text.lower()
+    assert "ordered" in response.text.lower()
