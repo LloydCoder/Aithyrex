@@ -146,7 +146,7 @@ async def test_paddle_canceled_subscription_downgrades_to_free(monkeypatch):
     result = await BillingService().handle_paddle_event(
         "subscription.canceled",
         {"custom_data": {"clerk_org_id": "org_1"}, "customer_id": "cus_1"},
-    ))
+    )
     assert result["status"] == "ok"
     assert result["plan"] == "free"
     update.assert_awaited_once_with("org_1", "free", "cus_1", "paddle")
