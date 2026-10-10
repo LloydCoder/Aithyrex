@@ -10,12 +10,12 @@ All routes require verified Clerk auth and server-side tenant entitlements.
 
 from __future__ import annotations
 
-import json
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, model_validator
+import structlog
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
@@ -28,6 +28,7 @@ from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVer
 
 router = APIRouter()
 engine = ShieldEngine()
+logger = structlog.get_logger(__name__)
 
 
 # ── Request / Response schemas ────────────────────────────────────────────────
@@ -353,9 +354,7 @@ async def _resolve_platform_tenant(tenant_id: str):
             )
             tenant = result.scalar_one_or_none()
     except Exception as exc:
-        import structlog
-
-        structlog.get_logger(__name__).error(
+        logger.error(
             "platform_action_tenant_resolution_failed",
             error_type=type(exc).__name__,
         )
