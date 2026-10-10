@@ -137,7 +137,7 @@ This endpoint is deliberately **not** an authorization or execution endpoint:
 - Aithyrex detects prompt-injection, credential and related runtime threat indicators in the exact proposed payload.
 - The response is always advisory (`action=log`, `blocked=false`, `authorization_performed=false`, `execution_performed=false`). The Platform must make and enforce its own decision.
 
-See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The contract is implemented and tested locally; live cross-repository integration, replay persistence and automated key rotation are not claimed.
+See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The receiver contract is implemented and tested locally, including one-time Redis replay protection; live cross-repository integration and automated key rotation are not claimed.
 
 
 ## Signed context provenance signal (Phase 9)
@@ -162,11 +162,15 @@ Detection evidence, high/critical alert records, and SIEM/alert/compliance deliv
 
 Delivery is at-least-once, not exactly-once. If persistence fails, the response exposes degraded state. Production requires `OUTBOX_WORKER_ENABLED=true` and Alembic revision `002_durable_delivery_outbox`. See [Delivery Outbox Contract](DELIVERY_OUTBOX_CONTRACT.md).
 
-## 9. SDK and framework integration boundary
+## 10. SDK and framework integration boundary
 
 The Python SDK propagates a UUID X-Request-ID for each inspection and fails closed on invalid or mismatched response correlation identifiers. See [SDK and Gateway Integration Contract](SDK_GATEWAY_CONTRACT.md) for supported behavior and limitations.
 
 Provider wrappers can preflight supported text before an upstream call and inspect supported output before returning it. They do not authorize tool calls, execute actions, mediate all provider streaming, or prove that downstream tool side effects are prevented. LangChain and LlamaIndex callbacks/observers are defense-in-depth only; the LlamaIndex observer inspects prompt and completion events independently to avoid cross-request state contamination. The legacy AutoGen/CrewAI wrappers are explicitly unsupported and refuse construction rather than implying protection.
 
 For any actual tool/MCP operation, the Tinlance Agent Platform must enforce identity, policy, approval and authorization at the execution boundary. Aithyrex findings remain advisory signals.
+
+## 11. Signed Platform assertion replay protection
+
+The Platform-signed action, context and sequence receiver contracts consume each assertion JTI once through an atomic tenant/contract-scoped Redis replay guard. Duplicate assertions return HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Replay, block-state, rate-limit and usage-counter Redis clients are created using the synchronous from_url factory and closed on shutdown. See [TSIC Conformance](TSIC_CONFORMANCE.md) and the [contract manifest](../contracts/tsic/aithyrex-contracts.v1.json).
 

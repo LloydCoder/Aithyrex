@@ -38,12 +38,12 @@ These are explainable heuristics, not calibrated probabilities or verdicts of ma
 
 The response uses `aithyrex.behavioral-correlation.v1`, reports the analyzed event count and matched rules, and always declares `advisory_only=true`, `authorization_performed=false`, and `execution_performed=false`. The embedded finding uses `action=log` and `blocked=false`.
 
-Missing assertion returns 401; signed sequence mismatch returns 403; invalid/oversized/unordered sequences return 422; missing trust or unavailable tenant/capacity state returns 503; rate/usage limits return 429.
+Missing assertion returns 401; signed sequence mismatch returns 403; replayed assertions return 409; invalid/oversized/unordered sequences return 422; missing trust or unavailable tenant/capacity/replay state returns 503; rate/usage limits return 429.
 
 ## Known limitations
 
 - This is caller-supplied sequence analysis, not a persistent event stream or cross-request state store.
-- No durable replay deduplication, cross-agent graph correlation, or production Platform wiring is claimed.
+- Signed sequence assertions use the atomic tenant/contract-scoped Redis replay guard. Replays return HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Retrying after assertion consumption requires a fresh assertion. Cross-agent graph correlation and production Platform wiring are not claimed.
 - Event truth and source authorization depend on the trusted Platform assertion issuer.
 - Correlation rules are not empirically calibrated; false positives and false negatives are expected until evaluated against a labeled, representative corpus.
 - Correlation output never authorizes or blocks an action.

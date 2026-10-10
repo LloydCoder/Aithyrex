@@ -1,5 +1,5 @@
 """
-AI Shield — API Integration Tests
+Aithyrex — API Integration Tests
 ====================================
 Full HTTP-level tests using FastAPI TestClient.
 All external services mocked:
@@ -35,6 +35,17 @@ CLEAN_TF = {
 AUTH_HEADER = {"Authorization": "Bearer dev-token"}
 
 
+class FakeReplayRedis:
+    def __init__(self):
+        self.keys = set()
+
+    async def set(self, key, value, nx=False, ex=None):
+        if nx and key in self.keys:
+            return None
+        self.keys.add(key)
+        return "OK"
+
+
 @pytest.fixture(scope="module")
 def client():
     """
@@ -46,6 +57,7 @@ def client():
         plan="pro",
         is_active=True,
     )
+    fake_replay_redis = FakeReplayRedis()
 
     def fake_session_factory():
         session = MagicMock()
@@ -85,6 +97,9 @@ def client():
     ), patch(
         "backend.core.rate_limiter.RateLimiter.enforce",
         new=AsyncMock(return_value=None),
+    ), patch(
+        "backend.core.assertion_replay.assertion_replay_guard._get_redis",
+        new=AsyncMock(return_value=fake_replay_redis),
     ), patch(
         "backend.core.auth._verify_clerk_token",
         new=AsyncMock(return_value={
@@ -520,7 +535,7 @@ def _signed_platform_action_assertion(monkeypatch, payload):
         "iss": issuer,
         "aud": audience,
         "sub": payload["agent_id"],
-        "jti": "integration-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "action_id": payload["action_id"],
         "tool_name": payload["tool_name"],
@@ -566,6 +581,20 @@ class TestDetectAgentAction:
         assert body["execution_performed"] is False
         assert body["finding"]["action"] == "log"
         assert body["finding"]["blocked"] is False
+
+    def test_replayed_action_assertion_is_rejected(self, client, monkeypatch):
+        payload = {
+            "agent_id": "agent-42", "action_id": "action-replay", "tool_name": "send_email",
+            "arguments": {"to": "person@example.com"}, "context": "draft review",
+        }
+        assertion = _signed_platform_action_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Action-Assertion": assertion}
+        first = client.post("/api/v1/detect/action", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/action", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
 
     def test_usage_limit_rejects_inspection_without_authorizing_action(self, client, monkeypatch):
         payload = {
@@ -686,7 +715,7 @@ def _signed_platform_context_assertion(monkeypatch, payload):
     monkeypatch.setattr(settings, "PLATFORM_ACTION_JWT_AUDIENCE", audience)
     claims = {
         "iss": issuer, "aud": audience, "sub": payload["agent_id"],
-        "jti": "context-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "context_id": payload["context_id"],
         "context_bundle_sha256": context_bundle_sha256(
@@ -730,6 +759,17 @@ class TestContextInspection:
         assert all(source["trust_boundary"] == "untrusted" for source in body["sources"])
         assert body["finding"]["blocked"] is False
         assert "Ignore all previous instructions" not in response.text
+
+    def test_replayed_context_assertion_is_rejected(self, client, monkeypatch):
+        payload = self._payload()
+        assertion = _signed_platform_context_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Context-Assertion": assertion}
+        first = client.post("/api/v1/detect/context", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/context", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
 
     def test_context_tampering_is_rejected(self, client, monkeypatch):
         payload = self._payload()
@@ -780,7 +820,7 @@ def _signed_platform_sequence_assertion(monkeypatch, payload):
         "iss": issuer,
         "aud": audience,
         "sub": payload["agent_id"],
-        "jti": "sequence-integration-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "sequence_id": payload["sequence_id"],
         "sequence_sha256": sequence_sha256(payload["agent_id"], payload["sequence_id"], payload["events"]),
@@ -837,6 +877,17 @@ class TestBehavioralSequenceAPI:
         assert body["authorization_performed"] is False
         assert body["execution_performed"] is False
         assert body["finding"]["blocked"] is False
+
+    def test_replayed_sequence_assertion_is_rejected(self, client, monkeypatch):
+        payload = _sequence_payload()
+        assertion = _signed_platform_sequence_assertion(monkeypatch, payload)
+        headers = {"X-Platform-Sequence-Assertion": assertion}
+        first = client.post("/api/v1/detect/sequence", json=payload, headers=headers)
+        second = client.post("/api/v1/detect/sequence", json=payload, headers=headers)
+
+        assert first.status_code == 200, first.text
+        assert second.status_code == 409
+        assert second.json()["error_code"] == "platform_assertion_replayed"
 
     def test_sequence_tampering_is_rejected(self, client, monkeypatch):
         payload = _sequence_payload()

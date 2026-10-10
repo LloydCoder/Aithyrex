@@ -80,11 +80,12 @@ It intentionally has no `allowed`, `denied`, or `approved` result. A degraded de
 
 - Missing/invalid assertion: HTTP 401.
 - Action/claim mismatch: HTTP 403.
-- Missing trust configuration or unavailable tenant state: HTTP 503.
+- Replayed assertion: HTTP 409.
+- Missing trust configuration, unavailable tenant state, or replay-state failure: HTTP 503.
 - Invalid/oversized body: HTTP 422.
 - Tenant rate limit or usage quota: HTTP 429. The endpoint applies the existing tenant-scoped Redis rate limiter and monthly usage counter before scanning.
 - Rate/usage state unavailable: HTTP 503; the endpoint does not silently become unlimited.
 - No action is executed by this endpoint, including on detection or error.
-- The current endpoint does not persist a replay cache. `jti` is returned for downstream deduplication; replaying an assertion can duplicate a signal but cannot execute or authorize an action here. Durable idempotency is a later evidence-pipeline requirement.
+- Each valid, payload-bound assertion `jti` is consumed once using an atomic Redis `SET NX EX` replay guard, namespaced by contract and tenant. Only a SHA-256 digest of the `jti` is stored in the Redis key. A repeated assertion returns HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Retries after a consumed assertion must use a newly issued assertion.
 - Key rotation is configuration-based; coordinated Platform/Aithyrex rotation is required. JWKS discovery/rotation automation is not claimed.
 - This repository defines and tests the receiver contract. A live Platform-to-Aithyrex integration and end-to-end action interception are not claimed until separately tested.

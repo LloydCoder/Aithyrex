@@ -10,7 +10,8 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.api.routes.detect import _resolve_platform_tenant
-from backend.core.contracts import DetectorEvidenceV1, FindingV1
+from backend.core.assertion_replay import assertion_replay_guard
+from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
 from backend.core.platform_context_auth import (
     canonical_context_bundle_bytes,
     context_bundle_sha256,
@@ -84,7 +85,18 @@ class ContextSignalResponse(BaseModel):
     finding: FindingV1
 
 
-@router.post("/context", response_model=ContextSignalResponse)
+@router.post(
+    "/context",
+    response_model=ContextSignalResponse,
+    responses={
+        401: {"model": APIErrorV1, "description": "Missing or invalid Platform assertion"},
+        403: {"model": APIErrorV1, "description": "Context bundle does not match signed assertion"},
+        409: {"model": APIErrorV1, "description": "Platform assertion has already been consumed"},
+        422: {"model": APIErrorV1, "description": "Invalid context bundle"},
+        429: {"model": APIErrorV1, "description": "Tenant rate or usage limit reached"},
+        503: {"model": APIErrorV1, "description": "Replay, assertion or tenant state unavailable"},
+    },
+)
 async def inspect_context(
     req: ContextInspectionRequest,
     request: Request,
@@ -115,6 +127,9 @@ async def inspect_context(
             },
         )
 
+    await assertion_replay_guard.consume(
+        "context", claims["tenant_id"], claims["jti"], claims["exp"]
+    )
     tenant = await _resolve_platform_tenant(claims["tenant_id"])
     tenant_id = str(tenant.id)
     try:

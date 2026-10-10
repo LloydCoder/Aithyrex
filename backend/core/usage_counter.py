@@ -47,7 +47,7 @@ class UsageCounterService:
                 import redis.asyncio as aioredis
 
                 from backend.core.config import settings
-                self._redis = await aioredis.from_url(
+                self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
@@ -56,6 +56,18 @@ class UsageCounterService:
                 logger.error("redis_unavailable", error_type=type(e).__name__)
                 raise RuntimeError("usage counter unavailable") from e
         return self._redis
+
+    async def close(self) -> None:
+        """Close the Redis connection pool during application shutdown."""
+        redis = self._redis
+        self._redis = None
+        if redis is None:
+            return
+        close = getattr(redis, "aclose", None) or getattr(redis, "close", None)
+        if close is not None:
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
 
     def _key(self, tenant_id: str) -> str:
         now = datetime.now(timezone.utc)
@@ -77,11 +89,20 @@ class UsageCounterService:
             raise RuntimeError("usage counter unavailable")
 
         key = self._key(tenant_id)
-        count = await redis.incr(key)
-
-        # Retain the current calendar-month counter through the next boundary.
-        if count == 1:
-            await redis.expire(key, self._ttl_to_month_end())
+        script = """
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then
+            redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+        end
+        return count
+        """
+        try:
+            # Increment and TTL assignment are atomic, so a partial failure cannot
+            # leave a permanent monthly counter with no expiry.
+            count = int(await redis.eval(script, 1, key, self._ttl_to_month_end()))
+        except Exception as exc:
+            logger.error("usage_counter_increment_failed", error_type=type(exc).__name__)
+            raise RuntimeError("usage counter state unavailable") from exc
 
         return count
 
@@ -91,8 +112,12 @@ class UsageCounterService:
         if redis is None:
             raise RuntimeError("usage counter unavailable")
 
-        val = await redis.get(self._key(tenant_id))
-        return int(val) if val else 0
+        try:
+            val = await redis.get(self._key(tenant_id))
+            return int(val) if val else 0
+        except Exception as exc:
+            logger.error("usage_counter_read_failed", error_type=type(exc).__name__)
+            raise RuntimeError("usage counter state unavailable") from exc
 
     async def reserve_inference(self, tenant_id: str, plan: str) -> tuple[bool, int, int]:
         """Atomically enforce Free cutoff and account an inference in Redis."""
@@ -115,8 +140,12 @@ class UsageCounterService:
         end
         return {1, count, limit}
         """
-        result = await redis.eval(script, 1, key, limit, plan, self._ttl_to_month_end())
-        allowed, count, effective_limit = (int(value) for value in result)
+        try:
+            result = await redis.eval(script, 1, key, limit, plan, self._ttl_to_month_end())
+            allowed, count, effective_limit = (int(value) for value in result)
+        except Exception as exc:
+            logger.error("usage_counter_reservation_failed", error_type=type(exc).__name__)
+            raise RuntimeError("usage counter state unavailable") from exc
         return bool(allowed), count, effective_limit
 
     async def check_limit(self, tenant_id: str, plan: str) -> tuple[bool, int, int]:

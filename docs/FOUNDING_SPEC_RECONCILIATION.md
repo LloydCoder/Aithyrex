@@ -432,3 +432,43 @@ SDK-level trace IDs are correlation metadata, not identity or authorization. Ope
 
 **Phase 12 implementation and CI acceptance: passed for the declared scope.** This does not certify live provider/framework compatibility, production deployment, detection accuracy, streaming, multimodal coverage, complete tool/MCP pre-side-effect mediation, or a live Tinlance Agent Platform integration. These remain explicit integration and assurance gates, not silently inferred from unit tests.
 
+## 17. Phase 13 Tinlance integration and TSIC conformance
+
+**Branch:** `godmode/phase-13-platform-replay-conformance`  
+**Conformance contract:** [TSIC Conformance](TSIC_CONFORMANCE.md)  
+**Machine-readable manifest:** [Aithyrex contracts v1](../contracts/tsic/aithyrex-contracts.v1.json)
+
+### Scope
+
+- Enforce one-time consumption of Platform-signed action, context and behavioral-sequence assertion JTIs using atomic Redis SET NX EX, tenant/contract namespaces, SHA-256 JTI keys, and TTL bounded by JWT expiration.
+- Reject replayed assertions with HTTP 409 and fail closed with HTTP 503 if replay state is unavailable. A retry after consumption requires a new signed assertion.
+- Fix Redis async client initialization in block-state, rate limiting, usage accounting, and replay protection; close all four Redis pools during application shutdown. Make usage increment and TTL assignment atomic, and map usage-state read/write/reservation failures to fail-closed runtime errors.
+- Add machine-readable contract manifest and receiver-side conformance tests for all three versioned endpoints, replay protection, payload binding, and advisory-only authority boundaries.
+
+### Acceptance gates
+
+- Unit tests prove atomic replay semantics, TTL bounds, hashed JTI keys, contract separation, expiration handling and Redis outage behavior.
+- HTTP-level tests prove first-use success and duplicate rejection for action, context and sequence endpoints.
+- Redis client initialization tests prove `redis.asyncio.from_url` is used as a synchronous factory; shutdown tests cover pool cleanup.
+- CI and Security Scan are green on final branch head, followed by forensic review and post-merge verification.
+
+### Explicit limitations
+
+This phase proves receiver-side behavior and a versioned contract manifest, not a live Platform deployment. Key rotation, production Redis HA/alerting, and an end-to-end test against the actual Tinlance Agent Platform remain external gates. A signed assertion establishes origin and payload integrity, not the truth of all event metadata or permission to execute an action.
+
+### Phase 13 final-head verification and forensic conclusion
+
+**Verified final branch revision:** `bf2a09d142d7b5430958da8387b26f8f8d78fd82`  
+**CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38030738490 — success  
+**Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38030738574 — success
+
+- Unit tests: **260 passed**.
+- API/integration tests: **57 passed**.
+- Ruff, Bandit, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit and TruffleHog secret scan: **passed**.
+- Forensic review confirmed signature and payload binding are checked before JTI consumption; the Redis SET NX EX operation is atomic; keys are tenant/contract scoped and contain only a SHA-256 JTI digest; TTL is bounded by JWT expiry; replay returns HTTP 409; replay-state failure returns HTTP 503; and action/context/sequence endpoints remain advisory-only.
+- Forensic review also found and fixed the incorrect await on the synchronous redis.asyncio.from_url factory in block-state, rate-limit and usage-counter clients; all four Redis pools now have shutdown cleanup. Usage counter read/write/reservation failures are surfaced as fail-closed runtime errors, and the legacy increment operation now assigns its TTL atomically.
+
+**Phase 13 implementation and CI acceptance: passed for receiver-side conformance.** This does not claim a live Tinlance Agent Platform deployment, production Redis HA/persistence, automated key rotation, end-to-end executor mediation, or independent certification. These remain explicit external gates.
+
+
+

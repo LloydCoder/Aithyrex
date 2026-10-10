@@ -43,3 +43,7 @@ See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md)
 
 See [SDK and Gateway Integration Contract](docs/SDK_GATEWAY_CONTRACT.md) for supported provider behavior, request trace correlation, fail-closed semantics, and explicitly unsupported paths. Framework callbacks are defense-in-depth, not an execution authorization boundary.
 
+
+### Tinlance integration conformance
+
+See [TSIC Conformance](docs/TSIC_CONFORMANCE.md) and the [machine-readable contract manifest](contracts/tsic/aithyrex-contracts.v1.json) for signed action, context and behavioral-sequence contracts, one-time assertion replay protection, and the boundary between advisory findings and Platform authorization.
