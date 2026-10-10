@@ -1,8 +1,8 @@
 """API contract tests for signed behavioral sequence analysis."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import time
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from cryptography.hazmat.primitives import serialization
