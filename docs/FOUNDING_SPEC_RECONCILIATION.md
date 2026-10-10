@@ -573,3 +573,25 @@ The implementation and post-merge workflows are green. This documentation-only r
 ### Explicit non-claims
 
 This phase does not prove a live production deployment, managed secret-manager integration, automatic key rotation, PostgreSQL/Redis HA, successful backup restore, measured SLO attainment, or approved RPO/RTO. Proposed SLO targets in the runbook are not contractual or measured until supported by real operational evidence.
+
+
+## 21. Phase 17 independent assurance and controlled launch
+
+**Branch:** godmode/phase-17-independent-assurance  
+**Forensic audit:** [Phase 17 forensic audit](audits/PHASE_17_FORENSIC_AUDIT.md)
+
+### Scope and implementation
+
+- Add a machine-readable release evidence manifest with unique release-blocking gate IDs, owners, acceptance criteria, evidence references and explicit statuses.
+- Add a fail-closed release-readiness evaluator bound to an exact 40-character candidate SHA. It rejects missing/mismatched SHA, unresolved blocking gates, malformed evidence, duplicate gate IDs, unsafe repository paths and non-GitHub workflow URLs.
+- Add tests for the current blocked state, successful fixture, candidate mismatch, missing evidence, malformed values, duplicate IDs and path traversal.
+- Add a release-readiness guide, threat model, independent review protocol and controlled-launch procedure.
+- Preserve the explicit distinction between implementation evidence and independent assurance. The current release disposition is BLOCKED.
+
+### External gates remain blocked
+
+The independently labeled AI-text evaluation, independent security review, production deployment/rollback, backup/restore drill, measured SLOs and legal/compliance review must be completed with verifiable evidence tied to the exact release candidate. Do not manufacture scores, reviewer sign-off, production evidence or regulatory approval.
+
+### Acceptance gate
+
+Final PR-head CI and Security Scan must be green, followed by forensic audit and post-merge workflow verification. Completing this phase accepts the release-gate implementation only; it does not make the product certified or production-release-ready while external gates remain unresolved.
