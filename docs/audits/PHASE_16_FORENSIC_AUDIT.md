@@ -2,7 +2,7 @@
 
 **Phase:** 16 — operations and deployment hardening  
 **Branch:** `godmode/phase-16-operations-deployment`  
-**Audit status:** code-level forensic review complete for implementation commit `bd36c38995ec71b0b8cfdcb9ae0f7dda09529785`. CI and Security Scan passed on that implementation revision; this audit/ledger amendment must also pass fresh CI and Security Scan before merge.
+**Audit status:** ACCEPTED for the declared Phase 16 implementation scope. PR-head CI/Security Scan and post-merge CI/Security Scan passed.
 
 ## Scope
 
@@ -33,13 +33,17 @@ Harden production configuration validation, process/dependency health semantics,
 - Reviewed implementation commit: `bd36c38995ec71b0b8cfdcb9ae0f7dda09529785`
 - CI on reviewed implementation: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883848 — success
 - Security Scan on reviewed implementation: https://github.com/LloydCoder/Aithyrex/actions/runs/38034883811 — success
+- Final PR-head CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38035036895 — success
+- Final PR-head Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38035036899 — success
+- Post-merge main CI on merge commit `41c93fbff6b7457982179d13a1f81d03a57e3c1f`: https://github.com/LloydCoder/Aithyrex/actions/runs/38035156559 — success
+- Post-merge main Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38035156510 — success
 - The implementation CI includes unit/integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend audit/type-check/lint/build, a built-wheel content check for backend entry points, and Docker build. Security Scan covers dependency audit and secret scanning.
 
 ## Acceptance gate
 
 - Unit and integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, Docker build, dependency audit, and secret scan pass on the final PR head.
 - Forensic review verifies URL parsing is structural (not substring-based), no secret values are included in validation errors, readiness is bounded, liveness does not call dependencies, error payloads are sanitized, and shutdown cleanup continues after worker errors.
-- Code-level acceptance is granted for the reviewed implementation revision. Merge only after both CI and Security Scan are green on the final audit/ledger documentation head; then verify post-merge workflows.
+- The reviewed implementation and final PR head passed CI and Security Scan; the merge commit passed post-merge CI and Security Scan. **Phase 16 is accepted for the declared implementation scope.** The following documentation-only reconciliation commit must also pass its own workflows.
 
 ## Acceptance decision
 
