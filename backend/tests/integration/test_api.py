@@ -212,6 +212,33 @@ class TestDetectPrompt:
         )
         assert resp.status_code == 422
 
+    def test_agent_message_content_limit_is_enforced(self, client):
+        resp = client.post(
+            "/api/v1/detect/agent",
+            json={"agent_id": "agent-1", "messages": [{"content": "x" * 20_001}]},
+            headers=AUTH_HEADER,
+        )
+        assert resp.status_code == 422
+
+    def test_agent_aggregate_content_limit_is_enforced_without_echoing_content(self, client):
+        marker = "sensitive-untrusted-content-marker"
+        messages = [{"role": "tool", "source": "tool_output", "content": marker + ("x" * 19_990)} for _ in range(11)]
+        resp = client.post(
+            "/api/v1/detect/agent",
+            json={"agent_id": "agent-1", "messages": messages},
+            headers=AUTH_HEADER,
+        )
+        assert resp.status_code == 422
+        assert marker not in resp.text
+
+    def test_agent_message_count_limit_is_enforced(self, client):
+        resp = client.post(
+            "/api/v1/detect/agent",
+            json={"agent_id": "agent-1", "messages": [{"content": "x"}] * 101},
+            headers=AUTH_HEADER,
+        )
+        assert resp.status_code == 422
+
 class TestDetectLLM:
     def test_clean_exchange_passes(self, client):
         resp = client.post(
