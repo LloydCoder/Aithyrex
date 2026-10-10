@@ -11,8 +11,7 @@ Workflow:
   5. Export to SIEM / alert channels
   6. POST to KalevioAI if NIS2/DORA threshold met
 
-Sprint 1 target: prompt_injection + threatfade_client wired up.
-All other detectors stubbed.
+The registered detectors are instantiated by this engine; effectiveness and supported-path coverage must be established by evaluation, not module presence.
 """
 
 from __future__ import annotations
