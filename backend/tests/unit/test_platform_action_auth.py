@@ -78,7 +78,11 @@ def test_missing_trust_configuration_fails_closed(monkeypatch):
 
 def test_invalid_signature_is_rejected(monkeypatch, signing_keys):
     private_key, _public_key = signing_keys
-    other_private, other_public = signing_keys
+    other_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    other_public = other_private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
     _configure(monkeypatch, other_public)
     token = jwt.encode(_claims(), private_key, algorithm="RS256")
 
