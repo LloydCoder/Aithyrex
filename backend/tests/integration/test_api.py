@@ -222,7 +222,7 @@ class TestDetectPrompt:
 
     def test_agent_aggregate_content_limit_is_enforced_without_echoing_content(self, client):
         marker = "sensitive-untrusted-content-marker"
-        messages = [{"role": "tool", "source": "tool_output", "content": marker + ("x" * 19_990)} for _ in range(11)]
+        messages = [{"role": "tool", "source": "tool_output", "content": marker + ("x" * 19_000)} for _ in range(11)]
         resp = client.post(
             "/api/v1/detect/agent",
             json={"agent_id": "agent-1", "messages": messages},
