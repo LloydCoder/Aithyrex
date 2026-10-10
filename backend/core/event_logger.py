@@ -122,6 +122,37 @@ class EventLogger:
             logger.error("event_log_failed", error=str(e), tenant_id=tenant_id)
             return None
 
+    async def log_finding(self, finding, tenant_id: str, model: str) -> str | None:
+        """Persist a versioned signal finding using the transactional outbox."""
+        from types import SimpleNamespace
+
+        from backend.core.shield_engine import Action, DetectionResult, Severity
+
+        results = [
+            DetectionResult(
+                detector=item.detector,
+                detected=item.detected,
+                severity=Severity(str(item.severity).lower()),
+                confidence=item.confidence,
+                details=item.details if isinstance(item.details, dict) else {},
+                mitre_atlas=list(item.mitre_atlas or []),
+            )
+            for item in finding.evidence
+        ]
+        verdict = SimpleNamespace(
+            action=Action.LOG,
+            severity=Severity(str(finding.severity).lower()),
+            blocked=False,
+            results=results,
+        )
+        return await self.log_event(
+            verdict=verdict,
+            tenant_id=tenant_id,
+            model=model,
+            prompt_len=0,
+            completion_len=0,
+        )
+
     async def update_db_usage(
         self,
         tenant_id: str,
