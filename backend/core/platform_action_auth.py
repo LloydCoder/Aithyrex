@@ -106,13 +106,21 @@ def decode_platform_action_assertion(token: str) -> dict[str, Any]:
     return claims
 
 
-def action_payload_sha256(tool_name: str, arguments: dict[str, Any], context: str | None) -> str:
-    """Hash the canonical action payload so the signed assertion binds exact inspected content."""
-    canonical = json.dumps(
+def canonical_action_payload_bytes(
+    tool_name: str,
+    arguments: dict[str, Any],
+    context: str | None,
+) -> bytes:
+    """Serialize the exact action payload deterministically for signing and size checks."""
+    return json.dumps(
         {"tool_name": tool_name, "arguments": arguments, "context": context or ""},
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")
-    return hashlib.sha256(canonical).hexdigest()
+
+
+def action_payload_sha256(tool_name: str, arguments: dict[str, Any], context: str | None) -> str:
+    """Hash the canonical action payload so the signed assertion binds exact inspected content."""
+    return hashlib.sha256(canonical_action_payload_bytes(tool_name, arguments, context)).hexdigest()
