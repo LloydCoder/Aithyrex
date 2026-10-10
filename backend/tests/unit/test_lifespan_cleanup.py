@@ -24,7 +24,7 @@ async def test_shutdown_closes_redis_services_and_disposes_database_engine(monke
         monkeypatch.setattr(service, "close", close_mock)
         close_mocks.append(close_mock)
     dispose_mock = AsyncMock()
-    monkeypatch.setattr(engine, "dispose", dispose_mock)
+    monkeypatch.setattr(type(engine), "dispose", dispose_mock)
 
     async with lifespan(FastAPI()):
         pass
