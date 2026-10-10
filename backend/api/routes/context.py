@@ -10,6 +10,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.api.routes.detect import _resolve_platform_tenant
+from backend.core.assertion_replay import assertion_replay_guard
 from backend.core.contracts import DetectorEvidenceV1, FindingV1
 from backend.core.platform_context_auth import (
     canonical_context_bundle_bytes,
@@ -115,6 +116,9 @@ async def inspect_context(
             },
         )
 
+    await assertion_replay_guard.consume(
+        "context", claims["tenant_id"], claims["jti"], claims["exp"]
+    )
     tenant = await _resolve_platform_tenant(claims["tenant_id"])
     tenant_id = str(tenant.id)
     try:
