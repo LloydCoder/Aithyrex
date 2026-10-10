@@ -182,7 +182,45 @@ class ShieldEngine:
             detector.detect(prompt=prompt, completion=completion)
             for detector in self._detectors
         ]
-        results: list[DetectionResult] = await asyncio.gather(*tasks)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[DetectionResult] = []
+        for detector, result in zip(self._detectors, raw_results, strict=True):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, Exception):
+                detector_name = getattr(detector, "name", detector.__class__.__name__)
+                logger.error(
+                    "detector_execution_failed_fail_closed",
+                    detector=detector_name,
+                    tenant_id=tenant_id,
+                    error_type=type(result).__name__,
+                )
+                results.append(
+                    DetectionResult(
+                        detector=str(detector_name),
+                        detected=True,
+                        severity=Severity.HIGH,
+                        confidence=1.0,
+                        details={"degraded": True, "reason": "detector_exception"},
+                    )
+                )
+            elif isinstance(result, DetectionResult):
+                results.append(result)
+            else:
+                logger.error(
+                    "detector_returned_invalid_result_fail_closed",
+                    detector=detector.__class__.__name__,
+                    tenant_id=tenant_id,
+                )
+                results.append(
+                    DetectionResult(
+                        detector=detector.__class__.__name__,
+                        detected=True,
+                        severity=Severity.HIGH,
+                        confidence=1.0,
+                        details={"degraded": True, "reason": "invalid_detector_result"},
+                    )
+                )
         verdict = self._aggregate(results)
 
         # Missing mandatory ThreatFade telemetry is not a clean verdict.
