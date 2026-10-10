@@ -1,30 +1,16 @@
-"""
-AI Shield — Parliament Ensemble
-=================================
-Multi-model AI consensus layer for ambiguous threat evaluation.
+"""Aithyrex Parliament: advisory escalation for ambiguous detection findings.
 
-Architecture confirmed from TwinGuard session (April 2026):
-  "Two AI models must independently agree that an action is safe
-   before it executes. Neither model alone can authorise a BLOCK."
+The ensemble receives detector metadata only; it must not receive raw customer
+prompts/completions and it is not an authorization or execution authority.
 
-Members:
-  Member 1: Claude Sonnet   (Anthropic API)
-  Member 2: Grok-3          (xAI API)
-  Member 3: ThreatFade      (deterministic oracle — Z-score score)
-
-Voting rules:
-  2 of 3 vote BLOCK  → BLOCK  (consensus required to block)
-  1 of 3 vote BLOCK  → ALERT  (minority concern — escalate)
-  0 of 3 vote BLOCK  → PASS   (consensus it's safe)
-
-When Parliament is invoked:
-  MEDIUM confidence detections → Parliament evaluates
-  HIGH confidence but single detector fired → Parliament evaluates
-  CRITICAL or multiple detector agreement → bypass Parliament (too slow)
-  CLEAN → bypass Parliament (nothing to evaluate)
-
-Parliament runs Claude and Grok calls in PARALLEL — never sequential.
-Target latency: < 2 seconds total for both API calls.
+Decision rules:
+- Existing BLOCK or CRITICAL findings are immutable and bypass deliberation.
+- ThreatFade abstains unless an AI-text risk score has explicit calibration approval.
+- Two active BLOCK votes may escalate to BLOCK; one active BLOCK vote escalates to ALERT.
+- ALLOW votes never erase or downgrade an existing detector finding.
+- If all members abstain or fail, preserve the original detector verdict.
+- Aithyrex findings remain signals; Tinlance Agent Platform owns authorization,
+  approvals, policy and governed execution.
 """
 
 from __future__ import annotations
@@ -114,10 +100,10 @@ def _build_detection_report(verdict: ShieldVerdict) -> str:
 
 class ParliamentEnsemble:
     """
-    The AI Council.
+    The advisory AI ensemble.
 
-    Evaluates ambiguous ShieldVerdicts using dual AI model consensus
-    plus ThreatFade as a deterministic third vote.
+    Evaluates ambiguous detector verdicts using two external model opinions.
+    ThreatFade is an abstaining third member until AI-text calibration is approved.
 
     Usage:
         parliament = ParliamentEnsemble()
