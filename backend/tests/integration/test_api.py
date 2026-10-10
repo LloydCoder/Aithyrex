@@ -1,5 +1,5 @@
 """
-AI Shield — API Integration Tests
+Aithyrex — API Integration Tests
 ====================================
 Full HTTP-level tests using FastAPI TestClient.
 All external services mocked:
@@ -35,6 +35,17 @@ CLEAN_TF = {
 AUTH_HEADER = {"Authorization": "Bearer dev-token"}
 
 
+class FakeReplayRedis:
+    def __init__(self):
+        self.keys = set()
+
+    async def set(self, key, value, nx=False, ex=None):
+        if nx and key in self.keys:
+            return None
+        self.keys.add(key)
+        return "OK"
+
+
 @pytest.fixture(scope="module")
 def client():
     """
@@ -46,6 +57,7 @@ def client():
         plan="pro",
         is_active=True,
     )
+    fake_replay_redis = FakeReplayRedis()
 
     def fake_session_factory():
         session = MagicMock()
@@ -85,6 +97,9 @@ def client():
     ), patch(
         "backend.core.rate_limiter.RateLimiter.enforce",
         new=AsyncMock(return_value=None),
+    ), patch(
+        "backend.core.assertion_replay.assertion_replay_guard._get_redis",
+        new=AsyncMock(return_value=fake_replay_redis),
     ), patch(
         "backend.core.auth._verify_clerk_token",
         new=AsyncMock(return_value={
@@ -520,7 +535,7 @@ def _signed_platform_action_assertion(monkeypatch, payload):
         "iss": issuer,
         "aud": audience,
         "sub": payload["agent_id"],
-        "jti": "integration-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "action_id": payload["action_id"],
         "tool_name": payload["tool_name"],
@@ -686,7 +701,7 @@ def _signed_platform_context_assertion(monkeypatch, payload):
     monkeypatch.setattr(settings, "PLATFORM_ACTION_JWT_AUDIENCE", audience)
     claims = {
         "iss": issuer, "aud": audience, "sub": payload["agent_id"],
-        "jti": "context-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "context_id": payload["context_id"],
         "context_bundle_sha256": context_bundle_sha256(
@@ -780,7 +795,7 @@ def _signed_platform_sequence_assertion(monkeypatch, payload):
         "iss": issuer,
         "aud": audience,
         "sub": payload["agent_id"],
-        "jti": "sequence-integration-event-1",
+        "jti": str(uuid.uuid4()),
         "tenant_id": "00000000-0000-4000-8000-000000000001",
         "sequence_id": payload["sequence_id"],
         "sequence_sha256": sequence_sha256(payload["agent_id"], payload["sequence_id"], payload["events"]),
