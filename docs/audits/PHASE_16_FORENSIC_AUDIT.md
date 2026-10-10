@@ -14,14 +14,14 @@ Harden production configuration validation, process/dependency health semantics,
 - Health checks had no per-dependency timeout, allowing slow or hung dependencies to stall the probe.
 - Redis health responses included exception text, which can reveal endpoint or connection details.
 - Production database TLS validation used substring matching against the entire URL, allowing misleading matches outside the actual `ssl` query parameter.
-- The `pyproject.toml` server extra did not explicitly declare the PyJWT crypto and cryptography packages required by runtime JWT validation and the new RSA trust-anchor check.
+- The `pyproject.toml` server extra did not explicitly declare the PyJWT crypto and cryptography packages required by runtime JWT validation and the new RSA trust-anchor check; package discovery also excluded the `backend` server package from wheels.
 - Production Redis validation required TLS scheme but did not require remote host or non-default authentication.
 - The application shut down Redis clients but did not dispose the SQLAlchemy engine pool. A failing outbox worker during shutdown could interrupt subsequent cleanup.
 - The operations runbook did not define explicit liveness/readiness behavior, SLO measurement rules, secret rotation, restore drills, or rollback evidence. Docker Compose exposed development credentials and database/Redis ports without a prominent local-only warning.
 
 ## Implemented controls
 
-- Add a production configuration validator that parses URLs and validates actual scheme, host, credentials, TLS query parameters, a parseable RSA Clerk JWT public key, trusted hosts, HTTPS origins, bounded SQLAlchemy pool settings, and durable outbox-worker configuration. Declare PyJWT[crypto] and cryptography in the installable server extra. Errors identify configuration variable names only and never echo secret values.
+- Add a production configuration validator that parses URLs and validates actual scheme, host, credentials, TLS query parameters, a parseable RSA Clerk JWT public key, trusted hosts, HTTPS origins, bounded SQLAlchemy pool settings, and durable outbox-worker configuration. Declare PyJWT[crypto] and cryptography in the server extra, include backend modules in wheel discovery, and add CI verification that the built wheel contains the server entry point and critical modules. Errors identify configuration variable names only and never echo secret values.
 - Add `/health/live` (process-only) and `/health/ready` (HTTP 503 when any required dependency is unhealthy), keep legacy `/health` response semantics for compatibility, bound each dependency probe, and remove Redis exception text.
 - Dispose the SQLAlchemy engine during shutdown, make pool capacity/timeout/recycle settings configurable and bounded, log request duration/outcome, and log outbox-worker shutdown failures without skipping remaining resource cleanup.
 - Label Compose and `.env.example` as local-development-only, bind published ports to loopback, add a container liveness healthcheck, and use a canonical non-root container user.
