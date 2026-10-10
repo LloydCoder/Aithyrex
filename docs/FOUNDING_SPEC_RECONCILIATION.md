@@ -298,7 +298,7 @@ CI and Security Scan must both pass on the latest PR head. The current Phase 8 P
 
 - Require an RS256 Platform assertion with configured issuer/audience and a lifetime no greater than 300 seconds.
 - Bind the exact canonical context bundle, agent, context ID, tenant, source type, source ID, and content bytes through a SHA-256 claim; any post-signing mutation is rejected.
-- Enforce item-count, per-item, aggregate-character, and serialized-byte bounds; validation errors do not echo content.
+- Enforce item-count, per-item, aggregate-character (100,000-character maximum aligned to the ThreatFade client), and serialized-byte bounds; validation errors do not echo content.
 - Resolve active tenant state server-side and apply tenant rate/usage limits. Missing trust, unavailable tenant/capacity state, or quota exhaustion never becomes a clean finding or authorization grant.
 - Preserve per-source content hashes and source metadata while marking all retrieved/tool/memory/user/model content as untrusted. Provenance integrity is not a trust verdict.
 - Emit versioned, advisory-only findings with explicit no-authorization/no-execution fields. The bundle is scanned as a whole; per-source detector attribution and live retrieval authorization are not claimed.
