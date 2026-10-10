@@ -542,6 +542,7 @@ PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after fin
 ### Scope and implementation
 
 - Replace substring-based production URL checks with structural scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; validate the Clerk RSA public-key trust anchor, reject loopback dependencies, wildcard hosts/origins, default/short secrets, and malformed or duplicate TLS parameters. Validation errors disclose configuration names only.
+- Declare `PyJWT[crypto]` and `cryptography` in the installable server extra so runtime JWT verification and RSA trust-anchor parsing are not dependent on transitive packages.
 - Bound and validate SQLAlchemy pool size, overflow, timeout and recycle settings; document the per-process connection budget.
 - Add bounded `/health/live` and `/health/ready` semantics; readiness returns 503 when a required dependency is degraded, while legacy `/health` keeps its HTTP-200 diagnostic contract. Health responses do not return exception text.
 - Dispose the SQLAlchemy engine pool during shutdown and ensure an outbox worker shutdown exception cannot prevent remaining resource cleanup. Structured request logs include duration and normalized outcome.
