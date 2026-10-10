@@ -3,11 +3,11 @@
 **Repository:** [LloydCoder/Aithyrex](https://github.com/LloydCoder/Aithyrex)  
 **Phase branch:** `godmode/phase-14-red-team-evaluation`  
 **Scope:** deterministic offline red-team regression gate, corpus integrity, prompt-injection regression, CLI output contract, CI enforcement and documentation accuracy.  
-**Audit status:** implementation findings addressed; final-head CI/Security Scan verification pending for the explicit CI gate and audit documentation commit.
+**Audit status:** accepted for the declared implementation scope on the verified code revision below. The final PR head must still pass its own CI and Security Scan before merge.
 
 ## Evidence baseline
 
-The code revision `02fb31bcb063355f8f33fe8395590fc36eb0d440` passed CI at [run 38031562738](https://github.com/LloydCoder/Aithyrex/actions/runs/38031562738) and Security Scan at [run 38031562765](https://github.com/LloydCoder/Aithyrex/actions/runs/38031562765). Those workflows verified the detector regression, test suite, static analysis, frontend build/audit, Docker build, dependency audit and secret scan. The explicit blocking CLI evaluation step was added afterward, so these runs are baseline evidence only; final acceptance is intentionally gated on the new head's workflows.
+The code-and-gate revision `d99bc21541f7f3c119242d6578b3147b24f5a55d` passed CI at [run 38031686577](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686577) and Security Scan at [run 38031686570](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686570). These runs include the explicit blocking offline red-team CLI gate, unit/integration tests, static analysis, frontend build/audit, Docker build, dependency audit and secret scan. The audit-ledger documentation update is a separate docs-only commit and must also pass the latest-head workflows before merge.
 
 ## Findings and remediation
 
@@ -65,4 +65,11 @@ References:
 
 ## Final acceptance record
 
-This section must be updated only after the latest commit's CI and Security Scan have both completed successfully. Record the exact commit SHA, CI URL, Security Scan URL, unit/integration counts and the explicit “offline red-team evaluation gate” step result. If any required job is skipped, cancelled or failing, Phase 14 remains unaccepted.
+- **Verified implementation revision:** `d99bc21541f7f3c119242d6578b3147b24f5a55d`
+- **CI:** [run 38031686577](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686577) — all four CI jobs passed, including the explicit offline red-team evaluation gate and Docker build.
+- **Security Scan:** [run 38031686570](https://github.com/LloydCoder/Aithyrex/actions/runs/38031686570) — dependency vulnerability audit and TruffleHog secret scan passed.
+- **Tests:** 265 unit tests and 57 API/integration tests passed.
+- **Red-team result:** `pass`; 32 synthetic cases (20 malicious, 12 benign); malicious recall `1.0`; benign false-positive rate `0.0`; expected-detector coverage `1.0`; zero missed expected-detector assertions; dataset SHA-256 `9ed9300af83c23065306adf44daca2cc80ba398ff96559d48b8d68fed742a108`; `release_approved=false`.
+- **Forensic disposition:** ACCEPTED for the deterministic synthetic regression scope only. These metrics describe this small synthetic corpus, not production detection effectiveness.
+
+The final PR head remains merge-gated on fresh green CI and Security Scan. A skipped, cancelled or failing required job means the phase cannot be merged as accepted.

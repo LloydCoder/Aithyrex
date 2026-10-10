@@ -432,6 +432,8 @@ SDK-level trace IDs are correlation metadata, not identity or authorization. Ope
 
 **Phase 12 implementation and CI acceptance: passed for the declared scope.** This does not certify live provider/framework compatibility, production deployment, detection accuracy, streaming, multimodal coverage, complete tool/MCP pre-side-effect mediation, or a live Tinlance Agent Platform integration. These remain explicit integration and assurance gates, not silently inferred from unit tests.
 
+**Canonical namespace follow-up:** PR [#11](https://github.com/LloydCoder/Aithyrex/pull/11) was merged as `b756b1ec5225200606bc815e431d727a04d2696a`. `aithyrex/` now owns the SDK client and OpenAI/Anthropic wrapper implementations; `ai_shield/` remains a compatibility import namespace. The merged main revision passed [CI run 38031612801](https://github.com/LloydCoder/Aithyrex/actions/runs/38031612801) and [Security Scan run 38031612771](https://github.com/LloydCoder/Aithyrex/actions/runs/38031612771). SDK behavior remains bounded by the limitations in `SDK_GATEWAY_CONTRACT.md`.
+
 ## 17. Phase 13 Tinlance integration and TSIC conformance
 
 **Branch:** `godmode/phase-13-platform-replay-conformance`  
@@ -495,5 +497,5 @@ This phase proves receiver-side behavior and a versioned contract manifest, not 
 
 The suite is a deterministic regression layer, not an exhaustive adversarial benchmark, live-model red team, calibrated production evaluation, or independent certification. A representative labeled corpus, detector calibration, streaming/multimodal tests, framework/tool lifecycle tests and independent review remain separate gates.
 
-**Phase 14 status:** initial implementation passed CI and Security Scan at revision `02fb31bcb063355f8f33fe8395590fc36eb0d440`; forensic review then found that the corpus was only exercised through unit tests rather than as an explicit blocking CI step. The branch now adds that step and records two remediated test-harness findings in [the Phase 14 forensic audit](audits/PHASE_14_FORENSIC_AUDIT.md). Final acceptance requires fresh green CI and Security Scan for the latest branch head after these changes.
+**Phase 14 status:** the implementation and explicit blocking offline red-team gate passed CI and Security Scan at revision `d99bc21541f7f3c119242d6578b3147b24f5a55d`; see [the Phase 14 forensic audit](audits/PHASE_14_FORENSIC_AUDIT.md). Acceptance is limited to the deterministic synthetic regression scope; representative production effectiveness and independent assurance remain open. The final PR head must also pass fresh green CI and Security Scan before merge.
 
