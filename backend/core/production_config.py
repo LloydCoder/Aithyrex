@@ -94,6 +94,19 @@ def production_configuration_errors(settings) -> list[str]:
     ):
         errors.append("ALLOWED_ORIGINS (explicit HTTPS origin allow-list required)")
 
+    pool_size = getattr(settings, "DB_POOL_SIZE", 10)
+    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 20)
+    pool_timeout = getattr(settings, "DB_POOL_TIMEOUT_SECONDS", 30)
+    pool_recycle = getattr(settings, "DB_POOL_RECYCLE_SECONDS", 1800)
+    if isinstance(pool_size, bool) or not isinstance(pool_size, int) or not 1 <= pool_size <= 100:
+        errors.append("DB_POOL_SIZE (integer from 1 to 100 required)")
+    if isinstance(max_overflow, bool) or not isinstance(max_overflow, int) or not 0 <= max_overflow <= 200:
+        errors.append("DB_MAX_OVERFLOW (integer from 0 to 200 required)")
+    if isinstance(pool_timeout, bool) or not isinstance(pool_timeout, int) or not 1 <= pool_timeout <= 120:
+        errors.append("DB_POOL_TIMEOUT_SECONDS (integer from 1 to 120 required)")
+    if isinstance(pool_recycle, bool) or not isinstance(pool_recycle, int) or not 60 <= pool_recycle <= 86400:
+        errors.append("DB_POOL_RECYCLE_SECONDS (integer from 60 to 86400 required)")
+
     if not getattr(settings, "OUTBOX_WORKER_ENABLED", False):
         errors.append("OUTBOX_WORKER_ENABLED=true (durable delivery worker required)")
 
