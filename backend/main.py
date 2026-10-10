@@ -12,12 +12,12 @@ from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import structlog
-from structlog.contextvars import bound_contextvars
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from structlog.contextvars import bound_contextvars
 
 from backend.api.routes import detect, enforce, health, monitor, reports, webhooks
 from backend.core.config import settings
