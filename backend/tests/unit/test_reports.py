@@ -12,8 +12,6 @@ from backend.api.routes.reports import (
     trigger_compliance_report,
 )
 from backend.core.auth import TokenPayload
-
-
 EVENT_ID = "00000000-0000-4000-8000-000000000001"
 TENANT_ID = "00000000-0000-4000-8000-000000000002"
 
