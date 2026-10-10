@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, model_validator
-import structlog
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
