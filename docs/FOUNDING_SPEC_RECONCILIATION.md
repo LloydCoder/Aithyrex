@@ -207,7 +207,7 @@ Historical status note: Phase 5 was merged into `main` on 2026-10-10 (PR #2) aft
 - API/integration tests: **35 passed**.
 - Bandit SAST, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit, and TruffleHog secret scan: **passed**.
 
-The CI run above verifies implementation revision `8ba8908`. This ledger reconciliation changes documentation only and triggers a fresh PR check run; the final documentation head must also be green before merge.
+The CI run above verifies the core implementation revision `8ba8908`. Subsequent changes also reconciled developer-facing Aithyrex names in the Makefile, Compose container names and environment-file heading. The configured PostgreSQL role/database names intentionally remain `aishield` to match the existing Compose environment and avoid an unplanned data-identity migration. The latest head of PR #3 must pass both required workflows before merge; use the PR's current checks as the final authority.
 
 ### Forensic conclusion and remaining gate
 
