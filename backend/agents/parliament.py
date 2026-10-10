@@ -69,7 +69,11 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
     if verdict.action == Action.BLOCK or verdict.severity == Severity.CRITICAL:
         return False
 
-    if not any(r.detected for r in verdict.results):
+    actionable = [
+        result for result in verdict.results
+        if result.detected and not result.details.get("advisory_only", False)
+    ]
+    if not actionable:
         return False
 
     # Critical findings and existing BLOCK verdicts are never delegated to Parliament.
@@ -89,7 +93,7 @@ def should_invoke_parliament(verdict: ShieldVerdict) -> bool:
 
     # HIGH but only ONE detector fired → Parliament evaluates
     if verdict.severity == Severity.HIGH:
-        fired = [r for r in verdict.results if r.detected]
+        fired = actionable
         if len(fired) == 1:
             return True
 
