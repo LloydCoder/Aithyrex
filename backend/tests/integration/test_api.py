@@ -156,6 +156,8 @@ class TestDetectPrompt:
         assert resp.status_code == 403
         detail = resp.json()["detail"]
         assert detail["blocked"] is True
+        assert detail["finding"]["schema_version"] == "aithyrex.finding.v1"
+        assert detail["finding"]["trace_id"] == resp.json()["trace_id"]
 
     def test_injection_detail_has_detectors(self, client):
         resp = client.post(
