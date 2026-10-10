@@ -194,6 +194,15 @@ async def inspect_context(
             "execution_performed": False,
         },
     )
+    from backend.core.event_logger import event_logger
+
+    persisted_event_id = await event_logger.log_finding(
+        finding, tenant_id, model="context-inspection"
+    )
+    if persisted_event_id is None:
+        degraded = True
+        finding.degraded = True
+
     logger.info(
         "context_inspection_completed",
         trace_id=str(trace_id),
