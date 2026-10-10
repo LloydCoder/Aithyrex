@@ -23,7 +23,7 @@ class RateLimiter:
             try:
                 import redis.asyncio as aioredis
 
-                self._redis = await aioredis.from_url(
+                self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
@@ -32,6 +32,18 @@ class RateLimiter:
                 logger.error("rate_limit_redis_unavailable", error_type=type(exc).__name__)
                 raise RuntimeError("rate limiter unavailable") from exc
         return self._redis
+
+    async def close(self) -> None:
+        """Close the Redis connection pool during application shutdown."""
+        redis = self._redis
+        self._redis = None
+        if redis is None:
+            return
+        close = getattr(redis, "aclose", None) or getattr(redis, "close", None)
+        if close is not None:
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
 
     async def enforce(self, tenant_id: str) -> tuple[int, int]:
         """Return (observed count, limit), or raise 429/RuntimeError."""
