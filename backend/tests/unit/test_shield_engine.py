@@ -285,3 +285,34 @@ async def test_usage_accounting_failure_fails_closed(engine):
         )
     assert verdict.action == Action.BLOCK
     assert verdict.blocked is True
+
+
+def test_advisory_only_signal_never_drives_block_or_parliament():
+    from backend.agents.parliament import should_invoke_parliament
+    from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldEngine
+
+    advisory = DetectionResult(
+        detector="c2_behaviour", detected=True, severity=Severity.MEDIUM, confidence=0.0,
+        details={"advisory_only": True, "confidence_calibrated": False},
+    )
+    verdict = ShieldEngine()._aggregate([advisory])
+    assert verdict.action == Action.LOG
+    assert verdict.severity == Severity.MEDIUM
+    assert verdict.blocked is False
+    assert should_invoke_parliament(verdict) is False
+
+
+def test_advisory_medium_signal_cannot_raise_actionable_low_severity():
+    from backend.core.shield_engine import Action, DetectionResult, Severity, ShieldEngine
+
+    advisory = DetectionResult(
+        detector="c2_behaviour", detected=True, severity=Severity.MEDIUM, confidence=0.0,
+        details={"advisory_only": True, "confidence_calibrated": False},
+    )
+    actionable = DetectionResult(
+        detector="prompt_injection", detected=True, severity=Severity.LOW, confidence=0.7,
+    )
+    verdict = ShieldEngine()._aggregate([advisory, actionable])
+    assert verdict.action == Action.LOG
+    assert verdict.severity == Severity.LOW
+    assert verdict.blocked is False
