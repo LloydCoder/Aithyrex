@@ -4,8 +4,10 @@ Aithyrex — Detection Routes
 POST /detect/llm      — analyse a prompt + completion pair
 POST /detect/prompt   — pre-flight prompt-only check (before sending to LLM)
 POST /detect/agent    — analyse agentic AI communication stream
+POST /detect/action   — inspect a Platform-signed proposed action; signal only
 
-All routes require verified Clerk auth and server-side tenant entitlements.
+User-facing routes require verified Clerk auth and server-side tenant entitlements.
+The action-signal route requires a short-lived RS256 Platform assertion and active tenant state.
 """
 
 from __future__ import annotations
