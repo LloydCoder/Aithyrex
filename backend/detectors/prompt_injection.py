@@ -37,7 +37,7 @@ _DIRECT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("jailbreak_keyword", re.compile(r"\bjailbreak\b", re.IGNORECASE)),
     ("dan_mode", re.compile(r"\bDAN\s+mode\b", re.IGNORECASE)),
     ("developer_mode_override", re.compile(r"developer\s+mode\s+(enabled|on|activated)", re.IGNORECASE)),
-    ("reveal_hidden_prompt", re.compile(r"(reveal|show|print|repeat|expose|dump)\s+(the\s+)?(hidden\s+|system\s+|developer\s+)?(prompt|instructions?|messages?)", re.IGNORECASE)),
+    ("reveal_hidden_prompt", re.compile(r"(reveal|show|print|repeat|expose|dump)\s+(?:(?:the|your)\s+)?(hidden\s+|system\s+|developer\s+)?(prompt|instructions?|messages?)", re.IGNORECASE)),
     ("disable_safety_controls", re.compile(r"(bypass|ignore|disable|override)\s+(all\s+)?(safety|content|security)\s+(rules?|filters?|polic(?:y|ies)|guardrails?)", re.IGNORECASE)),
     ("exfiltrate_credentials", re.compile(r"(send|exfiltrate|upload|forward|reveal)\s+(all\s+)?(secrets?|credentials?|api\s+keys?|tokens?)", re.IGNORECASE)),
 ]
