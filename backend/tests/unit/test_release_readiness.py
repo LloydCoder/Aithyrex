@@ -87,3 +87,27 @@ def test_invalid_unhashable_gate_status_is_rejected_without_exception():
     report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
     assert report["ready"] is False
     assert any("invalid status" in issue for issue in report["issues"])
+
+
+def test_malformed_evidence_type_is_rejected_without_exception():
+    manifest = passing_manifest()
+    manifest["gates"][0]["evidence"] = [{"type": ["workflow"], "reference": "x"}]
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("unsupported type" in issue for issue in report["issues"])
+
+
+def test_boolean_schema_version_is_not_accepted_as_integer_one():
+    manifest = passing_manifest()
+    manifest["schema_version"] = True
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("schema_version must be 1" in issue for issue in report["issues"])
+
+
+def test_duplicate_gate_ids_block_release():
+    manifest = passing_manifest()
+    manifest["gates"].append(dict(manifest["gates"][0]))
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("duplicate gate id" in issue for issue in report["issues"])
