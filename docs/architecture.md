@@ -125,3 +125,16 @@ The API emits a UUID request identifier in the `X-Request-ID` response header. A
 - `aithyrex.error.v1`: stable error code, safe message, trace ID, retryability and backward-compatible detail payload.
 
 Request-validation errors omit rejected input values so prompts/completions are not echoed into error responses. Contract changes require explicit versioning and regression tests. The finding schema is a canonical data contract; its presence does not prove durable storage, delivery or downstream consumer integration.
+
+
+## Platform action signal integration (Phase 8)
+
+Aithyrex exposes `POST /api/v1/detect/action` as a threat-signal receiver for a proposed tool/action payload. It requires a short-lived Platform-signed RS256 assertion bound to the exact canonical payload. Aithyrex verifies the assertion, resolves the active tenant from server-side state, and returns evidence only.
+
+This endpoint is deliberately **not** an authorization or execution endpoint:
+- Tinlance Agent Platform owns identity, policy, approvals, action binding and governed execution.
+- Auctaryn remains the separate context/action-risk assessment product.
+- Aithyrex detects prompt-injection, credential and related runtime threat indicators in the exact proposed payload.
+- The response is always advisory (`action=log`, `blocked=false`, `authorization_performed=false`, `execution_performed=false`). The Platform must make and enforce its own decision.
+
+See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The contract is implemented and tested locally; live cross-repository integration, replay persistence and automated key rotation are not claimed.
