@@ -30,6 +30,8 @@ The trace ID is correlation metadata, not authentication, tenant identity, autho
 | LlamaIndex observer | Inspects supported LLM, retrieval and tool event text | Observer API/version behavior varies; not an authoritative execution gate |
 | AutoGen/CrewAI compatibility middleware | Legacy compatibility surface only | Do not treat it as a supported production security boundary unless an integration-specific acceptance test proves pre-side-effect coverage |
 
+The LlamaIndex compatibility observer inspects prompt and completion events independently rather than correlating them through mutable shared prompt state. This avoids cross-request prompt/completion pairing; it also means a detector cannot assume that each completion is accompanied by its originating prompt in the same finding. Validate the actual callback lifecycle against each supported LlamaIndex version before claiming compatibility.
+
 ## Required conformance tests
 
 - Missing credentials and API URL fail closed.
