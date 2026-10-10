@@ -2,8 +2,8 @@ import hashlib
 import time
 from unittest.mock import AsyncMock
 
-import pytest
 from fastapi import HTTPException
+import pytest
 
 from backend.core.assertion_replay import AssertionReplayGuard
 
