@@ -47,3 +47,7 @@ See [SDK and Gateway Integration Contract](docs/SDK_GATEWAY_CONTRACT.md) for sup
 ### Tinlance integration conformance
 
 See [TSIC Conformance](docs/TSIC_CONFORMANCE.md) and the [machine-readable contract manifest](contracts/tsic/aithyrex-contracts.v1.json) for signed action, context and behavioral-sequence contracts, one-time assertion replay protection, and the boundary between advisory findings and Platform authorization.
+
+### Red-team evaluation
+
+Run the offline synthetic regression gate with `python -m backend.evaluation.red_team_suite`. See [Red-Team Evaluation](docs/RED_TEAM_EVALUATION.md) for corpus provenance, thresholds, standards alignment and explicit limitations. A passing regression gate does not approve a release or establish production detection accuracy.
