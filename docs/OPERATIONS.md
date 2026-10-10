@@ -117,3 +117,13 @@ Alerts must link to the trace ID, runbook and deployment revision, not to raw se
 - External delivery is at-least-once, not exactly-once. Dead-letter replay tooling, durable metrics and production alert routing must be configured and tested.
 - Self-service tenant provisioning and automated organization lifecycle webhooks are not implemented.
 - Production deployment, HA, backup freshness, restore success, measured SLOs and live ecosystem integration must be verified independently; this repository alone does not prove them.
+
+
+## Security engineering references
+
+- [OWASP AISVS 1.0 — Infrastructure, Configuration & Deployment Security (C4)](https://github.com/OWASP/AISVS/blob/main/1.0/en/0x10-C04-Infrastructure.md)
+- [OWASP AISVS 1.0 — Monitoring, Logging & Anomaly Detection (C12)](https://github.com/OWASP/AISVS/tree/main/1.0/research/chapters/C12-Monitoring-and-Logging)
+- [OWASP ASVS 5.0 — Configuration (V13)](https://github.com/OWASP/ASVS/blob/master/5.0/en/0x22-V13-Configuration.md)
+- [NIST SP 800-218 — Secure Software Development Framework (SSDF) v1.1](https://csrc.nist.gov/pubs/sp/800/218/final)
+
+These references inform verification criteria; they do not constitute certification or evidence that every requirement is satisfied.
