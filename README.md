@@ -33,6 +33,15 @@ ThreatFade results obtained from network traffic must not be presented as valida
 
 Configure credentials through environment variables. Never commit secrets. Production must not use development authentication fallbacks.
 
+### Health and operations
+
+- `GET /health/live` is a dependency-free process liveness probe.
+- `GET /health/ready` checks required dependencies with bounded timeouts and returns HTTP 503 when degraded.
+- `GET /health` remains a backward-compatible diagnostic response whose JSON status may be `degraded` while HTTP remains 200.
+- The Compose configuration and active `.env.example` values are for local development only, not production.
+
+See [Operations Runbook](docs/OPERATIONS.md) for production configuration gates, monitoring, proposed-but-unmeasured SLOs, secret rotation, backup/restore, deployment/rollback, and incident response. Repository CI does not prove a live deployment, successful restore drill, or achieved SLO.
+
 ## Phase and evidence policy
 
 Every phase requires code changes where needed, automated tests, blocking CI, a forensic review of the resulting diff and test evidence, reconciled documentation, and an explicit acceptance decision. Green CI is necessary but not sufficient for release readiness.
