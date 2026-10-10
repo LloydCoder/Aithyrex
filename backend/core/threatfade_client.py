@@ -95,6 +95,9 @@ class ThreatFadeClient:
             not isinstance(result["mitre_ttp"], str) or len(result["mitre_ttp"]) > 128
         ):
             return None, "invalid_mitre_ttp"
+        for flag in ("fallback", "degraded", "available"):
+            if flag in result and not isinstance(result[flag], bool):
+                return None, f"invalid_{flag}"
         if result.get("fallback") or result.get("degraded") or result.get("available") is False:
             return None, "degraded_upstream_response"
 
