@@ -6,9 +6,9 @@ This runbook defines minimum operational procedures for Aithyrex. It is not evid
 
 ## Health probes and traffic management
 
-- \`GET /health/live\` is process liveness only. It must not call PostgreSQL, Redis, or ThreatFade. A successful response means the HTTP process is responding, not that protected inference is safe.
-- \`GET /health/ready\` checks PostgreSQL, Redis, and ThreatFade with bounded per-dependency timeouts. It returns HTTP 200 only when all required dependencies report healthy; otherwise it returns HTTP 503. Use this endpoint for load-balancer readiness and rollout gating.
-- \`GET /health\` is a backward-compatible diagnostic endpoint. It returns HTTP 200 with \`status=ok|degraded\`; new orchestration should use the dedicated liveness/readiness endpoints.
+- `GET /health/live` is process liveness only. It must not call PostgreSQL, Redis, or ThreatFade. A successful response means the HTTP process is responding, not that protected inference is safe.
+- `GET /health/ready` checks PostgreSQL, Redis, and ThreatFade with bounded per-dependency timeouts. It returns HTTP 200 only when all required dependencies report healthy; otherwise it returns HTTP 503. Use this endpoint for load-balancer readiness and rollout gating.
+- `GET /health` is a backward-compatible diagnostic endpoint. It returns HTTP 200 with `status=ok|degraded`; new orchestration should use the dedicated liveness/readiness endpoints.
 - Health responses must never include exception messages, credentials, database URLs, Redis URLs, hostnames from error text, or raw prompts/completions.
 - A health probe is not a detector-quality check. A reachable ThreatFade endpoint does not establish calibrated AI-text detection.
 
@@ -33,17 +33,17 @@ Use an authorized database administration process to set the tenant's active fla
 
 ## Production configuration gates
 
-- Set \`APP_ENV=production\`.
-- Set a non-default \`APP_SECRET_KEY\` of at least 32 characters; use a secret manager, not a committed environment file.
-- Configure \`CLERK_JWT_KEY\`, an HTTPS \`CLERK_JWT_ISSUER\`, and an explicit \`CLERK_AUTHORIZED_PARTIES\` list.
-- Configure a remote \`postgresql+asyncpg\` \`DATABASE_URL\` with non-default credentials and an explicit \`ssl=require\` or \`ssl=verify-full\` query parameter.
-- Configure a remote \`rediss://\` \`REDIS_URL\` with non-default authentication.
-- Configure explicit HTTPS \`ALLOWED_ORIGINS\` and a non-wildcard \`ALLOWED_HOSTS\` allow-list.
+- Set `APP_ENV=production`.
+- Set a non-default `APP_SECRET_KEY` of at least 32 characters; use a secret manager, not a committed environment file.
+- Configure `CLERK_JWT_KEY`, an HTTPS `CLERK_JWT_ISSUER`, and an explicit `CLERK_AUTHORIZED_PARTIES` list.
+- Configure a remote `postgresql+asyncpg` `DATABASE_URL` with non-default credentials and an explicit `ssl=require` or `ssl=verify-full` query parameter.
+- Configure a remote `rediss://` `REDIS_URL` with non-default authentication.
+- Configure explicit HTTPS `ALLOWED_ORIGINS` and a non-wildcard `ALLOWED_HOSTS` allow-list.
 - Configure ThreatFade over HTTPS and provide its API key through the deployment secret manager.
-- Set \`OUTBOX_WORKER_ENABLED=true\`; verify the database migration is applied and the outbox worker can claim, retry, and dead-letter delivery rows.
+- Set `OUTBOX_WORKER_ENABLED=true`; verify the database migration is applied and the outbox worker can claim, retry, and dead-letter delivery rows.
 - Configure upstream request-body limits at the reverse proxy/API gateway; application schema limits run after JSON parsing.
 - Before exposing the API, verify database migrations, backups, restore procedures, TLS certificates, health probes, telemetry, alerts, capacity limits and rollback.
-- Never use the development Compose credentials, mounted source volume, \`--reload\`, or publicly exposed local PostgreSQL/Redis ports as a production deployment pattern.
+- Never use the development Compose credentials, mounted source volume, `--reload`, or publicly exposed local PostgreSQL/Redis ports as a production deployment pattern.
 
 The application validates production configuration at startup. This check validates configuration shape, not remote reachability, secret rotation, backup freshness, high availability, or deployment correctness.
 
