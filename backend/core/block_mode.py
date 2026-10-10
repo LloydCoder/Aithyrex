@@ -1,5 +1,5 @@
 """
-AI Shield — Block Mode Enforcement
+Aithyrex — Block Mode Enforcement
 =====================================
 Redis-backed per-model and per-agent blocking. Pro tier only.
 
