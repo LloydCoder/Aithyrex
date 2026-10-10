@@ -5,6 +5,23 @@ import pytest
 from backend.evaluation.red_team_suite import DEFAULT_DATASET, evaluate_cases, load_cases, main
 
 
+def test_dataset_manifest_matches_synthetic_corpus():
+    manifest_path = DEFAULT_DATASET.with_suffix(".manifest.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    cases, _ = load_cases(DEFAULT_DATASET)
+
+    assert manifest["classification"] == "synthetic_only"
+    assert manifest["raw_customer_data"] is False
+    assert manifest["expected_sample_count"] == len(cases)
+    assert manifest["label_counts"] == {
+        "malicious": sum(case["label"] == "malicious" for case in cases),
+        "benign": sum(case["label"] == "benign" for case in cases),
+    }
+    assert set(manifest["sources"]) == {case["source"] for case in cases}
+    assert set(manifest["threat_families"]) == {case["family"] for case in cases}
+    assert manifest["evaluation_policy"]["release_approved_by_suite"] is False
+
+
 def test_default_red_team_corpus_passes_without_approving_release():
     cases, dataset_sha256 = load_cases(DEFAULT_DATASET)
     report = evaluate_cases(cases, dataset_sha256=dataset_sha256)
