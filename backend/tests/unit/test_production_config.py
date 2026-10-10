@@ -1,10 +1,11 @@
-
 import pytest
+from fastapi import FastAPI
 
+from backend.main import lifespan
 
-import pytest
 
 TEST_RSA_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsk0lt+quNzDp4+1eKPU3\nJ34J8H1czcXw3L5/v6h8Yfohhr7S4D4h3YalOK5hWug5/7M0DLSjrTtF6NI9zRn0\nQb75PxPN2sF7NMm0PDJzXXjjL6JUPVmvEpC10F3YlLPpQIghH6QuS7wjpincQrYa\nkKo32mQOa6bfXqM3oFxOo56APo9YDj5M4fAGDsP4ZGWFp+hIE6tql70x/Kd/n3pG\nqasmvHIUYKvEA4imfSrSE576jX8fVD6rYpPNTdEu8UlNgkd4stF0BaTG0R6BAg8n\nVAVSOvoXuXLs9ESzC00H75HmMJq1KOjMX+HkNIAMQukViFk+ulnbrGrvBqHp5aLl\n7wIDAQAB\n-----END PUBLIC KEY-----"
+
 
 @pytest.mark.asyncio
 async def test_production_rejects_http_threatfade_and_missing_api_key(monkeypatch):
