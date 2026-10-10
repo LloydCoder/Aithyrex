@@ -166,9 +166,12 @@ class BlockModeService:
             raise RuntimeError("Block-state storage unavailable; cannot confirm blocklist")
 
         blocked = []
+        # Parse exact tenant-scoped prefixes so valid IDs containing ':' are preserved.
+        model_prefix = f"shield:block:model:{tenant_id}:"
+        agent_prefix = f"shield:block:agent:{tenant_id}:"
         # Models
-        async for key in redis.scan_iter(f"shield:block:model:{tenant_id}:*"):
-            model_id = key.split(":")[-1]
+        async for key in redis.scan_iter(f"{model_prefix}*"):
+            model_id = key[len(model_prefix):]
             reason = await redis.get(key)
             ttl = await redis.ttl(key)
             blocked.append({
@@ -179,8 +182,8 @@ class BlockModeService:
             })
 
         # Agents
-        async for key in redis.scan_iter(f"shield:block:agent:{tenant_id}:*"):
-            agent_id = key.split(":")[-1]
+        async for key in redis.scan_iter(f"{agent_prefix}*"):
+            agent_id = key[len(agent_prefix):]
             reason = await redis.get(key)
             ttl = await redis.ttl(key)
             blocked.append({
