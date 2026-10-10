@@ -285,4 +285,27 @@ CI and Security Scan must both pass on the latest PR head. The current Phase 8 P
 - The reference harness demonstrates the intended ordering contract, not production integration.
 - Detector results remain heuristic and uncalibrated; a finding is not an authorization decision.
 
-**Phase 8 forensic status:** implementation and contract-test scope is eligible for acceptance only after final-head CI/security green and forensic review. Production integration, replay protection, and effectiveness claims remain explicitly unverified.
+**Phase 8 forensic status: ACCEPTED for the declared receiver/contract-harness scope.** Final PR head `8efb2085feaf0c25409d92c4787350653faa7015` passed CI (https://github.com/LloydCoder/Aithyrex/actions/runs/38026196596) and Security Scan (https://github.com/LloydCoder/Aithyrex/actions/runs/38026196586); all four CI jobs and both security jobs succeeded. The phase diff, assertion binding, failure paths, redaction, tests, and docs were re-audited before merge. Merge commit: `cf1eaa45c4df55916fbdce7c9344e010c369e71b`. Production integration, replay protection, and effectiveness claims remain unverified.
+
+
+## 13. Phase 9 context, RAG and exfiltration provenance
+
+**Phase branch:** `godmode/phase-09-context-provenance`  
+**Contract:** `aithyrex.context-inspection.v1`  
+**Endpoint:** `POST /api/v1/detect/context`
+
+### Scope and controls
+
+- Require an RS256 Platform assertion with configured issuer/audience and a lifetime no greater than 300 seconds.
+- Bind the exact canonical context bundle, agent, context ID, tenant, source type, source ID, and content bytes through a SHA-256 claim; any post-signing mutation is rejected.
+- Enforce item-count, per-item, aggregate-character, and serialized-byte bounds; validation errors do not echo content.
+- Resolve active tenant state server-side and apply tenant rate/usage limits. Missing trust, unavailable tenant/capacity state, or quota exhaustion never becomes a clean finding or authorization grant.
+- Preserve per-source content hashes and source metadata while marking all retrieved/tool/memory/user/model content as untrusted. Provenance integrity is not a trust verdict.
+- Emit versioned, advisory-only findings with explicit no-authorization/no-execution fields. The bundle is scanned as a whole; per-source detector attribution and live retrieval authorization are not claimed.
+
+### Required verification and forensic gate
+
+- Unit tests: canonical serialization, source/content binding, signature verification, expiry/lifetime, and missing trust anchors.
+- Integration tests: missing assertion, signed context findings, content tampering, bounded input, redaction, and explicit untrusted source boundaries.
+- CI and Security Scan must pass on the final phase head. Audit all changed code and docs before merge; then verify post-merge workflows.
+- Residual risks: no live Platform integration, no proof of upstream retrieval authorization, no persistent replay deduplication, no per-source detection attribution, and no representative labeled AI-text evaluation corpus. Do not claim calibrated detection effectiveness.
