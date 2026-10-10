@@ -194,7 +194,8 @@ async def request_context_middleware(request: Request, call_next):
 # ── Routes ────────────────────────────────────────────────────────────
 app.include_router(health.router, tags=["Health"])
 app.include_router(detect.router, prefix="/api/v1/detect", tags=["Detection"])
-app.include_router(context.router, prefix="/api/v1/detect", tags=["Detection"])\napp.include_router(sequence.router, prefix="/api/v1/detect", tags=["Detection"])
+app.include_router(context.router, prefix="/api/v1/detect", tags=["Detection"])
+app.include_router(sequence.router, prefix="/api/v1/detect", tags=["Detection"])
 app.include_router(monitor.router, prefix="/api/v1/monitor", tags=["Monitor"])
 app.include_router(enforce.router, prefix="/api/v1/enforce", tags=["Enforcement"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
