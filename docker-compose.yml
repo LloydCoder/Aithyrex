@@ -1,5 +1,7 @@
 version: "3.9"
 
+# LOCAL DEVELOPMENT ONLY: default credentials, published database/Redis ports,
+# source bind mounts and --reload are intentionally unsuitable for production.
 services:
 
   # ── PostgreSQL 16 ─────────────────────────────────────────────────────────
@@ -63,6 +65,12 @@ services:
       SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health/live', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
