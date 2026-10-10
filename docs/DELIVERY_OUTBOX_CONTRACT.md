@@ -20,7 +20,7 @@ Delivery is **at least once**, not exactly once. A process crash after an extern
 
 ## Migration and deployment
 
-Apply Alembic revision `002_durable_delivery_outbox` after `001_initial_schema` before deploying this application revision. Set `OUTBOX_WORKER_ENABLED=true` in production; production startup refuses to run with the worker disabled. The worker must be monitored for pending/processing/dead row counts and repeated delivery failures.
+Apply Alembic revision `002_durable_delivery_outbox` after `001_initial_schema` before deploying the delivery worker. Apply `003_billing_webhook_idempotency` after revision 002 before enabling billing webhook processing; see [Billing Webhook Security](BILLING_WEBHOOK_SECURITY.md). Set `OUTBOX_WORKER_ENABLED=true` in production; production startup refuses to run with the worker disabled. The worker must be monitored for pending/processing/dead row counts and repeated delivery failures.
 
 ## Boundaries and residual risks
 
