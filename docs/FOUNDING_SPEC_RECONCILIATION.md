@@ -1,13 +1,13 @@
 # Aithyrex Founding Specification Reconciliation and Remediation Ledger
 
-**Status:** Active remediation; not a release-readiness attestation.
+**Engineering phase status:** Phases 0–17 complete for their documented implementation acceptance scopes. **Product release status:** BLOCKED pending external assurance evidence; this ledger is not a release-readiness attestation.
 **Product lineage:** Aithyrex (formerly AI Shield).
 **Repository:** https://github.com/LloydCoder/Aithyrex
 **Architectural authority:** Tinlance Agent Platform remains authoritative for identity, authorization, policy, approvals, governed execution, sandboxing, secrets, budgets and authoritative audit/evidence.
 
 ## 1. Purpose and evidence rules
 
-This document reconciles the founding AI Shield specification with the current repository and establishes a phase-gated remediation plan. Repository presence is evidence of code, not proof of correct runtime behavior. Tests are evidence only for the paths and fixtures they exercise. A green workflow is necessary but not sufficient for production readiness.
+This document reconciles the founding AI Shield specification with the current repository and records the completed Phase 0–17 implementation sequence, phase-specific forensic audits, residual risks, and outstanding external release gates. Repository presence is evidence of code, not proof of correct runtime behavior. Tests are evidence only for the paths and fixtures they exercise. A green workflow is necessary but not sufficient for production readiness.
 
 Do not claim AI-text detection accuracy, false-positive rate, complete MITRE coverage, regulatory filing, live ecosystem integration, SLA, or deployment status without reproducible evidence tied to version, environment, dataset and date. ThreatFade's reported network-traffic metrics do not validate AI-text detection.
 
