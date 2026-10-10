@@ -93,9 +93,8 @@ class Shield:
         parsed = urlparse(self.base_url)
         local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
         if parsed.scheme != "https" and not local_http:
-            return _blocked("insecure_api_url")
+            return _blocked("insecure_api_url", request_id)
 
-        request_id = str(uuid4())
         request_headers = {**self._headers, "X-Request-ID": request_id}
 
         payload: dict = {"prompt": prompt}
@@ -136,7 +135,7 @@ class Shield:
             or not isinstance(blocked, bool)
             or not isinstance(raw_detections, list)
         ):
-            return _blocked("invalid_response_schema")
+            return _blocked("invalid_response_schema", request_id)
         response_trace_id = data.get("trace_id")
         header_trace_id = response.headers.get("X-Request-ID")
         for candidate in (response_trace_id, header_trace_id):
@@ -159,13 +158,13 @@ class Shield:
             if not isinstance(item, dict):
                 return _blocked("invalid_detection_schema", request_id)
             if not isinstance(item.get("detector"), str) or not isinstance(item.get("detected"), bool):
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             try:
                 confidence = float(item.get("confidence", 0.0))
             except (TypeError, ValueError):
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             if not 0.0 <= confidence <= 1.0:
-                return _blocked("invalid_detection_schema")
+                return _blocked("invalid_detection_schema", request_id)
             detections.append(
                 Detection(
                     detector=item["detector"],
