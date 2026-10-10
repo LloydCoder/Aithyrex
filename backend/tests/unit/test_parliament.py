@@ -112,25 +112,29 @@ class TestShouldInvokeParliament:
         assert should_invoke_parliament(v) is False
 
 
-# ── ThreatFade oracle vote ─────────────────────────────────────────────────────
+# ── ThreatFade calibration gate ───────────────────────────────────────────────
 class TestThreatFadeVote:
-    def test_high_z_score_votes_alert_only(self, ensemble):
+    def test_high_network_score_abstains_without_ai_text_calibration(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=14.76)
+        assert vote.vote == Vote.ABSTAIN
+        assert "calibration gate" in vote.reasoning
+
+    def test_high_score_alerts_only_when_explicitly_validated(self, ensemble):
+        vote = ensemble._threatfade_vote(z_score=14.76, validated=True)
         assert vote.vote == Vote.ALERT
         assert vote.confidence == 0.0
 
-    def test_medium_z_score_votes_alert(self, ensemble):
-        vote = ensemble._threatfade_vote(z_score=7.0)
+    def test_medium_score_alerts_only_when_explicitly_validated(self, ensemble):
+        vote = ensemble._threatfade_vote(z_score=7.0, validated=True)
         assert vote.vote == Vote.ALERT
 
-    def test_low_z_score_abstains(self, ensemble):
-        vote = ensemble._threatfade_vote(z_score=0.5)
+    def test_low_score_abstains_even_when_validated(self, ensemble):
+        vote = ensemble._threatfade_vote(z_score=0.5, validated=True)
         assert vote.vote == Vote.ABSTAIN
 
-    def test_high_network_score_does_not_directly_block_ai_text(self, ensemble):
-        """A high network-derived score is advisory and cannot directly block AI text."""
+    def test_high_network_score_never_directly_blocks_ai_text(self, ensemble):
         vote = ensemble._threatfade_vote(z_score=14.76)
-        assert vote.vote == Vote.ALERT
+        assert vote.vote == Vote.ABSTAIN
 
 
 # ── Full Parliament vote scenarios ────────────────────────────────────────────
@@ -138,7 +142,7 @@ class TestParliamentVoting:
 
     @pytest.mark.asyncio
     async def test_two_model_voters_can_block(self, ensemble):
-        """Two model voters can escalate; ThreatFade alone contributes only ALERT."""
+        """Two model voters can escalate; ThreatFade abstains until the AI-text calibration gate is approved."""
         verdict = make_verdict(Action.LOG, Severity.MEDIUM)
 
         with patch.object(ensemble.gateway, "call_claude",
