@@ -17,6 +17,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from structlog.contextvars import bound_contextvars
 
 from backend.api.routes import detect, enforce, health, monitor, reports, webhooks
@@ -88,8 +89,8 @@ def _trace_id(request: Request) -> str:
     return value if isinstance(value, str) else str(uuid4())
 
 
-@app.exception_handler(HTTPException)
-async def http_error_contract(request: Request, exc: HTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def http_error_contract(request: Request, exc: StarletteHTTPException):
     detail = exc.detail
     if isinstance(detail, dict):
         error_code = str(detail.get("error_code") or detail.get("error") or f"http_{exc.status_code}")
