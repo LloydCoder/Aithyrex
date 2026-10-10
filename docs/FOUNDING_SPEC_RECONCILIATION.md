@@ -541,12 +541,13 @@ PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after fin
 
 ### Scope and implementation
 
-- Replace substring-based production URL checks with parsed scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; reject loopback dependencies, wildcard hosts/origins, default/short secrets and missing outbox worker configuration. Validation errors disclose configuration names only.
+- Replace substring-based production URL checks with structural scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; validate the Clerk RSA public-key trust anchor, reject loopback dependencies, wildcard hosts/origins, default/short secrets, and malformed or duplicate TLS parameters. Validation errors disclose configuration names only.
+- Bound and validate SQLAlchemy pool size, overflow, timeout and recycle settings; document the per-process connection budget.
 - Add bounded `/health/live` and `/health/ready` semantics; readiness returns 503 when a required dependency is degraded, while legacy `/health` keeps its HTTP-200 diagnostic contract. Health responses do not return exception text.
-- Dispose the SQLAlchemy engine pool during shutdown and ensure an outbox worker shutdown exception cannot prevent remaining resource cleanup.
-- Label Docker Compose and `.env.example` as local-development-only and add a container liveness probe.
+- Dispose the SQLAlchemy engine pool during shutdown and ensure an outbox worker shutdown exception cannot prevent remaining resource cleanup. Structured request logs include duration and normalized outcome.
+- Label Docker Compose and `.env.example` as local-development-only, bind development ports to loopback, add a container liveness probe, and use a canonical non-root container user.
 - Expand the operations runbook with health probes, proposed-but-unmeasured SLOs, alerting, privacy-safe observability, key rotation, backup/restore, deployment/rollback and incident handling.
-- Add unit tests for production URL validation, duplicate TLS parameters, loopback dependencies, liveness/readiness, timeouts and health error redaction.
+- Add unit tests for production URL validation, Clerk RSA parsing, duplicate TLS parameters, loopback dependencies, database pool bounds, liveness/readiness, timeouts, health error redaction and shutdown cleanup.
 
 ### Acceptance gate
 
