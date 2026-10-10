@@ -43,7 +43,13 @@ def production_configuration_errors(settings) -> list[str]:
         errors.append("CLERK_AUTHORIZED_PARTIES (explicit allow-list required)")
 
     threatfade = urlparse(str(getattr(settings, "THREATFADE_API_URL", "") or ""))
-    if threatfade.scheme != "https" or not threatfade.hostname or threatfade.username or threatfade.password:
+    if (
+        threatfade.scheme != "https"
+        or not threatfade.hostname
+        or _is_local_host(threatfade.hostname)
+        or threatfade.username
+        or threatfade.password
+    ):
         errors.append("THREATFADE_API_URL (HTTPS endpoint without embedded credentials required)")
     if not str(getattr(settings, "THREATFADE_API_KEY", "") or "").strip():
         errors.append("THREATFADE_API_KEY")
@@ -56,9 +62,10 @@ def production_configuration_errors(settings) -> list[str]:
         database.scheme != "postgresql+asyncpg"
         or _is_local_host(database.hostname)
         or not database.username
-        or not database_password
+        or len(database_password) < 16
         or database_password.lower() in _DEFAULT_SECRETS
-        or not any(value in {"require", "verify-full"} for value in ssl_values)
+        or len(ssl_values) != 1
+        or ssl_values[0] not in {"require", "verify-full"}
     ):
         errors.append("DATABASE_URL (remote PostgreSQL+asyncpg, non-default credentials and ssl=require|verify-full required)")
 
@@ -67,7 +74,7 @@ def production_configuration_errors(settings) -> list[str]:
     if (
         redis.scheme != "rediss"
         or _is_local_host(redis.hostname)
-        or not redis_password
+        or len(redis_password) < 16
         or redis_password.lower() in _DEFAULT_SECRETS
     ):
         errors.append("REDIS_URL (remote TLS Redis endpoint with non-default authentication required)")
@@ -82,6 +89,7 @@ def production_configuration_errors(settings) -> list[str]:
         or not urlparse(str(origin)).hostname
         or urlparse(str(origin)).username
         or urlparse(str(origin)).password
+        or "*" in (urlparse(str(origin)).hostname or "")
         for origin in origins
     ):
         errors.append("ALLOWED_ORIGINS (explicit HTTPS origin allow-list required)")
