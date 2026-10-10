@@ -90,7 +90,7 @@ def test_csv_export_neutralizes_formula_prefixes():
     assert "HYPERLINK" not in csv_text
     assert _csv_safe('=HYPERLINK("https://attacker.invalid")').startswith("'=HYPERLINK")
     assert _csv_safe("   =1+1").startswith("'   =1+1")
-    assert _csv_safe("\\t@SUM(1,1)").startswith("'\\t@SUM(1,1)")
+    assert _csv_safe("\t@SUM(1,1)").startswith("'\t@SUM(1,1)")
     assert envelope["evidence"]["model"] is None
 
 
