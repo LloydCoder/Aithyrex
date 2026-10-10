@@ -137,14 +137,45 @@ Residual risks intentionally remain for later phases: versioned finding/trace/pr
 
 The branch is not merged at the time of this ledger revision. The PR must remain open until the documentation-updated head has green CI/security workflows and the phase audit is accepted.
 
-## 7. Research baseline
+## 7. Phase 5 implementation and forensic verification
+
+**Phase branch:** `godmode/phase-05-contracts-telemetry`  
+**Verified implementation revision:** `7f5364743143af478c4114dae4bda56dd4997259`  
+**CI workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022745574  
+**Security workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022745589
+
+### Implemented
+
+- Added canonical Pydantic contracts for detector evidence (`aithyrex.detector-evidence.v1`), findings (`aithyrex.finding.v1`), detection responses (`aithyrex.detection-response.v1`) and errors (`aithyrex.error.v1`).
+- Added UUID request IDs, validated/canonicalized `X-Request-ID` propagation, response headers, structured request lifecycle logs and safe internal-error responses.
+- Kept legacy flat detection fields while adding a nested versioned finding for compatibility.
+- Standardized FastAPI and Starlette HTTP errors, including 404s; validation errors omit rejected input values.
+- Ensured blocked preflight detections retain a versioned finding inside the error detail.
+- Updated architecture documentation and added schema, trace propagation, validation redaction, unhandled-error and blocked-finding regression tests.
+
+### Verification evidence
+
+- Unit tests: **184 passed**.
+- API integration tests: **33 passed**.
+- Bandit, Ruff and Semgrep: passed.
+- Frontend dependency audit, TypeScript, ESLint and production build: passed.
+- Docker image build: passed.
+- Dependency vulnerability audit and secret scan: passed.
+
+### Phase 5 forensic conclusion
+
+Phase 5 implementation and CI gates are green for the contract and traceability scope above. The finding model is a canonical schema, **not** durable storage, a transactional outbox, proof of downstream delivery, or proof of cross-service trace propagation. Those remain later-phase requirements. W3C Trace Context/OpenTelemetry export, persisted finding IDs, schema-registry publication, idempotent event delivery and consumer conformance are not claimed complete.
+
+The documentation-only update must also pass CI/security workflows before this phase PR is merged.
+
+## 8. Research baseline
 
 - OWASP AISVS 1.0 provides testable AI-security requirements and recommends choosing verification depth based on risk; use versioned requirement IDs and distinguish AI-specific controls from general application/supply-chain controls: https://github.com/OWASP/AISVS
 - OWASP AISVS access-control requirements emphasize explicit allow-lists/default-deny, retrieval authorization and tenant isolation: https://github.com/OWASP/AISVS/blob/main/1.0/en/0x10-C05-Access-Control-and-Identity.md
 - Clerk recommends verifying session-token signatures and standard claims; its current guidance favors `authenticateRequest()` or manual JWT verification with a trusted key, rather than accepting decoded claims: https://clerk.com/docs/guides/sessions/manual-jwt-verification
 - GitHub recommends pinning third-party actions to full-length commit SHAs and using least-privilege workflow permissions: https://docs.github.com/en/actions/reference/security/secure-use
 
-## 8. Explicit release prohibitions until evidence exists
+## 9. Explicit release prohibitions until evidence exists
 
 - No claim of production readiness, 100% security, 0% false positives, or 99.9% SLA without scoped, repeatable evidence.
 - No claim that all ATLAS techniques are covered because a mapping file lists them.
