@@ -121,3 +121,10 @@ def test_isolated_injection_signal_does_not_create_sequence_finding(client: Test
     assert response.status_code == 200, response.text
     assert response.json()["detected"] is False
     assert response.json()["findings"] == []
+
+def test_out_of_order_sequence_is_rejected(client: TestClient):
+    payload = _payload()
+    payload["events"].reverse()
+    response = client.post("/api/v1/detect/sequence", json=payload)
+    assert response.status_code == 422
+    assert "timestamp" in response.text.lower()
