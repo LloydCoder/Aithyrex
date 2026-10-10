@@ -19,6 +19,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
+from backend.core.rate_limiter import rate_limiter
+from backend.core.usage_counter import usage_counter
 from backend.core.platform_action_auth import (
     action_payload_sha256,
     canonical_action_payload_bytes,
@@ -417,10 +419,29 @@ async def detect_agent_action(
 
     tenant = await _resolve_platform_tenant(claims["tenant_id"])
     tenant_id = str(tenant.id)
+    try:
+        await rate_limiter.enforce(tenant_id)
+        usage_allowed, _usage_count, _usage_limit = await usage_counter.reserve_inference(
+            tenant_id,
+            tenant.plan,
+        )
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail={
+            "error_code": "action_signal_capacity_unavailable",
+            "message": "Action inspection capacity state is unavailable.",
+        }) from exc
+    if not usage_allowed:
+        raise HTTPException(status_code=429, detail={
+            "error_code": "action_signal_usage_limit_reached",
+            "message": "Action inspection usage limit reached.",
+        })
+
     payload_text = canonical_action_payload_bytes(req.tool_name, req.arguments, req.context).decode("utf-8")
 
-    # Run detection without applying tenant usage limits or exposing an allow/block
-    # decision. A finding is evidence for the Platform; it is not an execution grant.
+    # Usage and rate limits are enforced above. The detector pass itself does not
+    # apply block mode or expose an allow/block decision. Findings are evidence only.
     verdict: ShieldVerdict = await engine.inspect(
         prompt=payload_text,
         completion=None,
