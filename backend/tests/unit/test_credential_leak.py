@@ -25,6 +25,7 @@ async def test_clean_completion_passes(detector):
     )
     assert result.detected is False
     assert result.severity == Severity.CLEAN
+    assert result.details["confidence_calibrated"] is False
 
 
 # ── Nigerian fintech patterns ─────────────────────────────────────────
