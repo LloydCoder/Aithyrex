@@ -518,4 +518,15 @@ The suite is a deterministic regression layer, not an exhaustive adversarial ben
 
 The final branch head must pass unit/integration tests, Ruff, Bandit, Semgrep, frontend audit/build, Docker build, dependency audit and secret scan. The forensic report must verify digest stability, tenant scoping, privacy boundaries and failure semantics before merge.
 
-**Phase 15 status:** implementation is under review until the final-head workflows pass. External legal assessment, production deployment, database immutability and any regulator submission are outside this export contract.
+### Phase 15 implementation and forensic acceptance
+
+**Implementation revision:** `1fc7e84cb3d2b4bd8c75f77436666f8aa1f96574`  
+**Forensic audit:** [Phase 15 forensic audit](audits/PHASE_15_FORENSIC_AUDIT.md)  
+**CI on implementation revision:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767051 — success  
+**Security Scan on implementation revision:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767087 — success
+
+The final implementation revision passed the four CI jobs and both security jobs. The phase-specific forensic review verified server-side Enterprise entitlement, same-predicate tenant/event scoping, indistinguishable missing/cross-tenant 404s, database outage semantics, allow-listed content minimization, deterministic evidence digest, CSV formula mitigation, no-store headers, explicit non-submission fields and route/test coverage.
+
+A documentation-only audit/ledger amendment is being validated separately on the PR head. Merge is permitted only after the latest documentation revision also has green CI and Security Scan, followed by post-merge workflow verification.
+
+**Phase 15 acceptance scope:** technical evidence exports only. The digest is not a signature or immutable-storage guarantee. The endpoint does not determine legal applicability, calculate statutory deadlines, submit a filing, or prove delivery. `/summary` remains 501. Phase 6's representative labeled AI-text effectiveness gate remains open and is not bypassed by this phase.
