@@ -118,6 +118,39 @@ class DetectionEvent(Base):
     )
 
 
+# ── Billing webhook idempotency and ordering ─────────────────────────────────
+class BillingWebhookEvent(Base):
+    """Durable provider-event ledger; payload contents and secrets are never stored."""
+
+    __tablename__ = "billing_webhook_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    event_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(128))
+    occurred_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="processing", nullable=False)
+    result: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("provider", "event_key", name="uq_billing_webhook_provider_event"),
+        Index(
+            "ix_billing_webhook_resource_order",
+            "provider",
+            "resource_id",
+            "occurred_at",
+        ),
+    )
+
+
 # ── Durable delivery outbox ───────────────────────────────────────────────────
 class DeliveryOutbox(Base):
     """Transactional outbox for at-least-once evidence and notification delivery."""
