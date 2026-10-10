@@ -128,11 +128,14 @@ class EventLogger:
 
         from backend.core.shield_engine import Action, DetectionResult, Severity
 
+        def severity_value(value):
+            return value.value if hasattr(value, "value") else str(value)
+
         results = [
             DetectionResult(
                 detector=item.detector,
                 detected=item.detected,
-                severity=Severity(str(item.severity).lower()),
+                severity=Severity(severity_value(item.severity).lower()),
                 confidence=item.confidence,
                 details=item.details if isinstance(item.details, dict) else {},
                 mitre_atlas=list(item.mitre_atlas or []),
@@ -141,7 +144,7 @@ class EventLogger:
         ]
         verdict = SimpleNamespace(
             action=Action.LOG,
-            severity=Severity(str(finding.severity).lower()),
+            severity=Severity(severity_value(finding.severity).lower()),
             blocked=False,
             results=results,
         )
