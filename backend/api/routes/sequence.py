@@ -10,6 +10,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.api.routes.detect import _resolve_platform_tenant
+from backend.core.assertion_replay import assertion_replay_guard
 from backend.core.behavioral_correlation import BehaviorEvent, correlate_events
 from backend.core.contracts import DetectorEvidenceV1, FindingV1
 from backend.core.platform_sequence_auth import (
@@ -137,6 +138,9 @@ async def inspect_sequence(
             },
         )
 
+    await assertion_replay_guard.consume(
+        "sequence", claims["tenant_id"], claims["jti"], claims["exp"]
+    )
     tenant = await _resolve_platform_tenant(claims["tenant_id"])
     tenant_id = str(tenant.id)
     try:
