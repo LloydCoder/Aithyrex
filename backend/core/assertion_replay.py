@@ -10,8 +10,8 @@ import hashlib
 import time
 from typing import Literal
 
-from fastapi import HTTPException
 import structlog
+from fastapi import HTTPException
 
 from backend.core.config import settings
 
