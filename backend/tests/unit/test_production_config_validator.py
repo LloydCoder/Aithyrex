@@ -74,3 +74,11 @@ def test_configuration_errors_never_echo_secret_values():
     assert "private-db-secret" not in rendered
     assert "private-redis-secret" not in rendered
     assert "change-me" not in rendered
+
+
+def test_production_rejects_unbounded_database_pool_values():
+    settings = valid_settings(DB_POOL_SIZE=0, DB_MAX_OVERFLOW=999, DB_POOL_TIMEOUT_SECONDS=0)
+    errors = production_configuration_errors(settings)
+    assert any(error.startswith("DB_POOL_SIZE") for error in errors)
+    assert any(error.startswith("DB_MAX_OVERFLOW") for error in errors)
+    assert any(error.startswith("DB_POOL_TIMEOUT_SECONDS") for error in errors)
