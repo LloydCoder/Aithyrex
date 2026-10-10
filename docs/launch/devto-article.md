@@ -10,7 +10,7 @@ tags: security, llm, ai, python
 
 Aithyrex is Tinlance's project for inspecting supported AI interactions and producing security findings with explicit provenance. The repository includes pattern-based prompt-injection and credential detectors, encoding heuristics, a ThreatFade bridge, a voting component, API routes, and provider integration wrappers.
 
-This is an engineering project, not a claim that AI runtime security is solved. The implementation and its evaluation are still being hardened.
+This is an engineering project, not a claim that AI runtime security is solved. The documented Phase 0–17 implementation sequence is complete for its declared scope, but the product release remains blocked pending an independently labeled AI-text effectiveness evaluation, independent security review, production deployment/rollback evidence, backup/restore drill, measured SLOs, and authorized legal/compliance review.
 
 ## Why inspect AI interactions?
 
