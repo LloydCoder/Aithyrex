@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from backend.evaluation.red_team_suite import DEFAULT_DATASET, evaluate_cases, load_cases, main
 from backend.detectors.prompt_injection import PromptInjectionDetector
+from backend.evaluation.red_team_suite import DEFAULT_DATASET, evaluate_cases, load_cases, main
 
 
 def test_dataset_manifest_matches_synthetic_corpus():
@@ -46,12 +46,19 @@ def test_cli_emits_content_free_report_and_passes(capsys):
     assert all("raw_prompt" not in row for row in report["case_results"])
 
 
-def test_cli_does_not_echo_detector_exception_text(monkeypatch, capsys):
+def test_cli_does_not_echo_detector_exception_text(monkeypatch, capsys, tmp_path):
+    path = tmp_path / "one-case.jsonl"
+    case = {
+        "case_id": "benign-prompt", "family": "benign_prompt", "source": "prompt",
+        "label": "benign", "text": "Summarize this report.", "expected_detectors": [],
+    }
+    path.write_text(json.dumps(case) + "\n", encoding="utf-8")
+
     async def fail_with_sensitive_message(*args, **kwargs):
         raise RuntimeError("sensitive synthetic payload must not be echoed")
 
     monkeypatch.setattr(PromptInjectionDetector, "detect", fail_with_sensitive_message)
-    assert main([]) == 2
+    assert main(["--dataset", str(path)]) == 2
     captured = capsys.readouterr()
     error = json.loads(captured.err)
     assert error == {"status": "evaluation_error", "error_type": "RuntimeError"}
