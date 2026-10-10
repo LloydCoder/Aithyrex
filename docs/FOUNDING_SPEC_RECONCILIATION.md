@@ -140,13 +140,13 @@ The branch is not merged at the time of this ledger revision. The PR must remain
 ## 7. Phase 5 implementation and forensic verification
 
 **Phase branch:** `godmode/phase-05-contracts-telemetry`  
-**Verified implementation revision:** `7f5364743143af478c4114dae4bda56dd4997259`  
-**CI workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022745574  
-**Security workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022745589
+**Verified implementation revision:** `e6398837037a4c9639dd1c17b8dc1fdcab010d79`  
+**CI workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022923598  
+**Security workflow:** https://github.com/LloydCoder/Aithyrex/actions/runs/38022923594
 
 ### Implemented
 
-- Added canonical Pydantic contracts for detector evidence (`aithyrex.detector-evidence.v1`), findings (`aithyrex.finding.v1`), detection responses (`aithyrex.detection-response.v1`) and errors (`aithyrex.error.v1`).
+- Published all detection response and error schemas in OpenAPI, alongside canonical Pydantic contracts for detector evidence (`aithyrex.detector-evidence.v1`), findings (`aithyrex.finding.v1`), detection responses (`aithyrex.detection-response.v1`) and errors (`aithyrex.error.v1`).
 - Added UUID request IDs, validated/canonicalized `X-Request-ID` propagation, response headers, structured request lifecycle logs and safe internal-error responses.
 - Kept legacy flat detection fields while adding a nested versioned finding for compatibility.
 - Standardized FastAPI and Starlette HTTP errors, including 404s; validation errors omit rejected input values.
@@ -156,7 +156,7 @@ The branch is not merged at the time of this ledger revision. The PR must remain
 ### Verification evidence
 
 - Unit tests: **184 passed**.
-- API integration tests: **33 passed**.
+- API integration tests: **34 passed**.
 - Bandit, Ruff and Semgrep: passed.
 - Frontend dependency audit, TypeScript, ESLint and production build: passed.
 - Docker image build: passed.
