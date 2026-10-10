@@ -86,7 +86,6 @@ def test_invalid_risk_probability_is_rejected():
 
 
 def test_cli_records_corpus_hash_baseline_and_non_approval(tmp_path, capsys):
-    
     records = []
     index = 0
     for source in ("prompt", "completion", "tool_output"):
