@@ -39,7 +39,7 @@ class BlockModeService:
                 import redis.asyncio as aioredis
 
                 from backend.core.config import settings
-                self._redis = await aioredis.from_url(
+                self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     encoding="utf-8",
                     decode_responses=True,
@@ -48,6 +48,18 @@ class BlockModeService:
                 logger.warning("block_mode_redis_unavailable", error=str(e))
                 return None
         return self._redis
+
+    async def close(self) -> None:
+        """Close the Redis connection pool during application shutdown."""
+        redis = self._redis
+        self._redis = None
+        if redis is None:
+            return
+        close = getattr(redis, "aclose", None) or getattr(redis, "close", None)
+        if close is not None:
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
 
     # ── Block operations ──────────────────────────────────────────────────────
     async def block_model(
