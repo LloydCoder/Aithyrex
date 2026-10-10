@@ -3,11 +3,11 @@ from types import SimpleNamespace
 from uuid import UUID
 
 from backend.compliance.evidence_export import (
+    _csv_safe,
     build_export_envelope,
     render_csv,
     render_json,
     render_markdown,
-    _csv_safe,
 )
 
 
@@ -88,7 +88,7 @@ def test_csv_export_neutralizes_formula_prefixes():
     envelope = build_export_envelope(event, tenant_id="tenant-safe")
     csv_text = render_csv(envelope)
     assert _csv_safe('=HYPERLINK("https://attacker.invalid")').startswith("'=HYPERLINK")
-    assert "HYPERLINK" not in envelope["evidence"]["model"] if envelope["evidence"]["model"] else True
+    assert envelope["evidence"]["model"] is None
 
 
 def test_invalid_confidence_and_identifiers_are_safely_normalized():
