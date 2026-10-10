@@ -499,3 +499,36 @@ The suite is a deterministic regression layer, not an exhaustive adversarial ben
 
 **Phase 14 status:** accepted for the declared deterministic synthetic-regression scope at revision `2f4cb7889843bfbc4048f7f1654e0bd89c07f604`. CI [run 38031935795](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935795) and Security Scan [run 38031935796](https://github.com/LloydCoder/Aithyrex/actions/runs/38031935796) both passed, including the standalone blocking red-team CLI gate, 268 unit tests, 57 API/integration tests, frontend build/audit, Docker build, dependency audit and secret scan. See [the Phase 14 forensic audit](audits/PHASE_14_FORENSIC_AUDIT.md). Acceptance is limited to synthetic regression behavior; representative production effectiveness and independent assurance remain open. The final docs-only commit must also pass fresh CI and Security Scan before merge.
 
+
+
+## 19. Phase 15 compliance evidence exports
+
+**Branch:** godmode/phase-15-compliance-evidence-exports  
+**Contract:** aithyrex.compliance-evidence-export.v1  
+**Detailed design:** [Compliance Evidence Exports](COMPLIANCE_EVIDENCE_EXPORTS.md)
+
+### Scope
+
+- Export persisted detection-event evidence as JSON, CSV or Markdown for Enterprise tenants.
+- Bind every database lookup to both the requested event UUID and the authenticated tenant UUID; return indistinguishable 404s for missing and cross-tenant records.
+- Hash canonical allow-listed evidence fields, exclude raw prompts/completions and arbitrary detector details, and neutralize CSV formula prefixes.
+- Explicitly mark exports as not submitted and avoid claims of legal assessment, notification, or regulator filing.
+
+### Acceptance gate
+
+The final branch head must pass unit/integration tests, Ruff, Bandit, Semgrep, frontend audit/build, Docker build, dependency audit and secret scan. The forensic report must verify digest stability, tenant scoping, privacy boundaries and failure semantics before merge.
+
+### Phase 15 implementation and forensic acceptance
+
+**Reviewed implementation revision:** `e35247d95d52010ce75af3ad3eeb0bf3dd26fb72`  
+**Forensic audit:** [Phase 15 forensic audit](audits/PHASE_15_FORENSIC_AUDIT.md)  
+**Original implementation CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767051 — success  
+**Original implementation Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767087 — success  
+**CSV-hardening CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509266 — in progress at audit amendment time  
+**CSV-hardening Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509272 — success
+
+The forensic review found an additional CSV formula-injection edge case: leading spaces could precede a spreadsheet formula marker. The sanitizer now checks the first non-whitespace character, and regression tests cover direct, whitespace-prefixed and tab-prefixed formulas. The implementation review also verified server-side Enterprise entitlement, same-predicate tenant/event scoping, indistinguishable missing/cross-tenant 404s, database outage semantics, allow-listed content minimization, deterministic evidence digest, no-store headers, explicit non-submission fields and route/test coverage.
+
+The audit and ledger documentation have been amended after the code change. The current final PR head must pass fresh CI and Security Scan before merge, followed by post-merge workflow verification.
+
+**Phase 15 acceptance scope:** technical evidence exports only. The digest is not a signature or immutable-storage guarantee. The endpoint does not determine legal applicability, calculate statutory deadlines, submit a filing, or prove delivery. `/summary` remains 501. Phase 6's representative labeled AI-text effectiveness gate remains open and is not bypassed by this phase.
