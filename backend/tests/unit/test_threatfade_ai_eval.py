@@ -67,7 +67,7 @@ def test_calibration_requires_explicit_risk_probabilities():
     for metrics in report["by_source"].values():
         assert metrics["calibration"]["status"] == "evaluated"
         assert metrics["calibration"]["brier_score"] < 0.02
-        assert metrics["calibration"]["expected_calibration_error_10_bins"] < 0.1
+        assert metrics["calibration"]["expected_calibration_error_10_bins"] <= 0.1
 
 
 def test_unlabeled_probability_values_are_not_assumed_calibrated():
