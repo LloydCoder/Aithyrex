@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime, timezone
 from collections.abc import Mapping, Sequence
 from typing import Any
 from uuid import UUID
@@ -21,6 +22,18 @@ _REQUIRED_CLAIMS = [
 MAX_ASSERTION_TTL_SECONDS = 300
 
 
+def _canonical_timestamp(value: Any) -> str:
+    if isinstance(value, datetime):
+        timestamp = value
+    elif isinstance(value, str):
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    else:
+        raise ValueError("Event timestamp must be a datetime or ISO-8601 string")
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise ValueError("Event timestamp must include a timezone")
+    return timestamp.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+
 def canonical_sequence_bytes(
     agent_id: str, sequence_id: str, events: Sequence[Mapping[str, Any]]
 ) -> bytes:
@@ -30,7 +43,7 @@ def canonical_sequence_bytes(
         normalized_events.append({
             "event_id": event["event_id"],
             "event_type": event["event_type"],
-            "occurred_at": event["occurred_at"],
+            "occurred_at": _canonical_timestamp(event["occurred_at"]),
             "tool_name": event.get("tool_name"),
             "finding_id": event.get("finding_id"),
             "signals": event.get("signals", []),
