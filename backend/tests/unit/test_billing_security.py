@@ -150,3 +150,162 @@ async def test_paddle_canceled_subscription_downgrades_to_free(monkeypatch):
     assert result["status"] == "ok"
     assert result["plan"] == "free"
     update.assert_awaited_once_with("org_1", "free", "cus_1", "paddle")
+
+
+def test_lemonsqueezy_event_key_is_stable_payload_digest():
+    from backend.core.billing import derive_webhook_event_key
+
+    payload = b'{"meta":{"event_name":"subscription_updated"}}'
+    assert derive_webhook_event_key("lemonsqueezy", payload) == derive_webhook_event_key(
+        "lemonsqueezy", payload
+    )
+    assert derive_webhook_event_key("lemonsqueezy", payload) != derive_webhook_event_key(
+        "lemonsqueezy", payload + b" "
+    )
+
+
+def test_paddle_event_key_requires_provider_event_id():
+    from backend.core.billing import derive_webhook_event_key
+
+    assert derive_webhook_event_key("paddle", b"{}", None) is None
+    assert derive_webhook_event_key("paddle", b"{}", "evt_test_1") == "evt_test_1"
+    assert derive_webhook_event_key("unknown", b"{}", "evt_test_1") is None
+
+
+def test_provider_timestamp_normalizes_to_utc():
+    from datetime import timezone
+
+    from backend.core.billing import parse_provider_timestamp
+
+    parsed = parse_provider_timestamp("2026-10-10T12:30:00+02:00")
+    assert parsed is not None
+    assert parsed.tzinfo == timezone.utc
+    assert parsed.isoformat() == "2026-10-10T10:30:00+00:00"
+    assert parse_provider_timestamp("not-a-date") is None
+
+
+class _FakeTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class _FakeBillingSession:
+    def __init__(self, results):
+        self._results = list(results)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+    def begin(self):
+        return _FakeTransaction()
+
+    async def execute(self, statement):
+        return self._results.pop(0)
+
+
+class _FakeScalarResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+
+@pytest.mark.asyncio
+async def test_paddle_webhook_duplicate_is_not_applied_twice(monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+
+    from backend.core.billing import BillingService
+
+    payload = b'{"event_id":"evt_test_1","event_type":"subscription.created"}'
+    digest = hashlib.sha256(payload).hexdigest()
+    existing = SimpleNamespace(
+        payload_sha256=digest,
+        status="processed",
+        event_type="subscription.created",
+    )
+    fake_session = _FakeBillingSession(
+        [_FakeScalarResult(None), _FakeScalarResult(existing)]
+    )
+    monkeypatch.setattr(
+        "backend.models.database.AsyncSessionFactory",
+        lambda: fake_session,
+    )
+    update = AsyncMock()
+    monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
+
+    result = await BillingService().process_webhook_event(
+        "paddle",
+        "evt_test_1",
+        payload,
+        "subscription.created",
+        {"custom_data": {"clerk_org_id": "org_1"}},
+        None,
+        "sub_1",
+    )
+
+    assert result == {"status": "duplicate", "event": "subscription.created"}
+    update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_paddle_webhook_stale_subscription_snapshot_is_ignored(monkeypatch):
+    import hashlib
+    import uuid
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+
+    from backend.core.billing import BillingService
+
+    payload = b'{"event_id":"evt_older","event_type":"subscription.updated"}'
+    digest = hashlib.sha256(payload).hexdigest()
+    occurred_at = datetime(2026, 10, 10, 10, 0, tzinfo=timezone.utc)
+    current_event = SimpleNamespace(
+        status="processing",
+        payload_sha256=digest,
+        occurred_at=occurred_at,
+        processed_at=None,
+        result={},
+    )
+    tenant = SimpleNamespace(clerk_org_id="org_1")
+    newer_event = SimpleNamespace(occurred_at=occurred_at + timedelta(seconds=1))
+    fake_session = _FakeBillingSession(
+        [
+            _FakeScalarResult(uuid.uuid4()),
+            _FakeScalarResult(current_event),
+            _FakeScalarResult(tenant),
+            _FakeScalarResult(newer_event),
+        ]
+    )
+    monkeypatch.setattr(
+        "backend.models.database.AsyncSessionFactory",
+        lambda: fake_session,
+    )
+    update = AsyncMock()
+    monkeypatch.setattr("backend.core.billing.update_tenant_plan", update)
+
+    result = await BillingService().process_webhook_event(
+        "paddle",
+        "evt_older",
+        payload,
+        "subscription.updated",
+        {
+            "custom_data": {"clerk_org_id": "org_1"},
+            "customer_id": "cus_1",
+            "status": "active",
+            "items": [{"price": {"id": "pro-id"}}],
+        },
+        occurred_at,
+        "sub_1",
+    )
+
+    assert result == {"status": "stale", "event": "subscription.updated"}
+    assert current_event.status == "stale"
+    update.assert_not_awaited()
