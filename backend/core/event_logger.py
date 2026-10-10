@@ -1,11 +1,11 @@
 """
 Aithyrex — Event Logger
 =========================
-Persists every detection event to PostgreSQL.
-Also creates Alert records for HIGH and CRITICAL verdicts.
+Persists detection evidence and transactional delivery intents to PostgreSQL.
+Creates Alert records for HIGH and CRITICAL verdicts.
 Updates UsageCounter in DB for monthly billing reconciliation.
 
-Runs as a background task — never blocks the HTTP response.
+Evidence persistence is awaited before the detection response returns; external delivery is asynchronous and retried by the durable outbox worker.
 """
 
 from __future__ import annotations
@@ -19,12 +19,11 @@ logger = structlog.get_logger(__name__)
 
 class EventLogger:
     """
-    Background service that persists detection events to DB.
+    Persistence service for detection evidence and delivery intents.
 
-    Called via asyncio.create_task() — fire and forget.
-    If DB is unavailable, logs to structlog and continues.
-    The Redis usage counter is the source of truth for real-time limits.
-    PostgreSQL is the audit trail and billing reconciliation store.
+    The event row, any alert row, and all outbox intents commit in one transaction.
+    If DB is unavailable, persistence fails visibly to the caller through degraded state.
+    The Redis usage counter remains the source of truth for real-time limits.
     """
 
     async def log_event(
