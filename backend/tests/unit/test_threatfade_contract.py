@@ -109,3 +109,13 @@ async def test_oversized_text_is_rejected_without_network_call():
     assert result["degraded"] is True
     assert result["error"] == "invalid_or_oversized_input"
     context.__aenter__.return_value.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_malformed_availability_marker_is_degraded():
+    context = fake_http_context({"detected": False, "z_outlier": 0.2, "available": "false"})
+    with patch("backend.core.threatfade_client.httpx.AsyncClient", return_value=context):
+        result = await ThreatFadeClient().detect("test text")
+    assert result["degraded"] is True
+    assert result["available"] is False
+    assert result["error"] == "invalid_available"
