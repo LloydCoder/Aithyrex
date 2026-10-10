@@ -41,6 +41,19 @@ def patch_redis(service, mock_redis):
     yield
 
 
+@pytest.mark.asyncio
+async def test_redis_async_from_url_factory_is_synchronous(service, mock_redis, monkeypatch):
+    service._redis = None
+    factory = MagicMock(return_value=mock_redis)
+    monkeypatch.setattr("redis.asyncio.from_url", factory)
+    monkeypatch.setattr("backend.core.config.settings.REDIS_URL", "redis://test:6379/0")
+
+    assert await service._get_redis() is mock_redis
+    factory.assert_called_once_with(
+        "redis://test:6379/0", encoding="utf-8", decode_responses=True
+    )
+
+
 # ── Block operations ──────────────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_block_model_sets_redis_key(service, mock_redis):
