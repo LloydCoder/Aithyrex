@@ -45,7 +45,7 @@ The reviewed Parliament path treats the ensemble as advisory, preserves existing
 
 ### Block state, usage and billing
 
-The reviewed block-state read path fails closed when Redis cannot establish whether a model or agent is blocked. Usage reservation uses atomic Redis accounting and raises an unavailable-state error instead of returning zero after failures. Billing signature verification and plan mapping reject missing secrets/signatures and unknown product/price identifiers. Provider replay protection and durable idempotent webhook processing remain explicit limitations in the project ledger and must not be described as complete.
+The reviewed block-state read path fails closed when Redis cannot establish whether a model or agent is blocked. Usage reservation uses atomic Redis accounting and raises an unavailable-state error instead of returning zero after failures. Billing signature verification and plan mapping reject missing secrets/signatures and unknown product/price identifiers. A post-Phase 17 forensic follow-up adds a PostgreSQL event ledger with unique provider/event keys, transaction-bound entitlement changes, and per-resource stale-event ordering. Its code/test revision passed CI run [38041196556](https://github.com/LloydCoder/Aithyrex/actions/runs/38041196556) and Security Scan run [38041196526](https://github.com/LloydCoder/Aithyrex/actions/runs/38041196526). Operational retention/pruning and live provider sandbox/production verification remain open.
 
 ### Release-evidence evaluator
 
@@ -80,7 +80,11 @@ The release manifest at [release-evidence.json](../assurance/release-evidence.js
 
 The offline red-team corpus is small and synthetic (32 cases). Its regression metrics are useful for preventing known regressions but do not establish production detection accuracy, independent validation, model/provider generalization, or robustness against unseen attacks.
 
-## 6. Final findings and decision
+## 6. Post-audit gap closure
+
+The final audit identified that provider webhook replay/idempotency was still an implementation limitation. The follow-up adds migration `003_billing_webhook_idempotency`, deduplication for both supported providers, transactional entitlement/event updates, and stale subscription event rejection. Regression tests cover stable keys, timestamp normalization, duplicate deliveries and stale snapshots. The referenced CI and Security Scan runs passed for the code revision. The migration must be applied before billing webhooks are enabled; no live provider configuration or production billing behavior is inferred.
+
+## 7. Final findings and decision
 
 - No new blocking defect was established in the targeted high-risk code paths reviewed for this retrospective audit; this is not equivalent to a clean independent security assessment of every file.
 - The phase ledger and audit documents consistently distinguish implementation acceptance from production readiness, and the Phase 17 audit now records merge and post-merge workflow evidence.
