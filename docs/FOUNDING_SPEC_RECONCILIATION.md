@@ -583,7 +583,7 @@ This phase does not prove a live production deployment, managed secret-manager i
 ### Scope and implementation
 
 - Add a machine-readable release evidence manifest with unique release-blocking gate IDs, owners, acceptance criteria, evidence references and explicit statuses.
-- Add a fail-closed release-readiness evaluator bound to an exact 40-character candidate SHA and checked-out Git HEAD. It requires workflow evidence to reference the same SHA, and rejects unresolved blocking gates, malformed evidence, duplicate gate IDs, unsafe repository paths and non-GitHub workflow URLs. The committed manifest is a blocked template; final candidate evidence must be supplied as an external protected bundle to avoid self-referential commit hashes.
+- Add a fail-closed release-readiness evaluator bound to an exact 40-character candidate SHA and checked-out Git HEAD. It requires workflow evidence and external review/deployment/metrics artifacts to reference the same candidate SHA, and rejects unresolved blocking gates, malformed evidence, duplicate gate IDs, unsafe repository paths and non-GitHub workflow URLs. The committed manifest is a blocked template; final candidate evidence must be supplied as an external protected bundle to avoid self-referential commit hashes.
 - Add tests for the current blocked state, successful fixture, candidate mismatch, missing evidence, malformed values, duplicate IDs and path traversal.
 - Add a release-readiness guide, threat model, independent review protocol and controlled-launch procedure.
 - Preserve the explicit distinction between implementation evidence and independent assurance. The current release disposition is BLOCKED.
