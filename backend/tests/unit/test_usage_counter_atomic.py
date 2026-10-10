@@ -1,9 +1,23 @@
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.core.usage_counter import UsageCounterService
+
+
+@pytest.mark.asyncio
+async def test_usage_counter_uses_sync_redis_client_factory(monkeypatch):
+    service = UsageCounterService()
+    fake_redis = AsyncMock()
+    factory = MagicMock(return_value=fake_redis)
+    monkeypatch.setattr("redis.asyncio.from_url", factory)
+    monkeypatch.setattr("backend.core.usage_counter.settings.REDIS_URL", "redis://test:6379/0")
+
+    assert await service._get_redis() is fake_redis
+    factory.assert_called_once_with(
+        "redis://test:6379/0", encoding="utf-8", decode_responses=True
+    )
 
 
 def test_usage_key_is_scoped_to_current_utc_calendar_month():
