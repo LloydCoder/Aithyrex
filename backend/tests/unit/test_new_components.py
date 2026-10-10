@@ -180,11 +180,19 @@ class TestLlamaIndexMiddleware:
         obs = AIShieldObserver(api_key="", raise_on_block=False)
         obs.on_llm_start({}, [])   # Should not raise
 
-    def test_observer_handles_llm_start_with_prompt(self):
+    def test_observer_inspects_prompt_without_shared_state(self):
         from integrations.llamaindex_middleware import AIShieldObserver
         obs = AIShieldObserver(api_key="", raise_on_block=False)
-        obs.on_llm_start({}, ["What is the capital of France?"])
-        assert obs._last_prompt == "What is the capital of France?"
+        with patch.object(obs, "_check") as check:
+            obs.on_llm_start({}, ["What is the capital of France?"])
+        check.assert_called_once_with(prompt="What is the capital of France?")
+
+    def test_observer_inspects_completion_without_cross_request_pairing(self):
+        from integrations.llamaindex_middleware import AIShieldObserver
+        obs = AIShieldObserver(api_key="", raise_on_block=False)
+        with patch.object(obs, "_check") as check:
+            obs.on_llm_end(type("Response", (), {"text": "answer"})())
+        check.assert_called_once_with(prompt="", completion="answer")
 
     def test_observer_handles_retrieve_empty(self):
         from integrations.llamaindex_middleware import AIShieldObserver
