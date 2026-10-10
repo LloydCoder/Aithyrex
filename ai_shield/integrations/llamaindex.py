@@ -22,7 +22,7 @@ class AIShieldObserver:
     def __init__(
         self,
         api_key: str = "",
-        base_url: str = "https://api.aishield.tinlance.com",
+        base_url: str | None = None,
         raise_on_block: bool = True,
     ) -> None:
         self._shield = Shield(api_key=api_key, base_url=base_url)
@@ -35,22 +35,33 @@ class AIShieldObserver:
             self._check(prompt=prompt)
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
-        try:
-            text = getattr(response, "text", None) or ""
-            if text and self._last_prompt:
-                self._check(prompt=self._last_prompt, completion=text)
-        except Exception:
-            pass
+        text = getattr(response, "text", None) or ""
+        if not text and hasattr(response, "generations"):
+            generations = response.generations
+            if generations and generations[0]:
+                text = getattr(generations[0][0], "text", "") or ""
+        if text and self._last_prompt:
+            self._check(prompt=self._last_prompt, completion=text)
 
     def on_retrieve(self, nodes: list, **kwargs: Any) -> None:
         """Scan retrieved nodes for RAG poisoning."""
         for node in nodes:
             try:
                 text = node.get_text() if hasattr(node, "get_text") else str(node)
-                if text:
-                    self._check(prompt=text[:2000])
-            except Exception:
-                pass
+            except Exception as exc:
+                if self._raise:
+                    raise PermissionError(
+                        "[Aithyrex] Retrieved context could not be inspected; failing closed."
+                    ) from exc
+                continue
+            if not isinstance(text, str):
+                if self._raise:
+                    raise PermissionError(
+                        "[Aithyrex] Retrieved context was not text; failing closed."
+                    )
+                continue
+            if text:
+                self._check(prompt=text[:20_000])
 
     def on_tool_start(self, serialized: dict, input_str: str, **kwargs: Any) -> None:
         self._check(prompt=input_str)
