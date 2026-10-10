@@ -28,6 +28,13 @@ def _enum_value(enum_type, value, default):
         return default
 
 
+def _safe_confidence(value) -> float:
+    try:
+        return max(0.0, min(1.0, float(value or 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def verdict_from_event(event: DetectionEvent) -> ShieldVerdict:
     """Reconstruct the minimal verdict required by delivery adapters."""
     results = []
@@ -40,9 +47,9 @@ def verdict_from_event(event: DetectionEvent) -> ShieldVerdict:
                 detector=str(item.get("detector", "unknown"))[:64],
                 detected=bool(item.get("detected", False)),
                 severity=_enum_value(Severity, item.get("severity"), Severity.INFO),
-                confidence=max(0.0, min(1.0, float(item.get("confidence", 0.0) or 0.0))),
+                confidence=_safe_confidence(item.get("confidence", 0.0)),
                 details=details if isinstance(details, dict) else {},
-                mitre_atlas=[str(value)[:128] for value in item.get("mitre_atlas", []) if isinstance(value, str)],
+                mitre_atlas=[str(value)[:128] for value in (item.get("mitre_atlas") or []) if isinstance(value, str)],
             )
         )
     return ShieldVerdict(
