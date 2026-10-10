@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
-import fastapi
 import pytest
 
 from backend.api.routes.reports import (
@@ -54,9 +53,10 @@ def fake_session_context(event=None, *, error=None):
 
 @pytest.mark.asyncio
 async def test_non_enterprise_cannot_export_and_database_is_not_touched():
+    from fastapi import HTTPException
     tenant = TokenPayload(TENANT_ID, "user", plan="pro")
     with patch("backend.models.database.AsyncSessionFactory") as factory:
-        with pytest.raises(fastapi.HTTPException) as exc:
+        with pytest.raises(HTTPException) as exc:
             await _export_evidence(EVENT_ID, "json", tenant)
     assert exc.value.status_code == 403
     factory.assert_not_called()
@@ -64,6 +64,7 @@ async def test_non_enterprise_cannot_export_and_database_is_not_touched():
 
 @pytest.mark.asyncio
 async def test_cross_tenant_or_missing_event_returns_same_404():
+    from fastapi import HTTPException
     tenant = TokenPayload(TENANT_ID, "user", plan="enterprise")
     context, session = fake_session_context(event=None)
     with patch("backend.models.database.AsyncSessionFactory", return_value=context):
@@ -107,6 +108,7 @@ async def test_csv_and_markdown_formats_are_supported():
 
 @pytest.mark.asyncio
 async def test_invalid_event_uuid_returns_404_without_database_access():
+    from fastapi import HTTPException
     tenant = TokenPayload(TENANT_ID, "user", plan="enterprise")
     with patch("backend.models.database.AsyncSessionFactory") as factory:
         with pytest.raises(HTTPException) as exc:
@@ -117,6 +119,7 @@ async def test_invalid_event_uuid_returns_404_without_database_access():
 
 @pytest.mark.asyncio
 async def test_database_failure_is_reported_without_exception_details():
+    from fastapi import HTTPException
     tenant = TokenPayload(TENANT_ID, "user", plan="enterprise")
     context, _ = fake_session_context(error=RuntimeError("sensitive database message"))
     with patch("backend.models.database.AsyncSessionFactory", return_value=context):
