@@ -7,11 +7,14 @@ from aithyrex import AithyrexClient
 
 
 @pytest.mark.asyncio
-async def test_missing_api_url_fails_closed():
+async def test_missing_api_url_fails_closed_with_trace_id():
+    from uuid import UUID
+
     verdict = await Shield(token="signed-session-token", base_url="").inspect("hello")
     assert verdict.blocked is True
     assert verdict.degraded is True
     assert verdict.error_code == "api_url_not_configured"
+    UUID(verdict.trace_id)
 
 
 @pytest.mark.asyncio
