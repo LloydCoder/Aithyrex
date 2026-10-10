@@ -42,6 +42,12 @@ Configure credentials through environment variables. Never commit secrets. Produ
 
 See [Operations Runbook](docs/OPERATIONS.md) for production configuration gates, monitoring, proposed-but-unmeasured SLOs, secret rotation, backup/restore, deployment/rollback, and incident response. Repository CI does not prove a live deployment, successful restore drill, or achieved SLO.
 
+### Release assurance
+
+Aithyrex is not currently certified or approved for production release. The fail-closed release manifest is at docs/assurance/release-evidence.json; the evaluator is scripts/assurance/check_release_readiness.py. The current release disposition remains BLOCKED until the representative AI-text evaluation, independent review, production deployment/rollback, backup/restore, SLO measurement and legal/compliance review gates have verifiable evidence tied to the exact candidate SHA.
+
+See [Release Readiness](docs/assurance/RELEASE_READINESS.md), [Threat Model](docs/assurance/THREAT_MODEL.md), and [Independent Review Protocol](docs/assurance/INDEPENDENT_REVIEW_PROTOCOL.md).
+
 ## Phase and evidence policy
 
 Every phase requires code changes where needed, automated tests, blocking CI, a forensic review of the resulting diff and test evidence, reconciled documentation, and an explicit acceptance decision. Green CI is necessary but not sufficient for release readiness.
