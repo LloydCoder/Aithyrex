@@ -193,6 +193,23 @@ class TestDetectPrompt:
 
 
 # ── POST /detect/llm ──────────────────────────────────────────────────────────
+
+    def test_oversized_prompt_is_rejected(self, client):
+        resp = client.post(
+            "/api/v1/detect/llm",
+            json={"prompt": "x" * 100_001},
+            headers=AUTH_HEADER,
+        )
+        assert resp.status_code == 422
+
+    def test_oversized_agent_message_list_is_rejected(self, client):
+        resp = client.post(
+            "/api/v1/detect/agent",
+            json={"agent_id": "agent-1", "messages": [{}] * 1_001},
+            headers=AUTH_HEADER,
+        )
+        assert resp.status_code == 422
+
 class TestDetectLLM:
     def test_clean_exchange_passes(self, client):
         resp = client.post(
