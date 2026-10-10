@@ -19,14 +19,14 @@ from pydantic import BaseModel, Field, model_validator
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
-from backend.core.rate_limiter import rate_limiter
-from backend.core.usage_counter import usage_counter
 from backend.core.platform_action_auth import (
     action_payload_sha256,
     canonical_action_payload_bytes,
     decode_platform_action_assertion,
 )
+from backend.core.rate_limiter import rate_limiter
 from backend.core.shield_engine import Action, Severity, ShieldEngine, ShieldVerdict
+from backend.core.usage_counter import usage_counter
 
 router = APIRouter()
 engine = ShieldEngine()
