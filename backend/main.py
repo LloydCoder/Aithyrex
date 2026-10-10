@@ -169,7 +169,7 @@ async def request_context_middleware(request: Request, call_next):
         with bound_contextvars(trace_id=trace_id):
             response = await call_next(request)
     except Exception as exc:
-        logger.exception(
+        logger.error(
             "unhandled_http_request",
             trace_id=trace_id,
             error_type=type(exc).__name__,
