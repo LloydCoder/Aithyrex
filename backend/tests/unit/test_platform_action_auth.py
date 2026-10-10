@@ -76,11 +76,12 @@ def test_missing_trust_configuration_fails_closed(monkeypatch):
     assert error.value.status_code == 503
 
 
-def test_malformed_public_key_fails_as_configuration_error(monkeypatch):
+def test_malformed_public_key_fails_as_configuration_error(monkeypatch, signing_keys):
+    private_key, _public_key = signing_keys
     monkeypatch.setattr(settings, "PLATFORM_ACTION_JWT_PUBLIC_KEY", "not-a-public-key")
     monkeypatch.setattr(settings, "PLATFORM_ACTION_JWT_ISSUER", "https://agent-platform.tinlance.internal")
     monkeypatch.setattr(settings, "PLATFORM_ACTION_JWT_AUDIENCE", "aithyrex")
-    token = jwt.encode(_claims(), "a-secret", algorithm="HS256")
+    token = jwt.encode(_claims(), private_key, algorithm="RS256")
 
     with pytest.raises(HTTPException) as error:
         decode_platform_action_assertion(token)
