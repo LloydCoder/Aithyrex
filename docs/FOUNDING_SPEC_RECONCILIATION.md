@@ -442,7 +442,7 @@ SDK-level trace IDs are correlation metadata, not identity or authorization. Ope
 
 - Enforce one-time consumption of Platform-signed action, context and behavioral-sequence assertion JTIs using atomic Redis SET NX EX, tenant/contract namespaces, SHA-256 JTI keys, and TTL bounded by JWT expiration.
 - Reject replayed assertions with HTTP 409 and fail closed with HTTP 503 if replay state is unavailable. A retry after consumption requires a new signed assertion.
-- Fix Redis async client initialization in the rate limiter and usage counter; close replay, rate-limit and usage-counter Redis pools during application shutdown.
+- Fix Redis async client initialization in the rate limiter and usage counter; close replay, block-state, rate-limit and usage-counter Redis pools during application shutdown.
 - Add machine-readable contract manifest and receiver-side conformance tests for all three versioned endpoints, replay protection, payload binding, and advisory-only authority boundaries.
 
 ### Acceptance gates

@@ -24,7 +24,7 @@ All three contracts require an RS256 assertion with configured issuer/audience, 
 - Set TTL from `exp - now`, bounded to at most 300 seconds. Expired assertions are rejected.
 - A duplicate returns HTTP 409. Replay-state failure returns HTTP 503; the request must not fall through to detection.
 - A consumed assertion is one-shot. If downstream capacity or persistence fails, the trusted Platform must mint a fresh assertion for a retry.
-- Redis clients are initialized using the synchronous `redis.asyncio.from_url` factory and closed during application shutdown. Rate-limit and usage-counter state failures remain fail-closed.
+- Redis clients are initialized using the synchronous `redis.asyncio.from_url` factory and closed during application shutdown. Block-state, rate-limit and usage-counter state failures remain fail-closed.
 
 ## Verification
 

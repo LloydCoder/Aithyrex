@@ -170,5 +170,5 @@ Provider wrappers can preflight supported text before an upstream call and inspe
 
 For any actual tool/MCP operation, the Tinlance Agent Platform must enforce identity, policy, approval and authorization at the execution boundary. Aithyrex findings remain advisory signals.
 
-The Platform-signed action, context and sequence receiver contracts consume each assertion JTI once through an atomic tenant/contract-scoped Redis replay guard. Duplicate assertions return HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Redis async clients are created using the synchronous from_url factory and closed on shutdown. See [TSIC Conformance](TSIC_CONFORMANCE.md) and the [contract manifest](../contracts/tsic/aithyrex-contracts.v1.json).
+The Platform-signed action, context and sequence receiver contracts consume each assertion JTI once through an atomic tenant/contract-scoped Redis replay guard. Duplicate assertions return HTTP 409; unavailable replay state returns HTTP 503 and fails closed. Replay, block-state, rate-limit and usage-counter Redis clients are created using the synchronous from_url factory and closed on shutdown. See [TSIC Conformance](TSIC_CONFORMANCE.md) and the [contract manifest](../contracts/tsic/aithyrex-contracts.v1.json).
 
