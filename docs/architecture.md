@@ -66,6 +66,17 @@ The current agent detection endpoint concatenates supported string content for i
 - An allowlist may not bypass mandatory detection or platform policy.
 - Aithyrex does not authorize actions; the Tinlance Agent Platform remains the authority for policy, approvals and governed execution.
 
+## Operational health and lifecycle
+
+- `/health/live` is process liveness only and does not depend on downstream services.
+- `/health/ready` is the traffic-readiness probe; PostgreSQL, Redis and ThreatFade checks are bounded and degraded readiness returns HTTP 503.
+- The legacy `/health` endpoint remains a diagnostic endpoint with HTTP 200 and a JSON `status` field for compatibility. New orchestrators should use the dedicated probes.
+- Health responses expose normalized status, latency and exception class only. They must not return exception text, service URLs, credentials or inference content.
+- Shutdown cancels/awaits the durable outbox worker, closes Redis service clients and disposes the SQLAlchemy engine pool. Cleanup failures are logged by normalized error class and must not skip remaining cleanup.
+- Production startup rejects malformed or unsafe endpoint configuration. Passing configuration validation does not prove remote reachability, HA, deployment, backup/restore, or SLO attainment.
+
+See [Operations Runbook](OPERATIONS.md) for deployment gates, SLO measurement rules, key rotation, backup/restore, alerting and rollback procedures.
+
 ## 5. Identity, tenancy and entitlements
 
 - API access requires a verifiable Clerk JWT with configured trust anchors and standard claim validation.

@@ -9,7 +9,6 @@ https://github.com/LloydCoder/Aithyrex
 
 import asyncio
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import structlog
@@ -41,40 +40,9 @@ logger = structlog.get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
     if settings.APP_ENV.lower() in {"prod", "production"}:
-        missing = []
-        if not settings.CLERK_JWT_KEY:
-            missing.append("CLERK_JWT_KEY")
-        if not settings.CLERK_JWT_ISSUER:
-            missing.append("CLERK_JWT_ISSUER")
-        if not settings.CLERK_AUTHORIZED_PARTIES:
-            missing.append("CLERK_AUTHORIZED_PARTIES")
-        threatfade_url = urlparse(settings.THREATFADE_API_URL)
-        if threatfade_url.scheme != "https" or not threatfade_url.hostname:
-            missing.append("THREATFADE_API_URL (HTTPS endpoint required in production)")
-        if not settings.THREATFADE_API_KEY:
-            missing.append("THREATFADE_API_KEY")
-        if settings.APP_SECRET_KEY == "change-me" or len(settings.APP_SECRET_KEY) < 32:
-            missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
-        database_url = settings.DATABASE_URL.lower()
-        if (
-            "localhost" in database_url
-            or "127.0.0.1" in database_url
-            or "password@" in database_url
-            or not any(marker in database_url for marker in ("ssl=require", "ssl=verify-full"))
-        ):
-            missing.append("DATABASE_URL (remote database with TLS and non-default credentials required)")
-        if not settings.REDIS_URL.startswith("rediss://"):
-            missing.append("REDIS_URL (TLS-protected Redis URL required)")
-        if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
-            missing.append("ALLOWED_HOSTS (explicit production hosts required)")
-        if not settings.OUTBOX_WORKER_ENABLED:
-            missing.append("OUTBOX_WORKER_ENABLED=true (durable delivery worker required)")
-        if (
-            not settings.ALLOWED_ORIGINS
-            or "*" in settings.ALLOWED_ORIGINS
-            or any(not origin.startswith("https://") for origin in settings.ALLOWED_ORIGINS)
-        ):
-            missing.append("ALLOWED_ORIGINS (explicit HTTPS origins required)")
+        from backend.core.production_config import production_configuration_errors
+
+        missing = production_configuration_errors(settings)
         if missing:
             raise RuntimeError("Unsafe production configuration; configure: " + ", ".join(missing))
     logger.info(
@@ -106,10 +74,16 @@ async def lifespan(app: FastAPI):
                 pass
             except asyncio.TimeoutError:
                 logger.error("delivery_outbox_worker_shutdown_timeout")
+            except Exception as exc:
+                logger.error(
+                    "delivery_outbox_worker_shutdown_failed",
+                    error_type=type(exc).__name__,
+                )
         from backend.core.assertion_replay import assertion_replay_guard
         from backend.core.block_mode import block_mode
         from backend.core.rate_limiter import rate_limiter
         from backend.core.usage_counter import usage_counter
+        from backend.models.database import engine
 
         for service_name, service in (
             ("assertion_replay_guard", assertion_replay_guard),
@@ -125,6 +99,10 @@ async def lifespan(app: FastAPI):
                     service=service_name,
                     error_type=type(exc).__name__,
                 )
+        try:
+            await engine.dispose()
+        except Exception as exc:
+            logger.error("database_engine_shutdown_failed", error_type=type(exc).__name__)
         logger.info("aithyrex_shutdown")
 
 
@@ -214,6 +192,7 @@ async def request_context_middleware(request: Request, call_next):
     except (ValueError, TypeError, AttributeError):
         trace_id = str(uuid4())
     request.state.trace_id = trace_id
+    started_at = asyncio.get_running_loop().time()
     logger.info(
         "http_request_started",
         trace_id=trace_id,
@@ -237,10 +216,13 @@ async def request_context_middleware(request: Request, call_next):
         )
         response = JSONResponse(status_code=500, content=body.model_dump(mode="json"))
     response.headers["X-Request-ID"] = trace_id
+    duration_ms = round((asyncio.get_running_loop().time() - started_at) * 1000, 2)
     logger.info(
         "http_request_completed",
         trace_id=trace_id,
         status_code=response.status_code,
+        duration_ms=duration_ms,
+        outcome="success" if response.status_code < 500 else "server_error",
     )
     return response
 

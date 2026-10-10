@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://aishield:password@localhost:5432/aishield"
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # SQLAlchemy pool bounds are configurable per deployment/worker count.
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT_SECONDS: int = 30
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+
     CLERK_SECRET_KEY: str = ""
     CLERK_JWT_KEY: str = ""
     CLERK_JWT_ISSUER: str = ""

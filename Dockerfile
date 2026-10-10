@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Non-root user for security
-RUN useradd -m -u 1000 shield && chown -R shield:shield /app
-USER shield
+RUN useradd -m -u 1000 aithyrex && chown -R aithyrex:aithyrex /app
+USER aithyrex
 
 EXPOSE 8002
 
