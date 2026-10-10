@@ -40,24 +40,24 @@ class NIS2DoraHooks:
         verdict,
         tenant_id: str,
         plan: str = "free",
-    ) -> None:
+    ) -> bool:
         """
         Evaluate whether this verdict triggers a compliance notification.
         Only fires for Enterprise plan (NIS2/DORA reports are Enterprise-only).
         """
         if plan != "enterprise":
-            return
+            return True
 
         from backend.core.shield_engine import Severity
 
         if verdict.severity == Severity.CRITICAL:
-            await self._notify_kalevio(verdict, tenant_id, urgency="critical")
-            return
+            return await self._notify_kalevio(verdict, tenant_id, urgency="critical")
 
         if verdict.severity == Severity.HIGH:
-            await self._track_high(verdict, tenant_id)
+            return await self._track_high(verdict, tenant_id)
+        return True
 
-    async def _track_high(self, verdict, tenant_id: str) -> None:
+    async def _track_high(self, verdict, tenant_id: str) -> bool:
         """Track HIGH events. Fire notification if 3+ in 60 minutes."""
         now = datetime.now(timezone.utc)
 
@@ -73,21 +73,24 @@ class NIS2DoraHooks:
         self._recent_highs[tenant_id].append(now)
 
         if len(self._recent_highs[tenant_id]) >= 3:
-            await self._notify_kalevio(verdict, tenant_id, urgency="high_cluster")
-            self._recent_highs[tenant_id] = []  # Reset after notification
+            succeeded = await self._notify_kalevio(verdict, tenant_id, urgency="high_cluster")
+            if succeeded:
+                self._recent_highs[tenant_id] = []
+            return succeeded
+        return True
 
     async def _notify_kalevio(
         self,
         verdict,
         tenant_id: str,
         urgency: str = "critical",
-    ) -> None:
-        """POST incident to KalevioAI compliance engine."""
+    ) -> bool:
+        """POST incident to KalevioAI compliance engine and report delivery status."""
         from backend.core.config import settings
 
         if not settings.KALEVIOAI_API_URL or not settings.KALEVIOAI_API_KEY:
             logger.warning("kalevioai_not_configured", tenant_id=tenant_id)
-            return
+            return False
 
         detectors_fired = [r.detector for r in verdict.results if r.detected]
         mitre_ids = []
@@ -125,14 +128,14 @@ class NIS2DoraHooks:
                     urgency=urgency,
                     status=response.status_code,
                 )
-            except httpx.TimeoutException:
-                logger.error("kalevioai_timeout", tenant_id=tenant_id)
-            except httpx.HTTPStatusError as e:
+                return True
+            except httpx.HTTPError as exc:
                 logger.error(
-                    "kalevioai_http_error",
-                    status=e.response.status_code,
+                    "kalevioai_delivery_failed",
                     tenant_id=tenant_id,
+                    error_type=type(exc).__name__,
                 )
+                return False
 
 
 # Module-level singleton
