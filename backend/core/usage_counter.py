@@ -89,12 +89,17 @@ class UsageCounterService:
             raise RuntimeError("usage counter unavailable")
 
         key = self._key(tenant_id)
+        script = """
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then
+            redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+        end
+        return count
+        """
         try:
-            count = await redis.incr(key)
-
-            # Retain the current calendar-month counter through the next boundary.
-            if count == 1:
-                await redis.expire(key, self._ttl_to_month_end())
+            # Increment and TTL assignment are atomic, so a partial failure cannot
+            # leave a permanent monthly counter with no expiry.
+            count = int(await redis.eval(script, 1, key, self._ttl_to_month_end()))
         except Exception as exc:
             logger.error("usage_counter_increment_failed", error_type=type(exc).__name__)
             raise RuntimeError("usage counter state unavailable") from exc
