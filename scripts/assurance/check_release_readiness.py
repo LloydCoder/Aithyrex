@@ -24,6 +24,17 @@ def evaluate_release_readiness(
     candidate_sha: str | None,
     repo_root: Path,
 ) -> dict[str, Any]:
+    if not isinstance(manifest, dict):
+        return {
+            "ready": False,
+            "project": None,
+            "candidate_sha": candidate_sha,
+            "passed_gate_ids": [],
+            "blocking_gates": [],
+            "issues": ["manifest must be a JSON object"],
+            "total_gates": 0,
+        }
+
     issues: list[str] = []
     blocking_gates: list[dict[str, str]] = []
     passed_gates: list[str] = []
@@ -67,7 +78,7 @@ def evaluate_release_readiness(
         release_blocking = gate.get("release_blocking", True)
         evidence = gate.get("evidence", [])
 
-        if status not in VALID_STATUSES:
+        if not isinstance(status, str) or status not in VALID_STATUSES:
             issues.append(f"{gate_id}: invalid status")
             status = "blocked"
         if not isinstance(release_blocking, bool):
@@ -89,10 +100,13 @@ def evaluate_release_readiness(
                 continue
             if evidence_type == "workflow":
                 parsed = urlparse(reference)
-                if parsed.scheme != "https" or parsed.hostname != "github.com":
+                if parsed.scheme != "https" or parsed.hostname != "github.com" or parsed.username or parsed.password:
                     evidence_errors.append(f"evidence item {index + 1} must be a GitHub HTTPS URL")
             elif evidence_type == "repo_file":
-                if not (repo_root / reference).is_file():
+                relative_path = Path(reference)
+                if relative_path.is_absolute() or ".." in relative_path.parts:
+                    evidence_errors.append(f"evidence path must stay inside the repository: {reference}")
+                elif not (repo_root / relative_path).is_file():
                     evidence_errors.append(f"evidence file does not exist: {reference}")
             elif evidence_type not in {
                 "review",
