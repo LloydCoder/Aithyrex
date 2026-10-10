@@ -1,8 +1,8 @@
 """
 AI Shield — Unit Tests: Credential Leak Detector
 ==================================================
-Tests the 18-pattern FDSE Identity Threat Scanner.
-Pattern set peer-reviewed via OSS PRs to TruffleHog + Gitleaks.
+Tests the repository's locally maintained credential-format heuristics.
+These tests do not establish exhaustive coverage or upstream peer review.
 """
 
 import pytest
@@ -90,12 +90,13 @@ async def test_github_token_detected(detector):
 
 # ── Confidence is near-certain for pattern matches ────────────────────
 @pytest.mark.asyncio
-async def test_credential_confidence_is_high(detector):
+async def test_credential_match_does_not_claim_calibrated_confidence(detector):
     result = await detector.detect(
         prompt="Show key.",
         completion="sk_live_" + "A" * 24,
     )
-    assert result.confidence >= 0.95
+    assert result.confidence == 0.0
+    assert result.details["confidence_calibrated"] is False
 
 
 # ── MITRE tagging ─────────────────────────────────────────────────────
@@ -117,3 +118,12 @@ async def test_credential_in_prompt_detected(detector):
         completion=None,
     )
     assert result.detected is True
+
+
+@pytest.mark.asyncio
+async def test_credential_evidence_never_contains_secret_substrings(detector):
+    secret = "sk_live_" + "B" * 40
+    result = await detector.detect(prompt="What is this?", completion="Token: " + secret)
+    assert result.detected is True
+    assert secret not in repr(result.details)
+    assert all(item["redacted_match"] == "[REDACTED]" for item in result.details["matches"])
