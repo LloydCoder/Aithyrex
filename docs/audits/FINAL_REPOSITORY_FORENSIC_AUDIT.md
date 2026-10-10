@@ -55,6 +55,8 @@ The release evaluator checks candidate SHA format and equality with the checked-
 
 The canonical architecture and README distinguish Aithyrex from Auctaryn, AURONTRA, ThreatFade and the Tinlance Agent Platform. Aithyrex emits detection findings; it does not own authoritative identity, policy, approval or governed execution. Legacy package/module identifiers may remain for compatibility or historical configuration rejection, but public product naming and security boundaries must remain canonical. Stale module docstrings claiming the detector modules were still stubs were corrected in the final reconciliation branch.
 
+A final post-Phase 17 consistency review found that the README and ledger headers still described the repository as being under active remediation, contradicting the completed Phase 0–17 implementation record. The documentation follow-up updates them to distinguish completed engineering phases from the still-blocked product release; unpublished launch drafts were aligned to the same evidence-based status. No runtime behavior or external assurance status was changed by that follow-up.
+
 ## 4. Verified CI evidence for Phase 17 merge
 
 - Phase 17 final PR-head CI: [run 38035952327](https://github.com/LloydCoder/Aithyrex/actions/runs/38035952327) — success.
