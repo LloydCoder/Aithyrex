@@ -59,7 +59,10 @@ async def test_plan_claim_is_ignored_in_favor_of_server_side_entitlement(monkeyp
             "public_metadata": {"plan": "free"},
         }),
     )
-    with patch("backend.models.database.AsyncSessionFactory", return_value=context):
+    with patch("backend.models.database.AsyncSessionFactory", return_value=context), patch(
+        "backend.core.rate_limiter.rate_limiter.enforce",
+        new=AsyncMock(return_value=(1, 60)),
+    ):
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="signed-token")
         result = await get_current_tenant(credentials)
     assert result.tenant_id == "00000000-0000-4000-8000-000000000002"
