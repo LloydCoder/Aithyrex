@@ -192,6 +192,7 @@ async def request_context_middleware(request: Request, call_next):
     except (ValueError, TypeError, AttributeError):
         trace_id = str(uuid4())
     request.state.trace_id = trace_id
+    started_at = asyncio.get_running_loop().time()
     logger.info(
         "http_request_started",
         trace_id=trace_id,
@@ -215,10 +216,13 @@ async def request_context_middleware(request: Request, call_next):
         )
         response = JSONResponse(status_code=500, content=body.model_dump(mode="json"))
     response.headers["X-Request-ID"] = trace_id
+    duration_ms = round((asyncio.get_running_loop().time() - started_at) * 1000, 2)
     logger.info(
         "http_request_completed",
         trace_id=trace_id,
         status_code=response.status_code,
+        duration_ms=duration_ms,
+        outcome="success" if response.status_code < 500 else "server_error",
     )
     return response
 
