@@ -79,15 +79,16 @@ class Shield:
         model: Optional[str] = None,
     ) -> ShieldVerdict:
         """Inspect content. Configuration, transport and schema errors fail closed."""
+        request_id = str(uuid4())
         if not self.base_url:
-            return _blocked("api_url_not_configured")
+            return _blocked("api_url_not_configured", request_id)
         if not self.token:
-            return _blocked("session_token_not_configured")
+            return _blocked("session_token_not_configured", request_id)
 
         try:
             import httpx
         except ImportError:
-            return _blocked("httpx_not_installed")
+            return _blocked("httpx_not_installed", request_id)
 
         parsed = urlparse(self.base_url)
         local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
