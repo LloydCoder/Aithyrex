@@ -11,7 +11,10 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
 
 from backend.core.config import settings
-from backend.core.platform_action_auth import action_payload_sha256, decode_platform_action_assertion
+from backend.core.platform_action_auth import (
+    action_payload_sha256,
+    decode_platform_action_assertion,
+)
 
 
 @pytest.fixture
