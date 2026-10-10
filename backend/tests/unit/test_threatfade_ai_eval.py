@@ -98,7 +98,7 @@ def test_cli_records_corpus_hash_baseline_and_non_approval(tmp_path, capsys):
             })
     corpus_path = tmp_path / "candidate.jsonl"
     baseline_path = tmp_path / "baseline.jsonl"
-    payload = "".join(json.dumps(record) + "\\n" for record in records)
+    payload = "".join(json.dumps(record) + "\n" for record in records)
     corpus_path.write_text(payload, encoding="utf-8")
     baseline_path.write_text(payload, encoding="utf-8")
 
