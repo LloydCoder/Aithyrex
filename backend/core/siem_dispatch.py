@@ -117,26 +117,24 @@ class SIEMDispatcher:
         verdict,
         tenant_id: str,
         plan: str = "free",
-    ) -> None:
-        """
-        Send alert notifications for HIGH/CRITICAL events.
-        Webhooks on Starter+, Slack on Pro+.
-        """
+    ) -> dict[str, bool]:
+        """Deliver configured alert channels and report each channel result."""
         from backend.core.config import settings
         from backend.core.shield_engine import Severity
 
         if verdict.severity not in (Severity.HIGH, Severity.CRITICAL):
-            return
+            return {"not_required": True}
 
-        # Slack notification (Pro+)
+        results: dict[str, bool] = {}
         if plan in ("pro", "enterprise") and settings.SLACK_WEBHOOK_URL:
-            await self._send_slack(verdict, tenant_id)
-
-        # Telegram notification
+            results["slack"] = await self._send_slack(verdict, tenant_id)
         if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID:
-            await self._send_telegram(verdict, tenant_id)
+            results["telegram"] = await self._send_telegram(verdict, tenant_id)
+        if not results:
+            results["skipped_not_configured"] = True
+        return results
 
-    async def _send_slack(self, verdict, tenant_id: str) -> None:
+    async def _send_slack(self, verdict, tenant_id: str) -> bool:
         """POST alert to Slack webhook."""
         import httpx
 
@@ -156,12 +154,15 @@ class SIEMDispatcher:
         }
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(settings.SLACK_WEBHOOK_URL, json=payload)
+                response = await client.post(settings.SLACK_WEBHOOK_URL, json=payload)
+                response.raise_for_status()
             logger.info("slack_alert_sent", tenant_id=tenant_id)
+            return True
         except Exception as e:
-            logger.error("slack_alert_failed", error=str(e))
+            logger.error("slack_alert_failed", error_type=type(e).__name__)
+            return False
 
-    async def _send_telegram(self, verdict, tenant_id: str) -> None:
+    async def _send_telegram(self, verdict, tenant_id: str) -> bool:
         """Send alert via Telegram Bot API."""
         import httpx
 
@@ -177,14 +178,17 @@ class SIEMDispatcher:
         url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(url, json={
+                response = await client.post(url, json={
                     "chat_id": settings.TELEGRAM_CHAT_ID,
                     "text": text,
                     "parse_mode": "Markdown",
                 })
+                response.raise_for_status()
             logger.info("telegram_alert_sent", tenant_id=tenant_id)
+            return True
         except Exception as e:
-            logger.error("telegram_alert_failed", error=str(e))
+            logger.error("telegram_alert_failed", error_type=type(e).__name__)
+            return False
 
 
 # Module-level singleton
