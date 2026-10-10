@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import structlog
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
