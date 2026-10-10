@@ -1,72 +1,129 @@
-# Aithyrex
+<p align="center">
+  <strong>Aithyrex</strong><br />
+  <em>Agentic AI Runtime Security — AI can act. Aithyrex watches.</em>
+</p>
 
-**Agentic AI Runtime Security — “AI can act. Aithyrex watches.”**
+<p align="center">
+  <a href="https://github.com/LloydCoder/Aithyrex/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LloydCoder/Aithyrex/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/LloydCoder/Aithyrex/actions/workflows/security-scan.yml"><img alt="Security Scan" src="https://github.com/LloydCoder/Aithyrex/actions/workflows/security-scan.yml/badge.svg?branch=main"></a>
+  <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-blue">
+  <img alt="Apache--2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-blue">
+</p>
 
-Aithyrex (formerly AI Shield) is Tinlance’s AI-interaction threat detection service. It inspects supported LLM prompts, completions, and related telemetry for suspicious patterns, emits findings with provenance, and integrates with downstream policy and response systems.
+Aithyrex is Tinlance’s AI-interaction threat detection service. It inspects supported LLM prompts, completions and related telemetry for suspicious patterns, then emits findings with provenance for downstream policy and response systems.
 
-## Product boundary
+> **Release status: BLOCKED.** Independent AI-text effectiveness evaluation, independent security review, controlled production deployment and rollback, backup/restore, measured SLOs and authorized legal/compliance review remain open. See [Release readiness](docs/assurance/RELEASE_READINESS.md).
 
-- **Aithyrex:** AI-interaction threat detection, detector evidence, telemetry enrichment, and versioned security findings.
-- **Auctaryn:** agent context, memory, skill, and proposed-action risk assessment.
-- **Tinlance Agent Platform:** authoritative identity, tenant binding, authorization, policy, approvals, governed execution, sandboxing, secrets, budgets, and authoritative audit/evidence.
-- **ThreatFade:** separately operated behavioral/network detection service; its network-traffic metrics do not by themselves validate AI-text detection.
-- **AURONTRA:** IT resilience, operations, incident/ticket workflows, and bounded remediation orchestration.
-- **FusionOps:** response workflow orchestration.
-- **KalevioAI:** compliance evidence/reporting workflows; a webhook or generated report is not proof of legal filing.
-- **TSIC:** cross-repository integration contracts, conformance and end-to-end evidence. TADL validates developer artifacts and schemas.
+## What Aithyrex does
 
-Aithyrex findings are signals, not authorization grants. Aithyrex must not create a competing identity, policy, approval, or governed-execution authority. Any enforcement request must be evaluated by the authoritative Platform at the actual execution boundary.
+- Inspects supported AI interactions and related telemetry for suspicious patterns.
+- Emits versioned findings and detector evidence for downstream systems.
+- Provides API, SDK and framework integration surfaces present in the repository.
+- Includes offline synthetic red-team regression tests and security-oriented CI checks.
 
-## Security and assurance status
+A detection is a signal, not proof of malicious intent and not an authorization grant. Effectiveness and false-positive claims require representative, independently labeled evaluation data.
 
-The Phase 0–17 engineering implementation sequence is complete for its documented acceptance scope. This is not a production-readiness attestation: the release remains BLOCKED pending independent AI-text effectiveness evaluation, independent security review, controlled production deployment/rollback, backup/restore evidence, measured SLOs, and authorized legal/compliance review. A capability is not production-ready merely because code or a test exists. Claims about detection accuracy, false-positive rates, standards coverage, uptime, automatic regulatory filing, and live integrations require reproducible evidence scoped to the tested dataset, environment, version, and date.
+## Architectural boundary
 
-ThreatFade results obtained from network traffic must not be presented as validation of AI-text detection unless a separate, representative AI-traffic evaluation establishes that claim.
+```mermaid
+flowchart LR
+    A[Supported AI interactions] --> B[Aithyrex detection]
+    B --> C[Evidence-bearing finding]
+    C --> D[Tinlance Agent Platform policy and authorization]
+    D --> E[Approved downstream response]
+```
 
-## Development
+| System | Responsibility |
+|---|---|
+| **Aithyrex** | AI-interaction threat detection, telemetry enrichment and findings |
+| **Tinlance Agent Platform** | Authoritative identity, tenant binding, authorization, policy, approvals, governed execution, sandboxing, secrets, budgets and authoritative audit/evidence |
+| **Auctaryn** | Agent context, memory, skills and proposed-action risk assessment |
+| **ThreatFade** | Separately operated behavioral/network detection; its network metrics do not validate AI-text detection |
+| **AURONTRA** | IT resilience and incident/ticket workflows |
+| **FusionOps** | Response workflow orchestration |
+| **KalevioAI** | Compliance evidence/reporting workflows; an export is not proof of legal filing |
+| **TSIC / TADL** | Cross-repository conformance contracts and developer-artifact/schema validation |
 
-- Supported CI baseline: Python 3.12.
-- Install: `python -m pip install -r backend/requirements.txt`
-- Unit tests: `pytest backend/tests/unit/ -v --tb=short`
-- Integration tests: `pytest backend/tests/integration/ -v --tb=short`
-- Static analysis: `bandit -r backend/ -ll -x backend/tests/` and `ruff check backend/`
+Aithyrex must not create a competing identity, policy, approval or execution authority. Enforcement requests must be evaluated by the authoritative Platform at the actual execution boundary.
 
-Configure credentials through environment variables. Never commit secrets. Production must not use development authentication fallbacks.
+## Quickstart
 
-### Health and operations
+Requirements: Python 3.12+, Docker with the Compose plugin, and a working Docker daemon. These commands configure a **local development environment only**.
 
-- `GET /health/live` is a dependency-free process liveness probe.
-- `GET /health/ready` checks required dependencies with bounded timeouts and returns HTTP 503 when degraded.
-- `GET /health` remains a backward-compatible diagnostic response whose JSON status may be `degraded` while HTTP remains 200.
-- The Compose configuration and active `.env.example` values are for local development only, not production.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+cp .env.example .env
+docker compose up --build
+```
 
-See [Operations Runbook](docs/OPERATIONS.md) for production configuration gates, monitoring, proposed-but-unmeasured SLOs, secret rotation, backup/restore, deployment/rollback, and incident response. Repository CI does not prove a live deployment, successful restore drill, or achieved SLO.
+When the stack is healthy, check liveness at `http://127.0.0.1:8002/health/live` (for example, with `curl --fail http://127.0.0.1:8002/health/live`). Stop the stack with `docker compose down`. Local Compose defaults and placeholder credentials are not suitable for production. Do not expose this stack to a public network or reuse its secrets in deployed environments.
 
-### Release assurance
+## Installation and development
 
-Aithyrex is not currently certified or approved for production release. The fail-closed release manifest is at docs/assurance/release-evidence.json; the evaluator is scripts/assurance/check_release_readiness.py. The current release disposition remains BLOCKED until the representative AI-text evaluation, independent review, production deployment/rollback, backup/restore, SLO measurement and legal/compliance review gates have verifiable evidence tied to the exact candidate SHA.
+For local Python development, install runtime requirements from `backend/requirements.txt`. `pyproject.toml` defines the `aithyrex` package and optional `server`, provider-integration and `dev` extras. Review those extras before choosing an installation profile.
 
-See [Release Readiness](docs/assurance/RELEASE_READINESS.md), [Threat Model](docs/assurance/THREAT_MODEL.md), and [Independent Review Protocol](docs/assurance/INDEPENDENT_REVIEW_PROTOCOL.md).
+Useful checks from the repository root:
 
-## Phase and evidence policy
+```bash
+pytest backend/tests/unit/ -v --tb=short
+pytest backend/tests/integration/ -v --tb=short
+ruff check backend/
+bandit -r backend/ -ll -x backend/tests/
+python -m backend.evaluation.red_team_suite
+```
 
-Every phase requires code changes where needed, automated tests, blocking CI, a forensic review of the resulting diff and test evidence, reconciled documentation, and an explicit acceptance decision. Green CI is necessary but not sufficient for release readiness.
+The offline red-team suite uses a synthetic regression corpus. Passing it does not establish real-world detection accuracy or approve a release.
 
-See [docs/FOUNDING_SPEC_RECONCILIATION.md](docs/FOUNDING_SPEC_RECONCILIATION.md) for the founding specification, phase-by-phase implementation and forensic audit record, known residual risks, and outstanding release gates.
+## Configuration
 
-### Billing webhook safety
+Copy `.env.example` to `.env` for local development. Never commit `.env` or production secrets.
 
-See [Billing Webhook Security](docs/BILLING_WEBHOOK_SECURITY.md) for provider signature verification, transactional deduplication, stale-event ordering, and required database migrations. CI does not prove live provider configuration or production billing behavior.
+| Variable | Purpose | Guidance |
+|---|---|---|
+| `APP_ENV` | Runtime environment | Use `development` only for local work; production validation is stricter |
+| `APP_SECRET_KEY` | Application secret | Replace the placeholder with a securely generated secret outside source control |
+| `DATABASE_URL` | PostgreSQL connection | Compose supplies a local-development connection inside its container network |
+| `REDIS_URL` | Redis connection | Compose supplies a local-development connection inside its container network |
+| `CLERK_SECRET_KEY`, `CLERK_JWT_KEY`, `CLERK_JWT_ISSUER` | Authentication verification | Configure valid trust anchors and issuer; do not enable insecure fallback in production |
+| `THREATFADE_API_URL`, `THREATFADE_API_KEY` | Optional ThreatFade integration | Keep unavailable/degraded telemetry explicit; never interpret failure as a safe result |
+| `OUTBOX_WORKER_ENABLED` | Durable delivery worker | Required by production configuration checks |
 
-### SDK and framework integrations
+See [`.env.example`](.env.example), [Operations Runbook](docs/OPERATIONS.md) and the [Threat Model](docs/assurance/THREAT_MODEL.md) for the full configuration and failure semantics.
 
-See [SDK and Gateway Integration Contract](docs/SDK_GATEWAY_CONTRACT.md) for supported provider behavior, request trace correlation, fail-closed semantics, and explicitly unsupported paths. Framework callbacks are defense-in-depth, not an execution authorization boundary.
+## Features and assurance status
 
+| Area | Repository evidence | Limitation |
+|---|---|---|
+| Detection | Detector modules and API routes under `backend/` | Real-world effectiveness is not established by code presence or synthetic tests |
+| Authentication and tenancy | Clerk JWT validation and tenant-scoped paths | Deployment-specific configuration and cross-tenant verification remain essential |
+| Integrations | SDK and gateway contracts | Support varies by provider/version and tested path; see the [integration contract](docs/SDK_GATEWAY_CONTRACT.md) |
+| SIEM/compliance exports | Delivery and reporting modules | Exporting evidence does not perform legal assessment or file a regulatory report |
+| Operations | Health probes, outbox and operational guidance | Production deployment, restore drill and measured SLO evidence are not recorded as passed |
+| Release assurance | Fail-closed release manifest and evaluator | Release remains blocked until all required gates have valid evidence |
 
-### Tinlance integration conformance
+## Documentation
 
-See [TSIC Conformance](docs/TSIC_CONFORMANCE.md) and the [machine-readable contract manifest](contracts/tsic/aithyrex-contracts.v1.json) for signed action, context and behavioral-sequence contracts, one-time assertion replay protection, and the boundary between advisory findings and Platform authorization.
+- [Architecture and founding-spec reconciliation](docs/FOUNDING_SPEC_RECONCILIATION.md)
+- [Operations runbook](docs/OPERATIONS.md)
+- [Threat model](docs/assurance/THREAT_MODEL.md)
+- [Release readiness and controlled launch](docs/assurance/RELEASE_READINESS.md)
+- [Independent review protocol](docs/assurance/INDEPENDENT_REVIEW_PROTOCOL.md)
+- [Billing webhook security](docs/BILLING_WEBHOOK_SECURITY.md)
+- [SDK and gateway integration contract](docs/SDK_GATEWAY_CONTRACT.md)
+- [TSIC conformance](docs/TSIC_CONFORMANCE.md)
+- [Synthetic red-team evaluation](docs/RED_TEAM_EVALUATION.md)
+- [Repository maintenance checklist](docs/REPOSITORY_MAINTENANCE.md)
 
-### Red-team evaluation
+## Contributing
 
-Run the offline synthetic regression gate with `python -m backend.evaluation.red_team_suite`. See [Red-Team Evaluation](docs/RED_TEAM_EVALUATION.md) for corpus provenance, thresholds, standards alignment and explicit limitations. A passing regression gate does not approve a release or establish production detection accuracy.
+Read [CONTRIBUTING.md](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and use the issue and pull-request templates. Do not include secrets, raw customer prompts/completions, tokens or personal data in public issues and test fixtures. Report vulnerabilities privately using [SECURITY.md](SECURITY.md).
+
+## License
+
+Aithyrex is intended to be distributed under Apache License 2.0 as represented by the repository's [LICENSE](LICENSE) file and package metadata. The license file is authoritative; no additional or dual license is implied.
+
+---
+
+Built by Tinlance Limited. Aithyrex is a detection component in a wider security architecture, not an independent policy or execution authority.
