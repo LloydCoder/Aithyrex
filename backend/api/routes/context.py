@@ -85,7 +85,18 @@ class ContextSignalResponse(BaseModel):
     finding: FindingV1
 
 
-@router.post("/context", response_model=ContextSignalResponse)
+@router.post(
+    "/context",
+    response_model=ContextSignalResponse,
+    responses={
+        401: {"model": APIErrorV1, "description": "Missing or invalid Platform assertion"},
+        403: {"model": APIErrorV1, "description": "Context bundle does not match signed assertion"},
+        409: {"model": APIErrorV1, "description": "Platform assertion has already been consumed"},
+        422: {"model": APIErrorV1, "description": "Invalid context bundle"},
+        429: {"model": APIErrorV1, "description": "Tenant rate or usage limit reached"},
+        503: {"model": APIErrorV1, "description": "Replay, assertion or tenant state unavailable"},
+    },
+)
 async def inspect_context(
     req: ContextInspectionRequest,
     request: Request,
