@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import os
-from uuid import UUID, uuid4
 from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import urlparse
+from uuid import UUID, uuid4
 
 
 @dataclass
