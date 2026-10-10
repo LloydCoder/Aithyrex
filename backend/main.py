@@ -7,6 +7,7 @@ Built by Tinlance Limited (RC: 7962164)
 https://github.com/LloydCoder/Aithyrex
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
@@ -66,6 +67,8 @@ async def lifespan(app: FastAPI):
             missing.append("REDIS_URL (TLS-protected Redis URL required)")
         if not settings.ALLOWED_HOSTS or "*" in settings.ALLOWED_HOSTS:
             missing.append("ALLOWED_HOSTS (explicit production hosts required)")
+        if not settings.OUTBOX_WORKER_ENABLED:
+            missing.append("OUTBOX_WORKER_ENABLED=true (durable delivery worker required)")
         if (
             not settings.ALLOWED_ORIGINS
             or "*" in settings.ALLOWED_ORIGINS
@@ -79,8 +82,31 @@ async def lifespan(app: FastAPI):
         version="0.1.0",
         environment=settings.APP_ENV,
     )
-    yield
-    logger.info("aithyrex_shutdown")
+    worker_task = None
+    if settings.OUTBOX_WORKER_ENABLED:
+        from backend.core.delivery_outbox import DeliveryOutboxWorker
+
+        worker_task = asyncio.create_task(
+            DeliveryOutboxWorker().run_forever(),
+            name="aithyrex-delivery-outbox-worker",
+        )
+        app.state.delivery_outbox_task = worker_task
+        logger.info("delivery_outbox_worker_started")
+    else:
+        logger.warning("delivery_outbox_worker_disabled")
+
+    try:
+        yield
+    finally:
+        if worker_task is not None:
+            worker_task.cancel()
+            try:
+                await asyncio.wait_for(worker_task, timeout=10)
+            except asyncio.CancelledError:
+                pass
+            except asyncio.TimeoutError:
+                logger.error("delivery_outbox_worker_shutdown_timeout")
+        logger.info("aithyrex_shutdown")
 
 
 app = FastAPI(

@@ -133,7 +133,7 @@ async def test_kalevio_payload_structure(hooks, critical_verdict):
             )
             await hooks._notify_kalevio(critical_verdict, "tenant-ent", "critical")
 
-    assert captured.get("source") == "ai_shield"
+    assert captured.get("source") == "aithyrex"
     assert captured.get("severity") == "critical"
     assert captured.get("requires_nis2_report") is True
     assert "detectors_fired" in captured

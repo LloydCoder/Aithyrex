@@ -1,11 +1,11 @@
 """
 Aithyrex — Event Logger
 =========================
-Persists every detection event to PostgreSQL.
-Also creates Alert records for HIGH and CRITICAL verdicts.
+Persists detection evidence and transactional delivery intents to PostgreSQL.
+Creates Alert records for HIGH and CRITICAL verdicts.
 Updates UsageCounter in DB for monthly billing reconciliation.
 
-Runs as a background task — never blocks the HTTP response.
+Evidence persistence is awaited before the detection response returns; external delivery is asynchronous and retried by the durable outbox worker.
 """
 
 from __future__ import annotations
@@ -19,12 +19,11 @@ logger = structlog.get_logger(__name__)
 
 class EventLogger:
     """
-    Background service that persists detection events to DB.
+    Persistence service for detection evidence and delivery intents.
 
-    Called via asyncio.create_task() — fire and forget.
-    If DB is unavailable, logs to structlog and continues.
-    The Redis usage counter is the source of truth for real-time limits.
-    PostgreSQL is the audit trail and billing reconciliation store.
+    The event row, any alert row, and all outbox intents commit in one transaction.
+    If DB is unavailable, persistence fails visibly to the caller through degraded state.
+    The Redis usage counter remains the source of truth for real-time limits.
     """
 
     async def log_event(
@@ -43,7 +42,7 @@ class EventLogger:
         try:
             from backend.core.shield_engine import Severity
             from backend.models.database import AsyncSessionFactory
-            from backend.models.models import Alert, DetectionEvent
+            from backend.models.models import Alert, DeliveryOutbox, DetectionEvent
 
             event_id = uuid.uuid4()
 
@@ -94,6 +93,18 @@ class EventLogger:
                             )
                             session.add(alert)
 
+                for delivery_type in ("siem_dispatch", "alert_dispatch", "nis2_dora_evaluate"):
+                    session.add(
+                        DeliveryOutbox(
+                            tenant_id=parsed_tenant_id,
+                            event_id=event_id,
+                            delivery_type=delivery_type,
+                            dedupe_key=f"{event_id}:{delivery_type}",
+                            payload={"event_id": str(event_id)},
+                            status="pending",
+                        )
+                    )
+
                 await session.commit()
 
                 logger.info(
@@ -107,8 +118,42 @@ class EventLogger:
 
         except Exception as e:
             # DB errors never crash the detection pipeline
-            logger.error("event_log_failed", error=str(e), tenant_id=tenant_id)
+            logger.error("event_log_failed", error_type=type(e).__name__, tenant_id=tenant_id)
             return None
+
+    async def log_finding(self, finding, tenant_id: str, model: str) -> str | None:
+        """Persist a versioned signal finding using the transactional outbox."""
+        from types import SimpleNamespace
+
+        from backend.core.shield_engine import Action, DetectionResult, Severity
+
+        def severity_value(value):
+            return value.value if hasattr(value, "value") else str(value)
+
+        results = [
+            DetectionResult(
+                detector=item.detector,
+                detected=item.detected,
+                severity=Severity(severity_value(item.severity).lower()),
+                confidence=item.confidence,
+                details=item.details if isinstance(item.details, dict) else {},
+                mitre_atlas=list(item.mitre_atlas or []),
+            )
+            for item in finding.evidence
+        ]
+        verdict = SimpleNamespace(
+            action=Action.LOG,
+            severity=Severity(severity_value(finding.severity).lower()),
+            blocked=False,
+            results=results,
+        )
+        return await self.log_event(
+            verdict=verdict,
+            tenant_id=tenant_id,
+            model=model,
+            prompt_len=0,
+            completion_len=0,
+        )
 
     async def update_db_usage(
         self,

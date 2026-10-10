@@ -874,3 +874,18 @@ class TestBehavioralSequenceAPI:
         response = client.post("/api/v1/detect/sequence", json=payload)
         assert response.status_code == 422
         assert "ordered" in response.text.lower()
+
+
+    def test_sequence_persistence_failure_is_visible_as_degraded(self, client, monkeypatch):
+        from backend.core.event_logger import event_logger
+
+        monkeypatch.setattr(event_logger, "log_finding", AsyncMock(return_value=None))
+        payload = _sequence_payload()
+        assertion = _signed_platform_sequence_assertion(monkeypatch, payload)
+        response = client.post(
+            "/api/v1/detect/sequence", json=payload,
+            headers={"X-Platform-Sequence-Assertion": assertion},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["degraded"] is True
+        assert response.json()["finding"]["degraded"] is True

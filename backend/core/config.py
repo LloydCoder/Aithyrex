@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     PADDLE_PRO_PRICE_ID: str = ""
     PADDLE_ENTERPRISE_PRICE_ID: str = ""
 
+    OUTBOX_WORKER_ENABLED: bool = False
+
     RATE_LIMIT_PER_MINUTE: int = 60
     FREE_TIER_MONTHLY_LIMIT: int = 500
     STARTER_TIER_MONTHLY_LIMIT: int = 25_000

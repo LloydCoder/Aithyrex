@@ -24,6 +24,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -114,6 +115,46 @@ class DetectionEvent(Base):
         Index("ix_detection_events_tenant_created", "tenant_id", "created_at"),
         Index("ix_detection_events_action", "action"),
         Index("ix_detection_events_severity", "severity"),
+    )
+
+
+# ── Durable delivery outbox ───────────────────────────────────────────────────
+class DeliveryOutbox(Base):
+    """Transactional outbox for at-least-once evidence and notification delivery."""
+
+    __tablename__ = "delivery_outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+    )
+    event_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("detection_events.id"), nullable=False
+    )
+    delivery_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("event_id", "delivery_type", name="uq_delivery_outbox_event_type"),
+        Index("ix_delivery_outbox_ready", "status", "available_at"),
+        Index("ix_delivery_outbox_tenant_created", "tenant_id", "created_at"),
     )
 
 

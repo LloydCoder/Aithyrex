@@ -154,3 +154,10 @@ The current phase scans the bundle as a whole and retains per-source hashes; it 
 Aithyrex exposes `POST /api/v1/detect/sequence` to analyze ordered event metadata supplied in a short-lived Platform-signed bundle. The deterministic rules correlate credential exposure, prompt injection, sensitive-data access, external-transfer requests, tool execution, and denied-action retries within bounded windows. The request is bounded to 100 events and a one-hour sequence window, and event timestamps and identities are validated.
 
 This is a bundle analyzer, not a durable event stream. It reports matched rule IDs, event IDs, elapsed time, and uncalibrated heuristic severity. It never blocks or authorizes an action; the Platform remains the only authorization/execution authority. Source truth depends on the trusted assertion issuer. See [Behavioral Correlation Contract](BEHAVIORAL_CORRELATION_CONTRACT.md).
+
+
+## Durable evidence and delivery outbox (Phase 11)
+
+Detection evidence, high/critical alert records, and SIEM/alert/compliance delivery intents are committed in one PostgreSQL transaction before a tenant-bound detection response returns. The lifespan-owned worker claims outbox rows using leases and `SKIP LOCKED`, retries failures with bounded exponential backoff, and dead-letters after 12 attempts. Context and sequence findings use the same persistence path.
+
+Delivery is at-least-once, not exactly-once. If persistence fails, the response exposes degraded state. Production requires `OUTBOX_WORKER_ENABLED=true` and Alembic revision `002_durable_delivery_outbox`. See [Delivery Outbox Contract](DELIVERY_OUTBOX_CONTRACT.md).

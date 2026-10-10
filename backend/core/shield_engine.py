@@ -62,6 +62,7 @@ class ShieldVerdict:
     alert_sent: bool = False
     siem_exported: bool = False
     compliance_notified: bool = False
+    evidence_persistence_failed: bool = False
 
     def detected_by(self, detector_name: str) -> bool:
         """Return True if the named detector fired a positive detection."""
@@ -308,41 +309,33 @@ class ShieldEngine:
             tenant_id=tenant_id,
         )
 
-        # ── Background tasks: DB logging + SIEM export (non-blocking) ──────
-        # Scheduled via asyncio.ensure_future — safe inside FastAPI async context.
-        # If no event loop running (unit tests), tasks are skipped gracefully.
+        # Persist evidence and delivery intents before returning the verdict.
+        # External delivery is performed by the durable outbox worker.
         if tenant_id:
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    from backend.compliance.nis2_dora import nis2_dora
-                    from backend.core.event_logger import event_logger
-                    from backend.core.siem_dispatch import siem_dispatcher
+                from backend.core.event_logger import event_logger
 
-                    loop.create_task(event_logger.log_event(
-                        verdict=verdict,
+                persisted_event_id = await event_logger.log_event(
+                    verdict=verdict,
+                    tenant_id=tenant_id,
+                    model=model,
+                    prompt_len=len(prompt),
+                    completion_len=len(completion) if completion else 0,
+                )
+                if persisted_event_id is None:
+                    verdict.evidence_persistence_failed = True
+                    logger.error(
+                        "detection_evidence_not_persisted",
                         tenant_id=tenant_id,
-                        model=model,
-                        prompt_len=len(prompt),
-                        completion_len=len(completion) if completion else 0,
-                    ))
-                    loop.create_task(siem_dispatcher.dispatch(
-                        verdict=verdict,
-                        tenant_id=tenant_id,
-                        plan=plan,
-                    ))
-                    loop.create_task(siem_dispatcher.dispatch_alert(
-                        verdict=verdict,
-                        tenant_id=tenant_id,
-                        plan=plan,
-                    ))
-                    loop.create_task(nis2_dora.evaluate(
-                        verdict=verdict,
-                        tenant_id=tenant_id,
-                        plan=plan,
-                    ))
-            except RuntimeError:
-                pass   # No event loop in test context — safe to skip
+                        severity=verdict.severity,
+                    )
+            except Exception as exc:
+                verdict.evidence_persistence_failed = True
+                logger.error(
+                    "detection_evidence_persistence_failed",
+                    tenant_id=tenant_id,
+                    error_type=type(exc).__name__,
+                )
 
         return verdict
 

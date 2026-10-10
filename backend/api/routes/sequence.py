@@ -98,6 +98,7 @@ class SequenceSignalResponse(BaseModel):
     events_analyzed: int
     detected: bool
     severity: str
+    degraded: bool = False
     findings: list[CorrelationFindingResponse]
     advisory_only: Literal[True] = True
     authorization_performed: Literal[False] = False
@@ -223,6 +224,15 @@ async def inspect_sequence(
             "execution_performed": False,
         },
     )
+    from backend.core.event_logger import event_logger
+
+    persisted_event_id = await event_logger.log_finding(
+        finding, tenant_id, model="behavioral-sequence"
+    )
+    persistence_degraded = persisted_event_id is None
+    if persistence_degraded:
+        finding.degraded = True
+
     logger.info(
         "behavioral_sequence_analysis_completed",
         trace_id=str(trace_id),
@@ -241,6 +251,7 @@ async def inspect_sequence(
         events_analyzed=len(events),
         detected=detected,
         severity=severity,
+        degraded=persistence_degraded,
         findings=correlation_responses,
         finding=finding,
     )
