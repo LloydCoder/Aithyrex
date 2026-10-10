@@ -66,7 +66,7 @@ export default function ModelsPage() {
         <div style={{
           fontFamily: 'JetBrains Mono, monospace', fontSize: '10px',
           color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px',
-        }}>// Enforcement State</div>
+        }}>Enforcement State</div>
         <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '22px', fontWeight: 700, color: '#FFFFFF' }}>
           Model Blocklist
         </h1>

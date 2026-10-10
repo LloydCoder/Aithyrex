@@ -15,7 +15,7 @@ export default function ReportsPage() {
         <div style={{
           fontFamily: 'JetBrains Mono, monospace', fontSize: '10px',
           color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px',
-        }}>// Reporting</div>
+        }}>Reporting</div>
         <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '22px', fontWeight: 700, color: '#FFFFFF' }}>
           Exports & Compliance Evidence
         </h1>
