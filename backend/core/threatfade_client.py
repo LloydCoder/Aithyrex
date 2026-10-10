@@ -66,6 +66,8 @@ class ThreatFadeClient:
     def _validate_result(self, result: object) -> tuple[dict | None, str | None]:
         if not isinstance(result, dict) or not isinstance(result.get("detected"), bool):
             return None, "invalid_response_schema"
+        if "z_outlier" not in result:
+            return None, "invalid_response_schema"
         if not self._is_finite_number(result.get("z_outlier")):
             return None, "invalid_z_outlier"
         for field in ("score", "entropy"):
