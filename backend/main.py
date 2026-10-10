@@ -107,11 +107,13 @@ async def lifespan(app: FastAPI):
             except asyncio.TimeoutError:
                 logger.error("delivery_outbox_worker_shutdown_timeout")
         from backend.core.assertion_replay import assertion_replay_guard
+        from backend.core.block_mode import block_mode
         from backend.core.rate_limiter import rate_limiter
         from backend.core.usage_counter import usage_counter
 
         for service_name, service in (
             ("assertion_replay_guard", assertion_replay_guard),
+            ("block_mode", block_mode),
             ("rate_limiter", rate_limiter),
             ("usage_counter", usage_counter),
         ):
