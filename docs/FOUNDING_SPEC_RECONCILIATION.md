@@ -536,15 +536,15 @@ PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after fin
 
 ## 20. Phase 16 operations and deployment hardening
 
-**Branch:** \`godmode/phase-16-operations-deployment\`  
+**Branch:** `godmode/phase-16-operations-deployment`  
 **Forensic audit:** [Phase 16 forensic audit](audits/PHASE_16_FORENSIC_AUDIT.md)
 
 ### Scope and implementation
 
 - Replace substring-based production URL checks with parsed scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; reject loopback dependencies, wildcard hosts/origins, default/short secrets and missing outbox worker configuration. Validation errors disclose configuration names only.
-- Add bounded \`/health/live\` and \`/health/ready\` semantics; readiness returns 503 when a required dependency is degraded, while legacy \`/health\` keeps its HTTP-200 diagnostic contract. Health responses do not return exception text.
+- Add bounded `/health/live` and `/health/ready` semantics; readiness returns 503 when a required dependency is degraded, while legacy `/health` keeps its HTTP-200 diagnostic contract. Health responses do not return exception text.
 - Dispose the SQLAlchemy engine pool during shutdown and ensure an outbox worker shutdown exception cannot prevent remaining resource cleanup.
-- Label Docker Compose and \`.env.example\` as local-development-only and add a container liveness probe.
+- Label Docker Compose and `.env.example` as local-development-only and add a container liveness probe.
 - Expand the operations runbook with health probes, proposed-but-unmeasured SLOs, alerting, privacy-safe observability, key rotation, backup/restore, deployment/rollback and incident handling.
 - Add unit tests for production URL validation, duplicate TLS parameters, loopback dependencies, liveness/readiness, timeouts and health error redaction.
 
