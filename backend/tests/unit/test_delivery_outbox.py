@@ -146,3 +146,61 @@ async def test_worker_claims_rows_with_a_lease_and_dispatches(monkeypatch):
     assert row.locked_at is not None
     assert session.commit.await_count == 1
     worker._deliver_one.assert_awaited_once_with(row.id)
+
+
+@pytest.mark.asyncio
+async def test_failed_delivery_is_requeued_without_sensitive_error_text(monkeypatch):
+    now = datetime.now(timezone.utc)
+    outbox_row = SimpleNamespace(
+        id=uuid.uuid4(),
+        event_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        delivery_type="siem_dispatch",
+        status="processing",
+        attempts=1,
+        locked_at=now,
+        available_at=now,
+        last_error=None,
+        updated_at=now,
+    )
+    event = SimpleNamespace(
+        action="log",
+        severity="high",
+        blocked=False,
+        results=[{
+            "detector": "prompt_injection",
+            "detected": True,
+            "severity": "high",
+            "confidence": 0.9,
+            "details": {},
+            "mitre_atlas": [],
+        }],
+    )
+    session = SimpleNamespace(
+        get=AsyncMock(side_effect=[outbox_row, outbox_row]),
+        execute=AsyncMock(return_value=SimpleNamespace(first=lambda: (event, "pro"))),
+        commit=AsyncMock(),
+    )
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "backend.core.delivery_outbox.AsyncSessionFactory",
+        lambda: SessionContext(),
+    )
+    from backend.core.siem_dispatch import siem_dispatcher
+
+    monkeypatch.setattr(
+        siem_dispatcher, "dispatch", AsyncMock(return_value={"hec": False})
+    )
+    await DeliveryOutboxWorker()._deliver_one(outbox_row.id)
+    assert outbox_row.status == "pending"
+    assert outbox_row.last_error == "RuntimeError"
+    assert outbox_row.locked_at is None
+    assert outbox_row.available_at > now
+    assert session.commit.await_count == 1
