@@ -55,6 +55,8 @@ def _render_synthetic_text(text: str) -> str:
 
 def load_cases(path: Path) -> tuple[list[dict[str, Any]], str]:
     """Load and validate JSONL cases, returning validated records and file SHA-256."""
+    if path.stat().st_size > MAX_DATASET_BYTES:
+        raise ValueError("Dataset exceeds maximum allowed byte size")
     raw = path.read_bytes()
     if len(raw) > MAX_DATASET_BYTES:
         raise ValueError("Dataset exceeds maximum allowed byte size")
