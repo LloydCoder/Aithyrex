@@ -2,7 +2,7 @@
 Aithyrex — Anthropic Integration (PyPI package)
 ==================================================
 Usage:
-    from ai_shield.integrations.anthropic import wrap
+    from aithyrex.integrations.anthropic import wrap
     import anthropic
 
     client = wrap(anthropic.Anthropic(api_key="..."), api_key="your-shield-key")
