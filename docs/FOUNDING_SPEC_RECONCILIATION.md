@@ -322,3 +322,24 @@ At this revision all four CI jobs and both security jobs passed: 225 unit tests,
 A documentation-only follow-up clarifies that application-level serialized-size validation occurs after JSON parsing; deployments must configure an upstream/server request-body limit. The final PR head must pass fresh CI and Security Scan before merge.
 
 **Phase 9 status:** implementation is complete for the signed, bounded, bundle-level signal contract only. Live Platform integration, retrieval authorization, per-source detector attribution, replay deduplication, and calibrated effectiveness are not claimed.
+
+
+## 14. Phase 10 multi-step behavioral correlation
+
+Branch: `godmode/phase-10-behavioral-correlation`  
+Contract: `aithyrex.behavioral-correlation.v1`  
+Endpoint: `POST /api/v1/detect/sequence`
+
+### Scope
+
+- Verify a short-lived RS256 Platform assertion binding the ordered event sequence, agent, sequence ID, event IDs/types/timestamps, tool names, finding IDs, and signal identifiers.
+- Canonicalize timestamps to UTC. Reject duplicate IDs, unordered events, future timestamps beyond 30 seconds, spans longer than one hour, and sequences above 100 events.
+- Apply deterministic rules for credential exposure → external transfer, prompt injection → external action, sensitive-data access → external transfer, and denied action → same-tool retry.
+- Return rule IDs, event IDs, elapsed windows, and uncalibrated heuristic severity. Isolated events do not become sequence findings.
+- Remain advisory-only: no action is authorized, blocked, or executed.
+
+### Verification gate
+
+Unit tests cover rule matches, severity, timing windows, same-tool retry, isolated signals, and event order. API tests cover missing assertions, valid signed sequences, tampering, and isolated-signal behavior. CI and Security Scan must pass on the final PR head before merge, followed by a forensic review and post-merge workflow verification.
+
+Residual risks: caller-supplied bundles only, no durable event stream, no cross-agent graph, no replay deduplication, no empirical calibration, and event truth depends on the trusted Platform assertion issuer.
