@@ -159,14 +159,14 @@ class BillingService:
         clerk_org_id = custom_data.get("clerk_org_id", "")
 
         if not clerk_org_id:
-            logger.warning("ls_webhook_missing_clerk_org_id", event=event_type)
+            logger.warning("ls_webhook_missing_clerk_org_id", event_type=event_type)
             return {"status": "skipped", "reason": "missing_clerk_org_id"}
 
         if event_type in ("subscription_created", "subscription_updated"):
             variant_id = str(attrs.get("variant_id", ""))
             plan = _plan_from_ls_variant(variant_id)
             if plan is None:
-                logger.warning("ls_webhook_unknown_variant", event=event_type)
+                logger.warning("ls_webhook_unknown_variant", event_type=event_type)
                 return {"status": "rejected", "reason": "unknown_variant_id"}
             updated = await update_tenant_plan(clerk_org_id, plan, customer_id, "lemonsqueezy")
             if not updated:
@@ -188,13 +188,13 @@ class BillingService:
         customer_id = str(data.get("customer_id", ""))
 
         if not clerk_org_id:
-            logger.warning("paddle_webhook_missing_clerk_org_id", event=event_type)
+            logger.warning("paddle_webhook_missing_clerk_org_id", event_type=event_type)
             return {"status": "skipped", "reason": "missing_clerk_org_id"}
 
         if event_type in {"subscription.created", "subscription.updated", "subscription.resumed"}:
             status = data.get("status")
             if status not in {"active", "trialing"}:
-                logger.warning("paddle_subscription_not_entitled", event=event_type, status=status)
+                logger.warning("paddle_subscription_not_entitled", event_type=event_type, status=status)
                 updated = await update_tenant_plan(clerk_org_id, "free", customer_id, "paddle")
                 if not updated:
                     return {"status": "retry", "reason": "tenant_update_failed"}
@@ -206,7 +206,7 @@ class BillingService:
             price_id = str((items[0].get("price") or {}).get("id", ""))
             plan = _plan_from_paddle_price(price_id)
             if plan is None:
-                logger.warning("paddle_webhook_unknown_price", event=event_type)
+                logger.warning("paddle_webhook_unknown_price", event_type=event_type)
                 return {"status": "rejected", "reason": "unknown_price_id"}
             updated = await update_tenant_plan(clerk_org_id, plan, customer_id, "paddle")
             if not updated:
