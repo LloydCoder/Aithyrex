@@ -495,5 +495,5 @@ This phase proves receiver-side behavior and a versioned contract manifest, not 
 
 The suite is a deterministic regression layer, not an exhaustive adversarial benchmark, live-model red team, calibrated production evaluation, or independent certification. A representative labeled corpus, detector calibration, streaming/multimodal tests, framework/tool lifecycle tests and independent review remain separate gates.
 
-**Phase 14 status:** implementation is in progress until final-head CI, Security Scan and forensic review pass.
+**Phase 14 status:** initial implementation passed CI and Security Scan at revision `02fb31bcb063355f8f33fe8395590fc36eb0d440`; forensic review then found that the corpus was only exercised through unit tests rather than as an explicit blocking CI step. The branch now adds that step and records two remediated test-harness findings in [the Phase 14 forensic audit](audits/PHASE_14_FORENSIC_AUDIT.md). Final acceptance requires fresh green CI and Security Scan for the latest branch head after these changes.
 

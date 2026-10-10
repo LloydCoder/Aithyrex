@@ -4,7 +4,7 @@
 
 This offline suite is a repeatable regression gate for deterministic Aithyrex text detectors. It exercises direct prompt injection, encoded and Unicode-obfuscated instructions, retrieval/tool-output injection, system-prompt extraction, context-overflow patterns, and synthetic credential-shaped strings. It includes benign controls to catch regressions in false-positive behavior.
 
-The corpus is **synthetic-only**. Secret-shaped values are represented by placeholders in the committed JSONL file and rendered as fake values in process memory. The runner emits case IDs, detector IDs, metrics and a SHA-256 dataset digest; it never emits the raw test text.
+The corpus is **synthetic-only**. Secret-shaped values are represented by placeholders in the committed JSONL file and rendered as fake values in process memory. The runner emits case IDs, detector IDs, metrics and a SHA-256 dataset digest; it never emits the raw test text. The CLI reserves stdout for one JSON report; detector diagnostics are routed away from the machine-readable report.
 
 ## Run
 
@@ -35,6 +35,10 @@ Exit code 0 means the regression gate passed; 1 means the corpus ran but a gate 
 - Required detectors: prompt_injection, credential_leak and data_poisoning.
 - Provenance manifest: [red_team_v1.manifest.json](../backend/evaluation/datasets/red_team_v1.manifest.json).
 - Dataset bytes are hashed into the report so a reviewer can identify the exact evaluated corpus.
+
+## CI enforcement
+
+The blocking CI job runs `python -m backend.evaluation.red_team_suite` directly, parses the JSON report, prints only the dataset digest/classification and aggregate metrics, and fails if the regression gate does not pass, the corpus is not classified `synthetic_only`, the digest is invalid, or the suite attempts to approve a release. Unit tests additionally validate the manifest and CLI output contract. The CI report is a regression artifact, not production effectiveness evidence.
 
 ## Gate semantics
 
