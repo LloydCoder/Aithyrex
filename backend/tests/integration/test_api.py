@@ -422,3 +422,14 @@ def test_unknown_route_uses_versioned_error_contract(client):
     assert body["error_code"] == "http_404"
     assert body["detail"] == "Not Found"
     assert response.headers["X-Request-ID"] == body["trace_id"]
+
+
+def test_openapi_publishes_versioned_detection_and_error_contracts():
+    from backend.main import app
+
+    spec = app.openapi()
+    prompt_response = spec["paths"]["/api/v1/detect/prompt"]["post"]["responses"]["200"]
+    agent_response = spec["paths"]["/api/v1/detect/agent"]["post"]["responses"]["200"]
+    assert prompt_response["content"]["application/json"]["schema"]["$ref"].endswith("/PromptDetectionResponse")
+    assert agent_response["content"]["application/json"]["schema"]["$ref"].endswith("/AgentDetectionResponse")
+    assert "APIErrorV1" in spec["components"]["schemas"]
