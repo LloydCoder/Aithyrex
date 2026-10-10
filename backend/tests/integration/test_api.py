@@ -666,6 +666,7 @@ def _signed_platform_context_assertion(monkeypatch, payload):
     import jwt
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
+
     from backend.core.config import settings
     from backend.core.platform_context_auth import context_bundle_sha256
 
