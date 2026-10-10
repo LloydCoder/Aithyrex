@@ -29,7 +29,7 @@ Example body:
 
 Supported source types: `retrieved_document`, `tool_output`, `memory`, `user_input`, `model_output`.
 
-Limits: 32 items; 20,000 characters per item; 100,000 aggregate characters; 250,000 serialized UTF-8 bytes. The route rejects oversized bundles rather than truncating them.
+Limits: 32 items; 20,000 characters per item; 100,000 aggregate characters; 250,000 serialized UTF-8 bytes. The route rejects oversized bundles rather than truncating them. The serialized limit is enforced after JSON parsing; deployments must also configure an upstream/server request-body limit to protect the parser from oversized raw HTTP bodies.
 
 ## Signed claims
 
