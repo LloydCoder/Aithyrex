@@ -541,7 +541,7 @@ PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after fin
 
 ### Scope and implementation
 
-- Replace substring-based production URL checks with structural scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; validate the Clerk RSA public-key trust anchor, reject loopback dependencies, wildcard hosts/origins, default/short secrets, and malformed or duplicate TLS parameters. Validation errors disclose configuration names only.
+- Replace substring-based production URL checks with structural scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; validate the Clerk RSA public-key trust anchor and remote HTTPS authorized-party allow-list, reject loopback dependencies, wildcard hosts/origins, default/short secrets, and malformed or duplicate TLS parameters. Validation errors disclose configuration names only.
 - Declare `PyJWT[crypto]` and `cryptography` in the installable server extra so runtime JWT verification and RSA trust-anchor parsing are not dependent on transitive packages.
 - Include `backend*` in setuptools package discovery and exclude only test packages; CI builds the wheel and verifies that `backend/main.py`, health routes and production config are present.
 - Bound and validate SQLAlchemy pool size, overflow, timeout and recycle settings; document the per-process connection budget.
