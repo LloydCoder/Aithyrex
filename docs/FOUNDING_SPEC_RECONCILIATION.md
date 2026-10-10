@@ -197,15 +197,21 @@ Historical status note: Phase 5 was merged into `main` on 2026-10-10 (PR #2) aft
 - Added an offline JSONL evaluator with per-source confusion metrics, Wilson 95% confidence bounds, strict schema/data-hygiene validation, minimum benign/malicious sample counts, optional explicit risk-probability calibration metrics (Brier score and 10-bin ECE), candidate/baseline comparison on identical sample IDs, corpus SHA-256 fingerprints, and caller-declared provenance/reviewer fields.
 - The evaluator never approves a release. Caller-supplied provenance and review references are not independently verified; `release_gate.release_approved` is always false.
 
-### CI evidence observed during the implementation review
+### CI evidence and phase-specific forensic review
 
-- Initial Phase 6 CI run: https://github.com/LloydCoder/Aithyrex/actions/runs/38024098882
-- Initial Phase 6 Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38024098898
-- Initial run passed 201 unit tests and 35 integration tests; Bandit, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend build, dependency audit and secret scan passed. Docker build was still running at the time of this intermediate observation. The final PR head, including subsequent evaluation/provenance hardening and this ledger update, must be checked separately; these earlier results do not certify the final head.
+**Implementation revision verified:** `8ba8908df8d695a4935cb553331a3013f828276a`
+
+- CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38024330393 — all four jobs passed.
+- Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38024330337 — dependency vulnerability audit and secret scan passed.
+- Unit tests: **206 passed**.
+- API/integration tests: **35 passed**.
+- Bandit SAST, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit, and TruffleHog secret scan: **passed**.
+
+The CI run above verifies implementation revision `8ba8908`. This ledger reconciliation changes documentation only and triggers a fresh PR check run; the final documentation head must also be green before merge.
 
 ### Forensic conclusion and remaining gate
 
-**Implementation status: in progress pending final-head CI and review. Empirical AI-text validation: NOT PASSED.** No representative, independently labeled AI-interaction corpus is present in the repository. Unit fixtures are synthetic and establish evaluator mechanics only; they do not establish detector recall, precision, false-positive rate, probability calibration, or suitability for enforcement. The code therefore intentionally keeps ThreatFade C2/covert-channel signals advisory-only and does not activate enforcement based on the evaluator.
+**Implementation status: code and CI gates passed on revision `8ba8908`; empirical AI-text validation: NOT PASSED.** No representative, independently labeled AI-interaction corpus is present in the repository. Unit fixtures are synthetic and establish evaluator mechanics only; they do not establish detector recall, precision, false-positive rate, probability calibration, or suitability for enforcement. The code therefore intentionally keeps ThreatFade C2/covert-channel signals advisory-only and does not activate enforcement based on the evaluator.
 
 Before Phase 6 can be accepted as empirically complete, run the evaluator against a versioned, representative corpus covering prompt, completion and tool-output sources; supply the same-sample baseline; provide label provenance and measured inter-labeler agreement; include explicit risk probabilities if calibration is to be claimed; inspect subgroup/source results; and obtain an independent review. If that corpus or its provenance cannot be supplied, the statistical acceptance gate remains open regardless of green CI.
 
