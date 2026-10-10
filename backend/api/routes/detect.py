@@ -148,7 +148,7 @@ def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> Fin
         )
         for result in verdict.results
     ]
-    degraded = any(bool(result.details.get("degraded")) for result in verdict.results)
+    degraded = any(bool(result.details.get("degraded")) for result in verdict.results) or verdict.evidence_persistence_failed
     return FindingV1(
         trace_id=trace_id,
         tenant_id=tenant_id,
@@ -462,7 +462,7 @@ async def detect_agent_action(
         )
         for result in verdict.results
     ]
-    degraded = any(bool(result.details.get("degraded")) for result in verdict.results)
+    degraded = any(bool(result.details.get("degraded")) for result in verdict.results) or verdict.evidence_persistence_failed
     detected = any(result.detected or result.details.get("degraded") for result in verdict.results)
     severity = verdict.severity.value if hasattr(verdict.severity, "value") else str(verdict.severity)
     trace_id = UUID(request.state.trace_id)
