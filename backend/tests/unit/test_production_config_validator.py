@@ -90,3 +90,15 @@ def test_production_rejects_malformed_clerk_trust_anchor():
     settings = valid_settings(CLERK_JWT_KEY="not-a-public-key")
     errors = production_configuration_errors(settings)
     assert any(error.startswith("CLERK_JWT_KEY") for error in errors)
+
+
+def test_production_rejects_wildcard_or_local_clerk_authorized_parties():
+    settings = valid_settings(CLERK_AUTHORIZED_PARTIES=["*"]).copy() if False else valid_settings(CLERK_AUTHORIZED_PARTIES=["*"])
+    errors = production_configuration_errors(settings)
+    assert any(error.startswith("CLERK_AUTHORIZED_PARTIES") for error in errors)
+
+
+def test_production_rejects_localhost_in_allowed_origin():
+    settings = valid_settings(ALLOWED_ORIGINS=["https://localhost:3000"])
+    errors = production_configuration_errors(settings)
+    assert any(error.startswith("ALLOWED_ORIGINS") for error in errors)
