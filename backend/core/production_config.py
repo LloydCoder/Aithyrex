@@ -8,6 +8,9 @@ from __future__ import annotations
 import ipaddress
 from urllib.parse import parse_qs, urlparse
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
 
 _DEFAULT_SECRETS = {"", "change-me", "password", "changeme", "secret", "aishield_dev", "dev-secret-change-in-production"}
 _LOCAL_HOSTS = {"localhost", "localhost.localdomain", "host.docker.internal"}
@@ -36,9 +39,22 @@ def production_configuration_errors(settings) -> list[str]:
     clerk_key = str(getattr(settings, "CLERK_JWT_KEY", "") or "").strip()
     if not clerk_key:
         errors.append("CLERK_JWT_KEY")
+    else:
+        try:
+            parsed_clerk_key = serialization.load_pem_public_key(clerk_key.encode("utf-8"))
+            if not isinstance(parsed_clerk_key, rsa.RSAPublicKey):
+                errors.append("CLERK_JWT_KEY (RSA public key PEM required)")
+        except Exception:
+            errors.append("CLERK_JWT_KEY (valid RSA public key PEM required)")
     issuer = urlparse(str(getattr(settings, "CLERK_JWT_ISSUER", "") or ""))
-    if issuer.scheme != "https" or not issuer.hostname or issuer.username or issuer.password:
-        errors.append("CLERK_JWT_ISSUER (HTTPS issuer URL required)")
+    if (
+        issuer.scheme != "https"
+        or not issuer.hostname
+        or _is_local_host(issuer.hostname)
+        or issuer.username
+        or issuer.password
+    ):
+        errors.append("CLERK_JWT_ISSUER (remote HTTPS issuer URL required)")
     if not getattr(settings, "CLERK_AUTHORIZED_PARTIES", None):
         errors.append("CLERK_AUTHORIZED_PARTIES (explicit allow-list required)")
 
