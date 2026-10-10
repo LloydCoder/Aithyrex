@@ -77,3 +77,33 @@ async def test_close_releases_redis_pool():
 
     redis.aclose.assert_awaited_once()
     assert service._redis is None
+
+
+@pytest.mark.asyncio
+async def test_redis_reservation_failure_is_wrapped_and_fails_closed():
+    service = UsageCounterService()
+    service._redis = AsyncMock()
+    service._redis.eval = AsyncMock(side_effect=ConnectionError("redis unavailable"))
+
+    with pytest.raises(RuntimeError, match="usage counter state unavailable"):
+        await service.reserve_inference("tenant-1", "free")
+
+
+@pytest.mark.asyncio
+async def test_redis_read_failure_is_wrapped_and_fails_closed():
+    service = UsageCounterService()
+    service._redis = AsyncMock()
+    service._redis.get = AsyncMock(side_effect=ConnectionError("redis unavailable"))
+
+    with pytest.raises(RuntimeError, match="usage counter state unavailable"):
+        await service.get_count("tenant-1")
+
+
+@pytest.mark.asyncio
+async def test_redis_increment_failure_is_wrapped_and_fails_closed():
+    service = UsageCounterService()
+    service._redis = AsyncMock()
+    service._redis.incr = AsyncMock(side_effect=ConnectionError("redis unavailable"))
+
+    with pytest.raises(RuntimeError, match="usage counter state unavailable"):
+        await service.increment("tenant-1")
