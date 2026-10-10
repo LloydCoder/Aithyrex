@@ -8,6 +8,7 @@ https://github.com/LloydCoder/Aithyrex
 """
 
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 import structlog
 from fastapi import FastAPI
@@ -31,6 +32,11 @@ async def lifespan(app: FastAPI):
             missing.append("CLERK_JWT_ISSUER")
         if not settings.CLERK_AUTHORIZED_PARTIES:
             missing.append("CLERK_AUTHORIZED_PARTIES")
+        threatfade_url = urlparse(settings.THREATFADE_API_URL)
+        if threatfade_url.scheme != "https" or not threatfade_url.hostname:
+            missing.append("THREATFADE_API_URL (HTTPS endpoint required in production)")
+        if not settings.THREATFADE_API_KEY:
+            missing.append("THREATFADE_API_KEY")
         if settings.APP_SECRET_KEY == "change-me" or len(settings.APP_SECRET_KEY) < 32:
             missing.append("APP_SECRET_KEY (must be at least 32 characters and non-default)")
         database_url = settings.DATABASE_URL.lower()
