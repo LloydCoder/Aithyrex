@@ -113,3 +113,15 @@ Production configuration must use explicit HTTPS origins and hosts, TLS-protecte
 ## 9. Evidence status
 
 For the phase-by-phase status, known blockers, acceptance criteria and forensic review history, see FOUNDING_SPEC_RECONCILIATION.md. The ledger is authoritative for what has been implemented, tested, integrated, deployed or remains unverified.
+
+
+## 10. Versioned contracts and request traceability
+
+The API emits a UUID request identifier in the `X-Request-ID` response header. A valid UUID supplied by a caller is canonicalized and propagated; invalid values are replaced with a server-generated UUID. The trace ID is bound into structured log context and included in versioned responses.
+
+- `aithyrex.detection-response.v1`: additive response envelope that retains existing flat fields for compatibility.
+- `aithyrex.finding.v1`: stable finding identifier, trace ID, tenant, timestamp, action/severity, blocked/degraded flags, detector evidence and provenance.
+- `aithyrex.detector-evidence.v1`: detector identity, detection result, severity, bounded confidence, technique IDs and structured details.
+- `aithyrex.error.v1`: stable error code, safe message, trace ID, retryability and backward-compatible detail payload.
+
+Request-validation errors omit rejected input values so prompts/completions are not echoed into error responses. Contract changes require explicit versioning and regression tests. The finding schema is a canonical data contract; its presence does not prove durable storage, delivery or downstream consumer integration.

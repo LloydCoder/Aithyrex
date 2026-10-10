@@ -10,10 +10,12 @@ All routes require Clerk auth. Plan extracted from JWT for tier enforcement.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+
+from backend.core.contracts import DetectorEvidenceV1, FindingV1
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
@@ -35,6 +37,11 @@ class AgentInspectRequest(BaseModel):
 
 
 class DetectionResponse(BaseModel):
+    schema_version: Literal["aithyrex.detection-response.v1"] = "aithyrex.detection-response.v1"
+    trace_id: str
+    finding_id: str
+    degraded: bool = False
+    finding: FindingV1
     action: str
     severity: str
     blocked: bool
@@ -43,10 +50,36 @@ class DetectionResponse(BaseModel):
     inferences_used: int = 0
 
 
+def _build_finding(verdict: ShieldVerdict, tenant_id: str, trace_id: str) -> FindingV1:
+    evidence = [
+        DetectorEvidenceV1(
+            detector=result.detector,
+            detected=result.detected,
+            severity=result.severity.value if hasattr(result.severity, "value") else str(result.severity),
+            confidence=result.confidence,
+            mitre_atlas=result.mitre_atlas,
+            details=result.details,
+        )
+        for result in verdict.results
+    ]
+    degraded = any(bool(result.details.get("degraded")) for result in verdict.results)
+    return FindingV1(
+        trace_id=trace_id,
+        tenant_id=tenant_id,
+        action=verdict.action.value if hasattr(verdict.action, "value") else str(verdict.action),
+        severity=verdict.severity.value if hasattr(verdict.severity, "value") else str(verdict.severity),
+        blocked=verdict.blocked,
+        degraded=degraded,
+        evidence=evidence,
+        provenance={"component": "aithyrex-api"},
+    )
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 @router.post("/llm", response_model=DetectionResponse)
 async def detect_llm(
     req: LLMInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
@@ -61,7 +94,12 @@ async def detect_llm(
         plan=tenant.plan,
     )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return DetectionResponse(
+        trace_id=request.state.trace_id,
+        finding_id=str(finding.finding_id),
+        degraded=finding.degraded,
+        finding=finding,
         action=verdict.action,
         severity=verdict.severity,
         blocked=verdict.blocked,
@@ -84,6 +122,7 @@ async def detect_llm(
 @router.post("/prompt")
 async def detect_prompt(
     req: LLMInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
@@ -120,7 +159,14 @@ async def detect_prompt(
             },
         )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return {
+        "schema_version": "aithyrex.detection-response.v1",
+        "trace_id": request.state.trace_id,
+        "finding_id": str(finding.finding_id),
+        "finding": finding.model_dump(mode="json"),
+        "degraded": finding.degraded,
+        "action": verdict.action,
         "blocked": False,
         "severity": verdict.severity,
         "tenant_id": tenant.tenant_id,
@@ -130,6 +176,7 @@ async def detect_prompt(
 @router.post("/agent")
 async def detect_agent(
     req: AgentInspectRequest,
+    request: Request,
     tenant: Annotated[TokenPayload, Depends(get_current_tenant)],
 ):
     """
@@ -149,7 +196,13 @@ async def detect_agent(
         plan=tenant.plan,
     )
 
+    finding = _build_finding(verdict, tenant.tenant_id, request.state.trace_id)
     return {
+        "schema_version": "aithyrex.detection-response.v1",
+        "trace_id": request.state.trace_id,
+        "finding_id": str(finding.finding_id),
+        "finding": finding.model_dump(mode="json"),
+        "degraded": finding.degraded,
         "agent_id": req.agent_id,
         "action": verdict.action,
         "severity": verdict.severity,
