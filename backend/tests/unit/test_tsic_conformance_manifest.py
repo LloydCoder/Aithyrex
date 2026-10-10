@@ -25,7 +25,7 @@ def test_tsic_manifest_matches_versioned_receiver_contracts():
 
     for contract in manifest["contracts"]:
         source = route_sources[contract["contract_id"]].read_text(encoding="utf-8")
-        assert f'"{contract["path"].rsplit("/", 1)[-1]}"' in source
+        assert f'"/{contract["path"].rsplit("/", 1)[-1]}"' in source
         assert contract["assertion_header"] in source
         assert contract["response_schema_version"] in source
         assert "assertion_replay_guard.consume" in source
