@@ -3,7 +3,7 @@
 **Repository:** [LloydCoder/Aithyrex](https://github.com/LloydCoder/Aithyrex)  
 **Phase branch:** `godmode/phase-14-red-team-evaluation`  
 **Scope:** deterministic offline red-team regression gate, corpus integrity, prompt-injection regression, CLI output contract, CI enforcement and documentation accuracy.  
-**Audit status:** accepted for the declared implementation scope on the verified code revision below. The final PR head must still pass its own CI and Security Scan before merge.
+**Audit status:** forensic findings F14-01 through F14-06 are implemented; final acceptance is pending fresh CI and Security Scan on the current head.
 
 ## Evidence baseline
 
@@ -40,6 +40,12 @@ The code-and-gate revision `d99bc21541f7f3c119242d6578b3147b24f5a55d` passed CI 
 - **Observed:** the CLI supports an alternate dataset path, while the report previously hard-coded `synthetic_only`. A custom dataset could therefore be misrepresented. Unbounded/free-form case IDs and family names could also leak arbitrary text into the otherwise content-free report.
 - **Fix:** only the canonical default corpus path receives `synthetic_only`; alternate datasets are labeled `custom_unverified`. The loader validates the classification and SHA-256, constrains dataset bytes/case count, validates safe identifier slugs and source/label types, and avoids echoing duplicate IDs in validation errors. Added regression tests for custom classification and identifier privacy.
 - **Acceptance:** latest-head unit tests and the direct CLI gate must pass.
+
+### F14-06 — Evaluation exceptions could echo supplied content
+
+- **Observed:** the CLI handled dataset-validation and detector-evaluation errors in one exception block and serialized exception text. A detector/runtime exception could include a content snippet, violating the content-free report contract.
+- **Fix:** separated dataset loading from detector evaluation, returns error classes rather than raw exception messages, and added a regression test that injects a sensitive exception string and proves it is not emitted.
+- **Acceptance:** latest-head unit tests and direct CLI gate must pass.
 
 ## Corpus and acceptance policy
 

@@ -264,13 +264,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         cases, dataset_sha256 = load_cases(args.dataset)
-        dataset_classification = (
-            "synthetic_only" if args.dataset.resolve() == DEFAULT_DATASET.resolve()
-            else "custom_unverified"
-        )
-        # Detector loggers may be configured with stdout handlers by the host
-        # application. Keep the CLI contract machine-readable: diagnostics go to
-        # stderr while the single JSON evaluation report remains on stdout.
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        # Error details may contain paths or parser-specific text; expose only the
+        # error class so an invalid corpus cannot echo supplied content.
+        print(json.dumps({"status": "invalid_dataset", "error_type": type(exc).__name__}), file=sys.stderr)
+        return 2
+
+    dataset_classification = (
+        "synthetic_only" if args.dataset.resolve() == DEFAULT_DATASET.resolve()
+        else "custom_unverified"
+    )
+    # Detector loggers may be configured with stdout handlers by the host
+    # application. Keep the CLI contract machine-readable: diagnostics go to
+    # stderr while the single JSON evaluation report remains on stdout.
+    try:
         with redirect_stdout(sys.stderr):
             report = evaluate_cases(
                 cases,
@@ -280,8 +287,10 @@ def main(argv: list[str] | None = None) -> int:
                 max_benign_false_positive_rate=args.max_benign_fpr,
                 min_expected_detector_coverage=args.min_expected_detector_coverage,
             )
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        print(json.dumps({"status": "invalid_dataset", "error": str(exc)}), file=sys.stderr)
+    except Exception as exc:
+        # Never echo detector exception text: third-party/runtime errors can carry
+        # snippets of the content being evaluated.
+        print(json.dumps({"status": "evaluation_error", "error_type": type(exc).__name__}), file=sys.stderr)
         return 2
     print(json.dumps(report, sort_keys=True))
     return 0 if report["status"] == "pass" else 1

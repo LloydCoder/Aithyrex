@@ -3,6 +3,7 @@ import json
 import pytest
 
 from backend.evaluation.red_team_suite import DEFAULT_DATASET, evaluate_cases, load_cases, main
+from backend.detectors.prompt_injection import PromptInjectionDetector
 
 
 def test_dataset_manifest_matches_synthetic_corpus():
@@ -43,6 +44,19 @@ def test_cli_emits_content_free_report_and_passes(capsys):
     assert report["status"] == "pass"
     assert all("text" not in row for row in report["case_results"])
     assert all("raw_prompt" not in row for row in report["case_results"])
+
+
+def test_cli_does_not_echo_detector_exception_text(monkeypatch, capsys):
+    async def fail_with_sensitive_message(*args, **kwargs):
+        raise RuntimeError("sensitive synthetic payload must not be echoed")
+
+    monkeypatch.setattr(PromptInjectionDetector, "detect", fail_with_sensitive_message)
+    assert main([]) == 2
+    captured = capsys.readouterr()
+    error = json.loads(captured.err)
+    assert error == {"status": "evaluation_error", "error_type": "RuntimeError"}
+    assert "sensitive synthetic payload" not in captured.err
+    assert captured.out == ""
 
 
 def test_custom_dataset_is_not_labeled_synthetic(tmp_path, capsys):
