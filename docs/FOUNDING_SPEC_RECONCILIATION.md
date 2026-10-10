@@ -524,11 +524,34 @@ The final branch head must pass unit/integration tests, Ruff, Bandit, Semgrep, f
 **Forensic audit:** [Phase 15 forensic audit](audits/PHASE_15_FORENSIC_AUDIT.md)  
 **Original implementation CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767051 — success  
 **Original implementation Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38032767087 — success  
-**CSV-hardening CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509266 — in progress at audit amendment time  
-**CSV-hardening Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033509272 — success
+**Final PR-head CI:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033575739 — success  
+**Final PR-head Security Scan:** https://github.com/LloydCoder/Aithyrex/actions/runs/38033575546 — success
 
 The forensic review found an additional CSV formula-injection edge case: leading spaces could precede a spreadsheet formula marker. The sanitizer now checks the first non-whitespace character, and regression tests cover direct, whitespace-prefixed and tab-prefixed formulas. The implementation review also verified server-side Enterprise entitlement, same-predicate tenant/event scoping, indistinguishable missing/cross-tenant 404s, database outage semantics, allow-listed content minimization, deterministic evidence digest, no-store headers, explicit non-submission fields and route/test coverage.
 
-The audit and ledger documentation have been amended after the code change. The current final PR head must pass fresh CI and Security Scan before merge, followed by post-merge workflow verification.
+PR #13 was merged as commit `c4b3ff2ff9389d709754f24541faeb3555acb39e` after final PR-head CI and Security Scan passed. Post-merge main CI [run 38033693101](https://github.com/LloydCoder/Aithyrex/actions/runs/38033693101) and Security Scan [run 38033692959](https://github.com/LloydCoder/Aithyrex/actions/runs/38033692959) also passed. The forensic audit and ledger amendments were included in the merged PR.
 
-**Phase 15 acceptance scope:** technical evidence exports only. The digest is not a signature or immutable-storage guarantee. The endpoint does not determine legal applicability, calculate statutory deadlines, submit a filing, or prove delivery. `/summary` remains 501. Phase 6's representative labeled AI-text effectiveness gate remains open and is not bypassed by this phase.
+**Phase 15 status: ACCEPTED for the declared implementation scope.** This is technical evidence export only. The digest is not a signature or immutable-storage guarantee. The endpoint does not determine legal applicability, calculate statutory deadlines, submit a filing, or prove delivery. `/summary` remains 501. Phase 6's representative labeled AI-text effectiveness gate remains open and is not bypassed by this phase.
+
+
+## 20. Phase 16 operations and deployment hardening
+
+**Branch:** \`godmode/phase-16-operations-deployment\`  
+**Forensic audit:** [Phase 16 forensic audit](audits/PHASE_16_FORENSIC_AUDIT.md)
+
+### Scope and implementation
+
+- Replace substring-based production URL checks with parsed scheme/host/credential/TLS validation for Clerk issuer, ThreatFade, PostgreSQL and Redis; reject loopback dependencies, wildcard hosts/origins, default/short secrets and missing outbox worker configuration. Validation errors disclose configuration names only.
+- Add bounded \`/health/live\` and \`/health/ready\` semantics; readiness returns 503 when a required dependency is degraded, while legacy \`/health\` keeps its HTTP-200 diagnostic contract. Health responses do not return exception text.
+- Dispose the SQLAlchemy engine pool during shutdown and ensure an outbox worker shutdown exception cannot prevent remaining resource cleanup.
+- Label Docker Compose and \`.env.example\` as local-development-only and add a container liveness probe.
+- Expand the operations runbook with health probes, proposed-but-unmeasured SLOs, alerting, privacy-safe observability, key rotation, backup/restore, deployment/rollback and incident handling.
+- Add unit tests for production URL validation, duplicate TLS parameters, loopback dependencies, liveness/readiness, timeouts and health error redaction.
+
+### Acceptance gate
+
+Final PR head must pass unit/integration tests, offline red-team regression, Ruff, Bandit, Semgrep, frontend dependency audit/type-check/lint/build, Docker build, dependency audit and secret scan. The Phase 16 forensic audit must be reconciled with final CI evidence before merge; post-merge workflows must also be checked.
+
+### Explicit non-claims
+
+This phase does not prove a live production deployment, managed secret-manager integration, automatic key rotation, PostgreSQL/Redis HA, successful backup restore, measured SLO attainment, or approved RPO/RTO. Proposed SLO targets in the runbook are not contractual or measured until supported by real operational evidence.
