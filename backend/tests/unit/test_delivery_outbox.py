@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -104,3 +105,44 @@ async def test_event_and_delivery_intents_commit_in_one_transaction(monkeypatch)
     }
     assert all(row.event_id == event_rows[0].id for row in outbox_rows)
     assert len({row.dedupe_key for row in outbox_rows}) == 3
+
+
+@pytest.mark.asyncio
+async def test_worker_claims_rows_with_a_lease_and_dispatches(monkeypatch):
+    now = datetime.now(timezone.utc)
+    row = SimpleNamespace(
+        id=uuid.uuid4(),
+        status="pending",
+        available_at=now - timedelta(seconds=1),
+        created_at=now,
+        attempts=0,
+        locked_at=None,
+        updated_at=now,
+    )
+    session = SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(
+            scalars=lambda: SimpleNamespace(all=lambda: [row])
+        )),
+        commit=AsyncMock(),
+    )
+
+    class SessionContext:
+        async def __aenter__(self):
+            return session
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "backend.core.delivery_outbox.AsyncSessionFactory",
+        lambda: SessionContext(),
+    )
+    worker = DeliveryOutboxWorker(batch_size=1)
+    worker._deliver_one = AsyncMock()
+    claimed = await worker.run_once()
+    assert claimed == 1
+    assert row.status == "processing"
+    assert row.attempts == 1
+    assert row.locked_at is not None
+    assert session.commit.await_count == 1
+    worker._deliver_one.assert_awaited_once_with(row.id)
