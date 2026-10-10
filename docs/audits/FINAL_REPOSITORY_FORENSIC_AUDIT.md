@@ -82,7 +82,7 @@ The offline red-team corpus is small and synthetic (32 cases). Its regression me
 
 ## 6. Post-audit gap closure
 
-The final audit identified that provider webhook replay/idempotency was still an implementation limitation. The follow-up adds migration `003_billing_webhook_idempotency`, deduplication for both supported providers, transactional entitlement/event updates, and stale subscription event rejection. Regression tests cover stable keys, timestamp normalization, duplicate deliveries and stale snapshots. The referenced CI and Security Scan runs passed for the code revision. The migration must be applied before billing webhooks are enabled; no live provider configuration or production billing behavior is inferred.
+The final audit identified that provider webhook replay/idempotency was still an implementation limitation. The follow-up adds migration `003_billing_webhook_idempotency`, deduplication for both supported providers, transactional entitlement/event updates, and stale subscription event rejection. Regression tests cover stable keys, timestamp normalization, duplicate deliveries and stale snapshots. The referenced CI and Security Scan runs passed for the code revision. The migration must be applied before billing webhooks are enabled; no live provider configuration or production billing behavior is inferred. A repository-wide tracked-file marker sweep over the 202-file follow-up tree found one additional stale status statement in `aithyrex-landing.html`; it was corrected to match the README and phase ledger. Explicitly unsupported framework adapters and the report-summary HTTP 501 remain intentionally unavailable and are identified as such; they are not counted as completed capabilities.
 
 ## 7. Final findings and decision
 
