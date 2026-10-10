@@ -26,7 +26,7 @@ engine = ShieldEngine()
 
 MAX_CONTEXT_ITEMS = 32
 MAX_CONTEXT_ITEM_CHARS = 20_000
-MAX_CONTEXT_TOTAL_CHARS = 200_000
+MAX_CONTEXT_TOTAL_CHARS = 100_000
 MAX_CONTEXT_BUNDLE_BYTES = 250_000
 SourceType = Literal["retrieved_document", "tool_output", "memory", "user_input", "model_output"]
 
