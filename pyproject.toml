@@ -39,8 +39,8 @@ aithyrex = "ai_shield.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["aithyrex*", "ai_shield*"]
-exclude = ["backend*", "frontend*", "tests*"]
+include = ["aithyrex*", "ai_shield*", "backend*"]
+exclude = ["backend.tests*", "frontend*", "tests*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
