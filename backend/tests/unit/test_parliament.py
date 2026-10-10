@@ -244,6 +244,21 @@ class TestParliamentVoting:
             assert result is not None
 
 
+@pytest.mark.asyncio
+async def test_direct_parliament_evaluation_preserves_hard_block(ensemble):
+    verdict = make_verdict(Action.BLOCK, Severity.CRITICAL, detector="credential_leak")
+    ensemble.gateway.call_claude = AsyncMock(return_value=member_vote("claude", Vote.ALLOW))
+    ensemble.gateway.call_grok = AsyncMock(return_value=member_vote("grok", Vote.ALLOW))
+
+    result = await ensemble.evaluate(verdict, "sensitive prompt", threatfade_z_score=0.0)
+
+    assert result.action == Action.BLOCK
+    assert result.severity == Severity.CRITICAL
+    assert result.blocked is True
+    ensemble.gateway.call_claude.assert_not_awaited()
+    ensemble.gateway.call_grok.assert_not_awaited()
+
+
 def test_missing_threatfade_telemetry_abstains(ensemble):
     vote = ensemble._threatfade_vote(z_score=None)
     assert vote.vote == Vote.ABSTAIN
