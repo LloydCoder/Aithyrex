@@ -17,10 +17,19 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from structlog.contextvars import bound_contextvars
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.api.routes import context, detect, enforce, health, monitor, reports, sequence, webhooks
+from backend.api.routes import (
+    context,
+    detect,
+    enforce,
+    health,
+    monitor,
+    reports,
+    sequence,
+    webhooks,
+)
 from backend.core.config import settings
 from backend.core.contracts import APIErrorV1
 
