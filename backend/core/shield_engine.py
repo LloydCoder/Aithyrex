@@ -62,6 +62,7 @@ class ShieldVerdict:
     alert_sent: bool = False
     siem_exported: bool = False
     compliance_notified: bool = False
+    evidence_persistence_failed: bool = False
 
     def detected_by(self, detector_name: str) -> bool:
         """Return True if the named detector fired a positive detection."""
