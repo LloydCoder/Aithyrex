@@ -207,7 +207,7 @@ Historical status note: Phase 5 was merged into `main` on 2026-10-10 (PR #2) aft
 - API/integration tests: **35 passed**.
 - Bandit SAST, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit, and TruffleHog secret scan: **passed**.
 
-The CI run above verifies the core implementation revision `8ba8908`. Subsequent changes also reconciled developer-facing Aithyrex names in the Makefile, Compose container names and environment-file heading. The configured PostgreSQL role/database names intentionally remain `aishield` to match the existing Compose environment and avoid an unplanned data-identity migration. The latest head of PR #3 must pass both required workflows before merge; use the PR's current checks as the final authority.
+The CI run above verifies the core implementation revision `8ba8908`. Subsequent changes also reconciled developer-facing Aithyrex names in the Makefile, Compose container names and environment-file heading. The configured PostgreSQL role/database names intentionally remain `aishield` to match the existing Compose environment and avoid an unplanned data-identity migration. Phase 6 PR #3 was merged into `main` on 2026-10-10 as merge commit `da29c912c0ca71c72bcf1f25acaf2e7b7d34f139`. Main-branch CI https://github.com/LloydCoder/Aithyrex/actions/runs/38024723002 and Security Scan https://github.com/LloydCoder/Aithyrex/actions/runs/38024723110 both passed. The empirical AI-text validation gate below remains open and is not implied by merge/CI success.
 
 ### Forensic conclusion and remaining gate
 
@@ -221,3 +221,38 @@ Before Phase 6 can be accepted as empirically complete, run the evaluator agains
 - A numerical threshold pass on synthetic or unrepresentative data must not be reported as product effectiveness.
 - Upstream ThreatFade availability does not itself imply calibration; missing/malformed/degraded upstream telemetry remains a distinct state.
 - No downstream integration, production deployment, or legal/compliance filing is claimed by this phase.
+
+
+## 11. Phase 7 threat coverage and detector-evidence audit
+
+**Phase branch:** `godmode/phase-07-threat-coverage`  
+**Pull request:** https://github.com/LloydCoder/Aithyrex/pull/4  
+**Implementation revision verified:** `935cf0502fd68ec32b2e52b7bc87ae98e64394ab`
+
+### Implemented
+
+- Expanded the prompt-injection rule set for direct instruction override, hidden-prompt disclosure, safety-control bypass and credential exfiltration indicators.
+- Added bounded Base64/hex payload decoding and selected NFKC/zero-width/bidi-control normalization. The detector returns stable rule IDs and never returns/logs raw matched prompt fragments.
+- Replaced arbitrary heuristic confidence values with `confidence=0.0` and `confidence_calibrated=false` in prompt-injection and credential-leak findings. Credential match values are fully redacted as `[REDACTED]`.
+- Added explicit agent API limits: maximum 100 messages, 20,000 characters per message, and 200,000 aggregate characters. Validation errors must not echo rejected content.
+- Added `docs/THREAT_COVERAGE_MATRIX.md`, which maps tested capabilities, partial controls and deferred controls to their limitations. It explicitly avoids claiming comprehensive threat coverage or validated detector accuracy.
+
+### CI evidence
+
+- CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38025036709 — all four jobs passed.
+- Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38025036672 — dependency vulnerability audit and secret scan passed.
+- Unit tests: **212 passed**.
+- API/integration tests: **38 passed**.
+- Bandit, Ruff, Semgrep, frontend dependency audit, TypeScript, ESLint, frontend production build, Docker image build, dependency vulnerability audit and secret scan: **passed**.
+
+### Phase 7 forensic conclusion and residual risks
+
+**Implementation and CI gates: passed on revision `935cf0`. Detector effectiveness: not established.** Tests prove only deterministic behavior for the included fixtures; they do not prove recall, precision, resistance to novel attacks, or production suitability.
+
+- Source-aware indirect injection is still partial: caller-provided `role`/`source` values are not authenticated provenance, and current inspection does not bind each finding to a trusted retrieval/tool boundary.
+- Base64/hex decoding is bounded and not exhaustive; arbitrary obfuscation, multimodal payloads and semantic attacks remain outside this rule detector's guarantee.
+- API schema limits are not a substitute for reverse-proxy/server request-body limits in deployment.
+- Credential-format rules are locally maintained heuristics, not exhaustive or independently calibrated.
+- Phase 6's representative, independently labeled AI-text corpus, same-sample baseline, calibration evidence and independent review remain required before any AI-text detection effectiveness or enforcement claim.
+
+The phase is complete for its declared implementation/test traceability scope. Deferred items remain explicit; no production readiness, 100% coverage, or accuracy claim is made.

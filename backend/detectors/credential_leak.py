@@ -51,7 +51,7 @@ CREDENTIAL_PATTERNS: list[CredentialPattern] = [
     CredentialPattern("openai_api_key",       re.compile(r"sk-[a-zA-Z0-9]{48}"),                                        Severity.CRITICAL),
     CredentialPattern("huggingface_token",    re.compile(r"hf_[a-zA-Z0-9]{36}"),                                        Severity.HIGH),
 
-    # ── Nigerian fintech (peer-reviewed OSS patterns) ─────────────────
+    # ── Nigerian fintech (locally maintained format heuristics) ───────
     CredentialPattern("paystack_secret",      re.compile(r"sk_(?:live|test)_[a-zA-Z0-9]{40}"),                          Severity.CRITICAL),
     CredentialPattern("paystack_public",      re.compile(r"pk_(?:live|test)_[a-zA-Z0-9]{32,}"),                          Severity.HIGH),
     CredentialPattern("flutterwave_secret",   re.compile(r"FLWSECK(?:_TEST)?-[a-zA-Z0-9]{32,}"),                        Severity.CRITICAL),
@@ -89,7 +89,7 @@ class CredentialLeakDetector:
             match = cp.pattern.search(target)
             if match:
                 # Redact matched value before logging
-                redacted = match.group(0)[:6] + "***REDACTED***"
+                redacted = "[REDACTED]"
                 found.append({
                     "pattern": cp.name,
                     "severity": cp.severity,
@@ -103,6 +103,7 @@ class CredentialLeakDetector:
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
+                details={"confidence_calibrated": False},
             )
 
         # Highest severity among matches
@@ -121,7 +122,7 @@ class CredentialLeakDetector:
             detector="credential_leak",
             detected=True,
             severity=top_severity,
-            confidence=0.99,   # Pattern match = near certain
-            details={"matches": found, "count": len(found)},
+            confidence=0.0,
+            details={"matches": found, "count": len(found), "confidence_calibrated": False},
             mitre_atlas=["AML.T0048", "T1552"],
         )
