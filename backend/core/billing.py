@@ -106,7 +106,7 @@ def parse_provider_timestamp(value: Any) -> datetime | None:
 def derive_webhook_event_key(provider: str, payload: bytes, event_id: str | None = None) -> str | None:
     """Use Paddle's event ID or a stable body digest for Lemon Squeezy deliveries."""
     if provider == "paddle":
-        if not event_id or len(event_id) > 128:
+        if not isinstance(event_id, str) or not event_id or len(event_id) > 128:
             return None
         return event_id
     if provider == "lemonsqueezy":
@@ -217,6 +217,13 @@ class BillingService:
         from backend.models.database import AsyncSessionFactory
         from backend.models.models import BillingWebhookEvent, Tenant
 
+        if provider not in {"lemonsqueezy", "paddle"}:
+            return {"status": "rejected", "reason": "unsupported_provider"}
+        if not isinstance(event_key, str) or not event_key or len(event_key) > 128:
+            return {"status": "rejected", "reason": "invalid_event_key"}
+        if resource_id is not None and len(resource_id) > 128:
+            return {"status": "rejected", "reason": "invalid_resource_id"}
+
         payload_digest = hashlib.sha256(payload).hexdigest()
         normalized_type = event_type if isinstance(event_type, str) and event_type else "unknown"
         try:
@@ -320,6 +327,9 @@ class BillingService:
                             normalized_type, data, session=session
                         )
                     else:
+                        event_row.status = "rejected"
+                        event_row.result = {"status": "rejected", "reason": "unsupported_provider"}
+                        event_row.processed_at = datetime.now(timezone.utc)
                         return {"status": "rejected", "reason": "unsupported_provider"}
 
                     if result.get("status") == "retry":
