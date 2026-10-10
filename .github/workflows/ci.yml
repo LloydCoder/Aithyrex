@@ -91,7 +91,7 @@ jobs:
       - name: Bandit SAST scan
         run: bandit -r backend/ -ll -x backend/tests/
       - name: Ruff lint (blocking)
-        run: ruff check backend/
+        run: ruff check backend/ scripts/assurance/
       - name: Semgrep scan
         run: semgrep --config=auto backend/ --error
 
