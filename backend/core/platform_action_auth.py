@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from backend.core.config import settings
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+MAX_ASSERTION_TTL_SECONDS = 300
 _REQUIRED_CLAIMS = [
     "exp",
     "iat",
@@ -66,6 +67,24 @@ def decode_platform_action_assertion(token: str) -> dict[str, Any]:
 
     if not isinstance(claims, dict):
         raise HTTPException(status_code=401, detail="Invalid Platform action assertion")
+
+    issued_at = claims.get("iat")
+    expires_at = claims.get("exp")
+    if (
+        isinstance(issued_at, bool)
+        or not isinstance(issued_at, int)
+        or isinstance(expires_at, bool)
+        or not isinstance(expires_at, int)
+        or expires_at <= issued_at
+        or expires_at - issued_at > MAX_ASSERTION_TTL_SECONDS
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error_code": "invalid_platform_action_lifetime",
+                "message": "Platform action assertion lifetime is invalid.",
+            },
+        )
 
     string_claims = ("sub", "jti", "tenant_id", "action_id", "tool_name", "action_payload_sha256")
     if any(not isinstance(claims.get(name), str) or not claims[name].strip() for name in string_claims):
