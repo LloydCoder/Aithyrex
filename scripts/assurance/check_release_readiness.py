@@ -133,6 +133,12 @@ def evaluate_release_readiness(
                 "external",
             }:
                 evidence_errors.append(f"evidence item {index + 1} has an unsupported type")
+            else:
+                evidence_sha = item.get("candidate_sha")
+                if not isinstance(evidence_sha, str) or not SHA_PATTERN.fullmatch(evidence_sha):
+                    evidence_errors.append(f"evidence item {index + 1} must include a candidate_sha")
+                elif evidence_sha != candidate_sha:
+                    evidence_errors.append(f"evidence item {index + 1} candidate_sha does not match candidate SHA")
 
         if status == "passed" and not evidence:
             evidence_errors.append("passed gate has no evidence")
