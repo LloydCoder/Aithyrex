@@ -33,13 +33,14 @@ class NIS2DoraHooks:
     """
 
     def __init__(self) -> None:
-        self._recent_highs: dict[str, list[datetime]] = {}  # tenant → timestamps
+        self._recent_highs: dict[str, list[tuple[datetime, str]]] = {}  # tenant → (timestamp, event ID)
 
     async def evaluate(
         self,
         verdict,
         tenant_id: str,
         plan: str = "free",
+        event_id: str | None = None,
     ) -> bool:
         """
         Evaluate whether this verdict triggers a compliance notification.
@@ -54,10 +55,10 @@ class NIS2DoraHooks:
             return await self._notify_kalevio(verdict, tenant_id, urgency="critical")
 
         if verdict.severity == Severity.HIGH:
-            return await self._track_high(verdict, tenant_id)
+            return await self._track_high(verdict, tenant_id, event_id=event_id)
         return True
 
-    async def _track_high(self, verdict, tenant_id: str) -> bool:
+    async def _track_high(self, verdict, tenant_id: str, event_id: str | None = None) -> bool:
         """Track HIGH events. Fire notification if 3+ in 60 minutes."""
         now = datetime.now(timezone.utc)
 
@@ -67,10 +68,13 @@ class NIS2DoraHooks:
         # Keep only events from last 60 minutes
         cutoff = now.timestamp() - 3600
         self._recent_highs[tenant_id] = [
-            ts for ts in self._recent_highs[tenant_id]
-            if ts.timestamp() > cutoff
+            (timestamp, existing_id)
+            for timestamp, existing_id in self._recent_highs[tenant_id]
+            if timestamp.timestamp() > cutoff
         ]
-        self._recent_highs[tenant_id].append(now)
+        stable_event_id = event_id or f"volatile:{now.isoformat()}"
+        if not any(existing_id == stable_event_id for _, existing_id in self._recent_highs[tenant_id]):
+            self._recent_highs[tenant_id].append((now, stable_event_id))
 
         if len(self._recent_highs[tenant_id]) >= 3:
             succeeded = await self._notify_kalevio(verdict, tenant_id, urgency="high_cluster")
