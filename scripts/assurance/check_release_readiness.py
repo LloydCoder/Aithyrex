@@ -43,7 +43,7 @@ def evaluate_release_readiness(
     if missing_keys:
         issues.append("manifest missing required keys: " + ", ".join(missing_keys))
 
-    if manifest.get("schema_version") != 1:
+    if type(manifest.get("schema_version")) is not int or manifest.get("schema_version") != 1:
         issues.append("schema_version must be 1")
 
     declared_sha = manifest.get("release_candidate_sha")
@@ -108,7 +108,7 @@ def evaluate_release_readiness(
                     evidence_errors.append(f"evidence path must stay inside the repository: {reference}")
                 elif not (repo_root / relative_path).is_file():
                     evidence_errors.append(f"evidence file does not exist: {reference}")
-            elif evidence_type not in {
+            elif not isinstance(evidence_type, str) or evidence_type not in {
                 "review",
                 "dataset",
                 "deployment",
