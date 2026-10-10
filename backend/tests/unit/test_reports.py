@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
+import fastapi
 import pytest
-from fastapi import HTTPException
 
 from backend.api.routes.reports import (
     _export_evidence,
@@ -56,7 +56,7 @@ def fake_session_context(event=None, *, error=None):
 async def test_non_enterprise_cannot_export_and_database_is_not_touched():
     tenant = TokenPayload(TENANT_ID, "user", plan="pro")
     with patch("backend.models.database.AsyncSessionFactory") as factory:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(fastapi.HTTPException) as exc:
             await _export_evidence(EVENT_ID, "json", tenant)
     assert exc.value.status_code == 403
     factory.assert_not_called()
