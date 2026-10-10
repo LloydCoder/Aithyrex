@@ -65,7 +65,7 @@ class SIEMDispatcher:
                 )
                 results["json"] = True
             except Exception as e:
-                logger.error("siem_json_failed", error=str(e))
+                logger.error("siem_json_failed", error_type=type(e).__name__)
                 results["json"] = False
 
         # CSV
@@ -74,7 +74,7 @@ class SIEMDispatcher:
                 to_csv(verdict, tenant_id)
                 results["csv"] = True
             except Exception as e:
-                logger.error("siem_csv_failed", error=str(e))
+                logger.error("siem_csv_failed", error_type=type(e).__name__)
                 results["csv"] = False
 
         # CEF
@@ -84,7 +84,7 @@ class SIEMDispatcher:
                 logger.info("siem_cef_export", cef=cef_line[:80])
                 results["cef"] = True
             except Exception as e:
-                logger.error("siem_cef_failed", error=str(e))
+                logger.error("siem_cef_failed", error_type=type(e).__name__)
                 results["cef"] = False
 
         # Splunk HEC (async HTTP)
@@ -93,7 +93,7 @@ class SIEMDispatcher:
                 success = await to_splunk_hec(verdict, tenant_id)
                 results["splunk_hec"] = success
             except Exception as e:
-                logger.error("siem_splunk_failed", error=str(e))
+                logger.error("siem_splunk_failed", error_type=type(e).__name__)
                 results["splunk_hec"] = False
 
         # STIX 2.1 (Enterprise)
@@ -107,7 +107,7 @@ class SIEMDispatcher:
                 )
                 results["stix21"] = True
             except Exception as e:
-                logger.error("siem_stix21_failed", error=str(e))
+                logger.error("siem_stix21_failed", error_type=type(e).__name__)
                 results["stix21"] = False
 
         return results
