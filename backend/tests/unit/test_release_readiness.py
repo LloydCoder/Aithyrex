@@ -22,6 +22,7 @@ def passing_manifest():
                     {
                         "type": "workflow",
                         "reference": "https://github.com/LloydCoder/Aithyrex/actions/runs/123",
+                        "commit_sha": VALID_SHA,
                     }
                 ],
             }
@@ -123,3 +124,11 @@ def test_cli_reports_current_manifest_as_blocked(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "Aithyrex release BLOCKED" in captured.out
+
+
+def test_workflow_evidence_for_another_commit_blocks_release():
+    manifest = passing_manifest()
+    manifest["gates"][0]["evidence"][0]["commit_sha"] = "b" * 40
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("commit_sha does not match candidate SHA" in issue for issue in report["issues"])
