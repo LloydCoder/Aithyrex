@@ -57,3 +57,61 @@ def test_evaluation_rejects_duplicate_sample_ids():
     records[1]["sample_id"] = records[0]["sample_id"]
     with pytest.raises(ValueError, match="Duplicate sample_id"):
         evaluate_records(records)
+
+
+def test_calibration_requires_explicit_risk_probabilities():
+    records = corpus()
+    for record in records:
+        record["risk_probability"] = 0.1 if record["label"] == "benign" else 0.9
+    report = evaluate_records(records)
+    for metrics in report["by_source"].values():
+        assert metrics["calibration"]["status"] == "evaluated"
+        assert metrics["calibration"]["brier_score"] < 0.02
+        assert metrics["calibration"]["expected_calibration_error_10_bins"] < 0.1
+
+
+def test_unlabeled_probability_values_are_not_assumed_calibrated():
+    report = evaluate_records(corpus())
+    assert all(item["calibration"]["status"] == "not_evaluated" for item in report["by_source"].values())
+
+
+def test_invalid_risk_probability_is_rejected():
+    import pytest
+    records = corpus()
+    records[0]["risk_probability"] = 1.5
+    with pytest.raises(ValueError, match="risk_probability must be between 0 and 1"):
+        evaluate_records(records)
+
+
+def test_cli_records_corpus_hash_baseline_and_non_approval(tmp_path, capsys):
+    import json
+    from backend.evaluation.threatfade_ai_eval import main
+
+    records = []
+    index = 0
+    for source in ("prompt", "completion", "tool_output"):
+        for label, detected, probability in (("benign", False, 0.1), ("malicious", True, 0.9)):
+            index += 1
+            records.append({
+                "sample_id": f"sample-{index}", "source": source, "label": label,
+                "detected": detected, "risk_probability": probability,
+            })
+    corpus_path = tmp_path / "candidate.jsonl"
+    baseline_path = tmp_path / "baseline.jsonl"
+    payload = "".join(json.dumps(record) + "\\n" for record in records)
+    corpus_path.write_text(payload, encoding="utf-8")
+    baseline_path.write_text(payload, encoding="utf-8")
+
+    result = main([
+        str(corpus_path), "--baseline", str(baseline_path),
+        "--dataset-id", "fixture", "--dataset-version", "v1",
+        "--labeling-method", "two-reviewer-consensus-v1",
+        "--labeler-agreement", "0.95", "--independent-review-id", "review-record-1",
+        "--min-per-class-per-source", "1", "--max-fpr", "1", "--min-recall", "0",
+    ])
+    output = json.loads(capsys.readouterr().out)
+    assert result == 0
+    assert len(output["provenance"]["prediction_corpus_sha256"]) == 64
+    assert output["baseline"]["prediction_corpus_sha256"]
+    assert output["release_gate"]["evidence_complete_for_independent_review"] is True
+    assert output["release_gate"]["release_approved"] is False
