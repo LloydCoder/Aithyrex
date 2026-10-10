@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from backend.core.auth import TokenPayload, get_current_tenant
 from backend.core.contracts import APIErrorV1, DetectorEvidenceV1, FindingV1
@@ -30,9 +30,27 @@ class LLMInspectRequest(BaseModel):
     model: str | None = Field(default=None, max_length=256)
 
 
+MAX_AGENT_MESSAGE_COUNT = 100
+MAX_AGENT_MESSAGE_CHARS = 20_000
+MAX_AGENT_TOTAL_CHARS = 200_000
+
+
+class AgentMessage(BaseModel):
+    role: str | None = Field(default=None, max_length=64)
+    source: str | None = Field(default=None, max_length=64)
+    content: str = Field(default="", max_length=MAX_AGENT_MESSAGE_CHARS)
+
+
 class AgentInspectRequest(BaseModel):
     agent_id: str = Field(min_length=1, max_length=255)
-    messages: list[dict] = Field(max_length=1_000)
+    messages: list[AgentMessage] = Field(max_length=MAX_AGENT_MESSAGE_COUNT)
+
+    @model_validator(mode="after")
+    def enforce_total_content_limit(self) -> "AgentInspectRequest":
+        total_chars = sum(len(message.content) for message in self.messages)
+        if total_chars > MAX_AGENT_TOTAL_CHARS:
+            raise ValueError("Total agent message content exceeds the inspection limit")
+        return self
 
 
 class DetectionResponse(BaseModel):
@@ -233,10 +251,9 @@ async def detect_agent(
     This does not mediate tool calls, MCP operations, or per-turn side effects.
     """
     # Sprint 1 — inspect the concatenated conversation
-    full_text = " ".join(
-        m.get("content", "") for m in req.messages
-        if isinstance(m.get("content"), str)
-    )
+    # Role/source metadata is accepted for caller compatibility but is not trusted
+    # as provenance. Phase 9 introduces authenticated context lineage.
+    full_text = " ".join(message.content for message in req.messages if message.content)
 
     verdict: ShieldVerdict = await engine.inspect(
         prompt=full_text,
