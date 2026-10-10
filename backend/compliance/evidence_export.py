@@ -140,10 +140,10 @@ def _csv_safe(value: Any) -> str:
     text = "" if value is None else str(value)
     # Spreadsheet applications may ignore leading whitespace before a formula.
     # Prefix the entire cell when the first non-whitespace character is dangerous.
-    first_content = text.lstrip(" \\t\\r\\n")[:1]
-    if first_content in {"=", "+", "-", "@"} or text[:1] in {"\\t", "\\r", "\\n"}:
+    first_content = text.lstrip(" \t\r\n")[:1]
+    if first_content in {"=", "+", "-", "@"} or text[:1] in {"\t", "\r", "\n"}:
         text = "'" + text
-    return text.replace("\\r", " ").replace("\\n", " ")
+    return text.replace("\r", " ").replace("\n", " ")
 
 
 def render_csv(envelope: dict[str, Any]) -> str:
