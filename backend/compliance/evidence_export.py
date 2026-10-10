@@ -19,6 +19,7 @@ EVIDENCE_SCHEMA = "aithyrex.compliance-evidence.v1"
 _ALLOWED_ACTIONS = {"pass", "log", "alert", "block"}
 _ALLOWED_SEVERITIES = {"clean", "info", "low", "medium", "high", "critical"}
 _SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_SAFE_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
 
 
 def _iso_utc(value: Any) -> str | None:
@@ -40,7 +41,7 @@ def _safe_model(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     cleaned = "".join(ch for ch in value if ch.isprintable()).strip()
-    return cleaned[:128] or None
+    return cleaned if _SAFE_MODEL.fullmatch(cleaned) else None
 
 
 def _safe_length(value: Any) -> int:
