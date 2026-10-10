@@ -1,5 +1,5 @@
+import fastapi
 import pytest
-from fastapi import FastAPI
 
 from backend.main import lifespan
 
@@ -35,7 +35,7 @@ async def test_production_rejects_http_threatfade_and_missing_api_key(monkeypatc
         monkeypatch.setattr(settings, key, value)
 
     with pytest.raises(RuntimeError) as exc:
-        async with lifespan(FastAPI()):
+        async with lifespan(fastapi.FastAPI()):
             pass
     assert "THREATFADE_API_URL" in str(exc.value)
     assert "THREATFADE_API_KEY" in str(exc.value)
