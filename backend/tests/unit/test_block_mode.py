@@ -118,3 +118,17 @@ async def test_block_model_custom_ttl(service, mock_redis):
     call_args = mock_redis.setex.call_args
     ttl = call_args.args[1] if call_args.args else call_args[0][1]
     assert ttl == 3600
+
+@pytest.mark.asyncio
+async def test_list_blocked_preserves_colons_in_model_and_agent_ids(service, mock_redis):
+    async def scan_iter(pattern):
+        if "shield:block:model:" in pattern:
+            yield "shield:block:model:tenant-1:provider:model:alpha"
+        elif "shield:block:agent:" in pattern:
+            yield "shield:block:agent:tenant-1:agent:worker-1"
+
+    mock_redis.scan_iter = scan_iter
+    mock_redis.get = AsyncMock(return_value="test reason")
+    items = await service.list_blocked("tenant-1")
+
+    assert {item["id"] for item in items} == {"provider:model:alpha", "agent:worker-1"}
