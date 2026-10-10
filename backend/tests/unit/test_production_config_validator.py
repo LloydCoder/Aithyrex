@@ -48,3 +48,17 @@ def test_production_rejects_wildcard_hosts_and_http_origins():
     errors = production_configuration_errors(settings)
     assert any(error.startswith("ALLOWED_HOSTS") for error in errors)
     assert any(error.startswith("ALLOWED_ORIGINS") for error in errors)
+
+
+def test_production_rejects_duplicate_ssl_query_parameters():
+    settings = valid_settings(
+        DATABASE_URL="postgresql+asyncpg://app:strong-db-secret@db.example.com:5432/aithyrex?ssl=disable&ssl=verify-full"
+    )
+    errors = production_configuration_errors(settings)
+    assert any(error.startswith("DATABASE_URL") for error in errors)
+
+
+def test_production_rejects_loopback_threatfade_even_with_https():
+    settings = valid_settings(THREATFADE_API_URL="https://localhost:8000")
+    errors = production_configuration_errors(settings)
+    assert any(error.startswith("THREATFADE_API_URL") for error in errors)
