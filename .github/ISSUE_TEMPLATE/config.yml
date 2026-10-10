@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/LloydCoder/Aithyrex/security/advisories/new
+    about: Do not disclose vulnerabilities in public issues.
+  - name: Support and documentation
+    url: https://github.com/LloydCoder/Aithyrex/blob/main/SUPPORT.md
+    about: Read support guidance before opening a usage question.
+  - name: Code of Conduct
+    url: https://github.com/LloydCoder/Aithyrex/blob/main/CODE_OF_CONDUCT.md
+    about: Read community standards and reporting guidance.
