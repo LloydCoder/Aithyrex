@@ -1,5 +1,5 @@
 """
-AI Shield — Database Session
+Aithyrex — Database Session
 ==============================
 Async SQLAlchemy engine and session factory.
 """
