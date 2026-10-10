@@ -103,6 +103,7 @@ class CredentialLeakDetector:
                 detected=False,
                 severity=Severity.CLEAN,
                 confidence=0.0,
+                details={"confidence_calibrated": False},
             )
 
         # Highest severity among matches
