@@ -166,7 +166,7 @@ Delivery is at-least-once, not exactly-once. If persistence fails, the response 
 
 The Python SDK propagates a UUID X-Request-ID for each inspection and fails closed on invalid or mismatched response correlation identifiers. See [SDK and Gateway Integration Contract](SDK_GATEWAY_CONTRACT.md) for supported behavior and limitations.
 
-Provider wrappers can preflight supported text before an upstream call and inspect supported output before returning it. They do not authorize tool calls, execute actions, mediate all provider streaming, or prove that downstream tool side effects are prevented. LangChain and LlamaIndex callbacks/observers are defense-in-depth only. The legacy AutoGen/CrewAI wrappers are explicitly unsupported and refuse construction rather than implying protection.
+Provider wrappers can preflight supported text before an upstream call and inspect supported output before returning it. They do not authorize tool calls, execute actions, mediate all provider streaming, or prove that downstream tool side effects are prevented. LangChain and LlamaIndex callbacks/observers are defense-in-depth only; the LlamaIndex observer inspects prompt and completion events independently to avoid cross-request state contamination. The legacy AutoGen/CrewAI wrappers are explicitly unsupported and refuse construction rather than implying protection.
 
 For any actual tool/MCP operation, the Tinlance Agent Platform must enforce identity, policy, approval and authorization at the execution boundary. Aithyrex findings remain advisory signals.
 
