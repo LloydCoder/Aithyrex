@@ -83,6 +83,9 @@ def client():
         "backend.core.usage_counter.UsageCounterService.get_count",
         new=AsyncMock(return_value=1),
     ), patch(
+        "backend.core.rate_limiter.RateLimiter.enforce",
+        new=AsyncMock(return_value=None),
+    ), patch(
         "backend.core.auth._verify_clerk_token",
         new=AsyncMock(return_value={
             "sub": "dev_user",
