@@ -53,7 +53,8 @@ Threat detection currently scans the combined bundle. The response preserves sou
 
 - Missing/invalid assertion: HTTP 401.
 - Signed bundle mismatch: HTTP 403.
-- Missing trust configuration, unavailable tenant/capacity state: HTTP 503.
+- Replayed assertion: HTTP 409.
+- Missing trust configuration, unavailable tenant/capacity/replay state: HTTP 503.
 - Invalid/oversized bundle: HTTP 422.
 - Rate/usage limit: HTTP 429.
 - No content is truncated or echoed in validation errors.

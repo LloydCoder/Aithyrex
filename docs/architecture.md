@@ -137,7 +137,7 @@ This endpoint is deliberately **not** an authorization or execution endpoint:
 - Aithyrex detects prompt-injection, credential and related runtime threat indicators in the exact proposed payload.
 - The response is always advisory (`action=log`, `blocked=false`, `authorization_performed=false`, `execution_performed=false`). The Platform must make and enforce its own decision.
 
-See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The contract is implemented and tested locally; live cross-repository integration, replay persistence and automated key rotation are not claimed.
+See [Platform Action Signal Contract](PLATFORM_ACTION_SIGNAL_CONTRACT.md). The receiver contract is implemented and tested locally, including one-time Redis replay protection; live cross-repository integration and automated key rotation are not claimed.
 
 
 ## Signed context provenance signal (Phase 9)
