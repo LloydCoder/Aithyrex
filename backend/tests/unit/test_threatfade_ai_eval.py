@@ -1,4 +1,6 @@
-from backend.evaluation.threatfade_ai_eval import evaluate_records, wilson_interval
+import json
+
+from backend.evaluation.threatfade_ai_eval import evaluate_records, main, wilson_interval
 
 
 def corpus(per_class_per_source=100, false_positives_per_source=0, missed_malicious_per_source=0):
@@ -84,9 +86,7 @@ def test_invalid_risk_probability_is_rejected():
 
 
 def test_cli_records_corpus_hash_baseline_and_non_approval(tmp_path, capsys):
-    import json
-    from backend.evaluation.threatfade_ai_eval import main
-
+    
     records = []
     index = 0
     for source in ("prompt", "completion", "tool_output"):
