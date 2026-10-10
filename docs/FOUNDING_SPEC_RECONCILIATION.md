@@ -432,3 +432,30 @@ SDK-level trace IDs are correlation metadata, not identity or authorization. Ope
 
 **Phase 12 implementation and CI acceptance: passed for the declared scope.** This does not certify live provider/framework compatibility, production deployment, detection accuracy, streaming, multimodal coverage, complete tool/MCP pre-side-effect mediation, or a live Tinlance Agent Platform integration. These remain explicit integration and assurance gates, not silently inferred from unit tests.
 
+## 17. Phase 13 Tinlance integration and TSIC conformance
+
+**Branch:** `godmode/phase-13-platform-replay-conformance`  
+**Conformance contract:** [TSIC Conformance](TSIC_CONFORMANCE.md)  
+**Machine-readable manifest:** [Aithyrex contracts v1](../contracts/tsic/aithyrex-contracts.v1.json)
+
+### Scope
+
+- Enforce one-time consumption of Platform-signed action, context and behavioral-sequence assertion JTIs using atomic Redis SET NX EX, tenant/contract namespaces, SHA-256 JTI keys, and TTL bounded by JWT expiration.
+- Reject replayed assertions with HTTP 409 and fail closed with HTTP 503 if replay state is unavailable. A retry after consumption requires a new signed assertion.
+- Fix Redis async client initialization in the rate limiter and usage counter; close replay, rate-limit and usage-counter Redis pools during application shutdown.
+- Add machine-readable contract manifest and receiver-side conformance tests for all three versioned endpoints, replay protection, payload binding, and advisory-only authority boundaries.
+
+### Acceptance gates
+
+- Unit tests prove atomic replay semantics, TTL bounds, hashed JTI keys, contract separation, expiration handling and Redis outage behavior.
+- HTTP-level tests prove first-use success and duplicate rejection for action, context and sequence endpoints.
+- Redis client initialization tests prove `redis.asyncio.from_url` is used as a synchronous factory; shutdown tests cover pool cleanup.
+- CI and Security Scan are green on final branch head, followed by forensic review and post-merge verification.
+
+### Explicit limitations
+
+This phase proves receiver-side behavior and a versioned contract manifest, not a live Platform deployment. Key rotation, production Redis HA/alerting, and an end-to-end test against the actual Tinlance Agent Platform remain external gates. A signed assertion establishes origin and payload integrity, not the truth of all event metadata or permission to execute an action.
+
+**Phase 13 status:** implementation is in progress until final-head CI, Security Scan and forensic review pass.
+
+
