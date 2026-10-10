@@ -222,10 +222,11 @@ class ParliamentEnsemble:
             final_severity = Severity.MEDIUM
             consensus = False
         else:
-            # All active votes say ALLOW — this was a false positive
-            final_action = Action.PASS
-            final_severity = Severity.CLEAN
-            consensus = True
+            # Parliament is advisory: votes cannot erase detector findings.
+            # Preserve the detector verdict unless Parliament escalates it.
+            final_action = verdict.action
+            final_severity = verdict.severity
+            consensus = False
 
         overrode = (final_action != verdict.action)
         latency = round((time.monotonic() - start) * 1000, 1)
