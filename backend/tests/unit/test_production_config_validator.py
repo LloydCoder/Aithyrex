@@ -62,3 +62,15 @@ def test_production_rejects_loopback_threatfade_even_with_https():
     settings = valid_settings(THREATFADE_API_URL="https://localhost:8000")
     errors = production_configuration_errors(settings)
     assert any(error.startswith("THREATFADE_API_URL") for error in errors)
+
+
+def test_configuration_errors_never_echo_secret_values():
+    settings = valid_settings(
+        APP_SECRET_KEY="change-me",
+        DATABASE_URL="postgresql+asyncpg://app:private-db-secret@localhost:5432/aithyrex",
+        REDIS_URL="rediss://:private-redis-secret@localhost:6379/0",
+    )
+    rendered = " ".join(production_configuration_errors(settings))
+    assert "private-db-secret" not in rendered
+    assert "private-redis-secret" not in rendered
+    assert "change-me" not in rendered
