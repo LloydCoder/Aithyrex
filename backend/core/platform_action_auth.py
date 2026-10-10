@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from typing import Any
 from uuid import UUID
@@ -102,3 +104,15 @@ def decode_platform_action_assertion(token: str) -> dict[str, Any]:
         ) from exc
 
     return claims
+
+
+def action_payload_sha256(tool_name: str, arguments: dict[str, Any], context: str | None) -> str:
+    """Hash the canonical action payload so the signed assertion binds exact inspected content."""
+    canonical = json.dumps(
+        {"tool_name": tool_name, "arguments": arguments, "context": context or ""},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
