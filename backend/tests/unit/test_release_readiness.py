@@ -168,3 +168,26 @@ def test_cli_accepts_complete_external_manifest_for_checked_out_sha(tmp_path, mo
     exit_code = main()
     assert exit_code == 0
     assert "release gates passed" in capsys.readouterr().out
+
+
+def test_external_review_evidence_must_name_the_candidate_sha():
+    manifest = passing_manifest()
+    manifest["gates"][0]["evidence"] = [
+        {"type": "review", "reference": "review-report-123"}
+    ]
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is False
+    assert any("must include a candidate_sha" in issue for issue in report["issues"])
+
+
+def test_external_review_evidence_with_matching_candidate_sha_is_accepted():
+    manifest = passing_manifest()
+    manifest["gates"][0]["evidence"] = [
+        {
+            "type": "review",
+            "reference": "review-report-123",
+            "candidate_sha": VALID_SHA,
+        }
+    ]
+    report = evaluate_release_readiness(manifest, VALID_SHA, REPO_ROOT)
+    assert report["ready"] is True
