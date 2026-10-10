@@ -309,3 +309,16 @@ CI and Security Scan must both pass on the latest PR head. The current Phase 8 P
 - Integration tests: missing assertion, signed context findings, content tampering, bounded input, redaction, and explicit untrusted source boundaries.
 - CI and Security Scan must pass on the final phase head. Audit all changed code and docs before merge; then verify post-merge workflows.
 - Residual risks: no live Platform integration, no proof of upstream retrieval authorization, no persistent replay deduplication, no per-source detection attribution, and no representative labeled AI-text evaluation corpus. Do not claim calibrated detection effectiveness.
+
+
+### Phase 9 implementation evidence
+
+Implementation revision reviewed: `6845ef9376c80a55e501f0f318066c74795e12e4`  
+CI: https://github.com/LloydCoder/Aithyrex/actions/runs/38026711614  
+Security Scan: https://github.com/LloydCoder/Aithyrex/actions/runs/38026711611
+
+At this revision all four CI jobs and both security jobs passed: 225 unit tests, 48 API/integration tests, Ruff, Bandit, Semgrep, frontend audit/type-check/lint/build, Docker build, dependency audit, and secret scan. The forensic review checked signature verification, agent/context/source/content binding, active tenant resolution, quota failure behavior, bounded inputs, non-echoing validation, source hashes, and advisory-only responses.
+
+A documentation-only follow-up clarifies that application-level serialized-size validation occurs after JSON parsing; deployments must configure an upstream/server request-body limit. The final PR head must pass fresh CI and Security Scan before merge.
+
+**Phase 9 status:** implementation is complete for the signed, bounded, bundle-level signal contract only. Live Platform integration, retrieval authorization, per-source detector attribution, replay deduplication, and calibrated effectiveness are not claimed.
