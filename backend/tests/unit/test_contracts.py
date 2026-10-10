@@ -55,3 +55,39 @@ def test_error_contract_is_versioned_and_safe():
     )
     assert error.schema_version == "aithyrex.error.v1"
     assert "input" not in str(error.model_dump(mode="json"))
+
+
+@pytest.mark.asyncio
+async def test_unhandled_http_error_returns_safe_versioned_contract():
+    import json
+
+    from starlette.requests import Request
+
+    from backend.main import request_context_middleware
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/test",
+        "raw_path": b"/test",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [],
+        "client": ("127.0.0.1", 12345),
+        "server": ("testserver", 80),
+    }
+    request = Request(scope)
+
+    async def fail(_request):
+        raise RuntimeError("must-not-leak-this-exception")
+
+    response = await request_context_middleware(request, fail)
+    body = json.loads(response.body)
+    assert response.status_code == 500
+    assert body["schema_version"] == "aithyrex.error.v1"
+    assert body["error_code"] == "internal_error"
+    assert "must-not-leak-this-exception" not in response.body.decode()
+    assert response.headers["X-Request-ID"] == body["trace_id"]

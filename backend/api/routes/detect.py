@@ -15,9 +15,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from backend.core.contracts import DetectorEvidenceV1, FindingV1
-
 from backend.core.auth import TokenPayload, get_current_tenant
+from backend.core.contracts import DetectorEvidenceV1, FindingV1
 from backend.core.shield_engine import Action, ShieldEngine, ShieldVerdict
 
 router = APIRouter()

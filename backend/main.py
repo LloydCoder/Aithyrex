@@ -14,9 +14,9 @@ from uuid import UUID, uuid4
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.api.routes import detect, enforce, health, monitor, reports, webhooks
 from backend.core.config import settings
@@ -87,21 +87,6 @@ def _trace_id(request: Request) -> str:
     return value if isinstance(value, str) else str(uuid4())
 
 
-@app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
-    """Attach a validated UUID trace ID to logs and every HTTP response."""
-    incoming = request.headers.get("X-Request-ID", "")
-    try:
-        trace_id = str(UUID(incoming))
-    except (ValueError, TypeError, AttributeError):
-        trace_id = str(uuid4())
-    request.state.trace_id = trace_id
-    with structlog.contextvars.bound_contextvars(trace_id=trace_id):
-        response = await call_next(request)
-    response.headers["X-Request-ID"] = trace_id
-    return response
-
-
 @app.exception_handler(HTTPException)
 async def http_error_contract(request: Request, exc: HTTPException):
     detail = exc.detail
@@ -162,6 +147,36 @@ if settings.APP_ENV.lower() in {"prod", "production"}:
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
     )
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    """Attach a validated UUID trace ID to logs and every HTTP response."""
+    incoming = request.headers.get("X-Request-ID", "")
+    try:
+        trace_id = str(UUID(incoming))
+    except (ValueError, TypeError, AttributeError):
+        trace_id = str(uuid4())
+    request.state.trace_id = trace_id
+    try:
+        with structlog.contextvars.bound_contextvars(trace_id=trace_id):
+            response = await call_next(request)
+    except Exception as exc:
+        logger.exception(
+            "unhandled_http_request",
+            trace_id=trace_id,
+            error_type=type(exc).__name__,
+        )
+        body = APIErrorV1(
+            error_code="internal_error",
+            message="Internal server error",
+            trace_id=UUID(trace_id),
+            retryable=True,
+        )
+        response = JSONResponse(status_code=500, content=body.model_dump(mode="json"))
+    response.headers["X-Request-ID"] = trace_id
+    return response
+
 
 # ── Routes ────────────────────────────────────────────────────────────
 app.include_router(health.router, tags=["Health"])
