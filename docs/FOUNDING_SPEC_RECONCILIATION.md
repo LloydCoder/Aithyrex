@@ -356,3 +356,24 @@ All four CI jobs and both security jobs passed at that revision. The test suite 
 A documentation-only evidence amendment follows. The final PR head must pass fresh CI and Security Scan before merge.
 
 **Phase 10 status:** implementation is complete for the deterministic signed event-bundle contract only. It is not a durable event stream, cross-agent graph, replay-resistant store, live Platform integration, or calibrated threat verdict.
+
+
+## 15. Phase 11 durable evidence and delivery
+
+**Branch:** `godmode/phase-11-durable-evidence-delivery`  
+**Migration:** `002_durable_delivery_outbox`  
+**Contract:** [Delivery Outbox Contract](DELIVERY_OUTBOX_CONTRACT.md)
+
+### Scope and controls
+
+- Commit each tenant-bound detection event, high/critical alert, and SIEM/alert/compliance delivery intent in one PostgreSQL transaction.
+- Replace fire-and-forget delivery tasks with awaited evidence persistence and a lifespan-owned worker task whose reference is retained and cancelled/awaited at shutdown.
+- Claim outbox rows with database leases and `SKIP LOCKED`; retry with bounded exponential backoff; dead-letter after 12 attempts; store exception types rather than sensitive error text.
+- Persist context and behavioral-sequence findings through the same outbox path and surface persistence failure as degraded state.
+- Require `OUTBOX_WORKER_ENABLED=true` in production and document migration/deployment requirements.
+
+### Verification gate
+
+Test transactional outbox intent creation, worker claims/leases, retry delay, event reconstruction, channel failure behavior, and API degraded responses. CI and Security Scan must pass on the final PR head, followed by a forensic review and post-merge workflow verification.
+
+Residual risks: delivery is at-least-once, external side effects can duplicate, database failure before commit prevents durable capture, dead-letter operator replay/monitoring and retention need operational configuration, and NIS2/DORA high-cluster aggregation remains in-memory.
