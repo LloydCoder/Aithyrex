@@ -107,7 +107,18 @@ class SequenceSignalResponse(BaseModel):
     finding: FindingV1
 
 
-@router.post("/sequence", response_model=SequenceSignalResponse)
+@router.post(
+    "/sequence",
+    response_model=SequenceSignalResponse,
+    responses={
+        401: {"model": APIErrorV1, "description": "Missing or invalid Platform assertion"},
+        403: {"model": APIErrorV1, "description": "Sequence does not match signed assertion"},
+        409: {"model": APIErrorV1, "description": "Platform assertion has already been consumed"},
+        422: {"model": APIErrorV1, "description": "Invalid event sequence"},
+        429: {"model": APIErrorV1, "description": "Tenant rate or usage limit reached"},
+        503: {"model": APIErrorV1, "description": "Replay, assertion or tenant state unavailable"},
+    },
+)
 async def inspect_sequence(
     req: SequenceInspectionRequest,
     request: Request,
